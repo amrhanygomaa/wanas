@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "13659292446",
+    "project_id": "raaya-taptaba-app",
+    "storage_bucket": "raaya-taptaba-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:13659292446:android:d664186064cdc86572ff0f",
+        "android_client_info": {
+          "package_name": "com.raaya.taptaba"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3tlmx-wOI7Eng74HFzmY32jQXHofaN4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

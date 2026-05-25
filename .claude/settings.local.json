@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scp -i \"raaya-key.pem\" -o StrictHostKeyChecking=no -q /tmp/raaya-src.tar.gz ec2-user@13.219.217.9:/home/ec2-user/raaya-src.tar.gz)",
+      "Bash(ssh -i raaya-key.pem -o StrictHostKeyChecking=no ec2-user@13.219.217.9 ' *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'Total endpoints: {len\\(d[\\\\\"paths\\\\\"]\\)}'\\); paths=list\\(d['paths'].keys\\(\\)\\); print\\('New endpoints:'\\); print\\([p for p in paths if 'family-members' in p or 'register' in p]\\)\")",
+      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ec2-user@13.219.217.9 'docker exec raaya-backend sh -c '\\\\''psql $DATABASE_URL -c \"SELECT COUNT\\(*\\) FROM nursing_notes;\"'\\\\'' 2>&1')",
+      "Bash(curl -s -X POST http://13.219.217.9:3000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@raaya.demo\",\"password\":\"Raaya@2025!\"}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('accessToken',''\\)[:50],'...' if d.get\\('accessToken'\\) else d\\)\")",
+      "Bash(curl -s http://13.219.217.9:3000/)",
+      "Bash(curl -s http://13.219.217.9:3000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@raaya.demo\",\"password\":\"Raaya@2025!\"}' -X POST)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); t=d.get\\('accessToken',''\\); print\\(t[:80] if t else d\\)\")",
+      "Bash(curl -s \"http://13.219.217.9:3000/api-json\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); paths=list\\(d.get\\('paths',{}\\).keys\\(\\)\\)[:20]; print\\('\\\\n'.join\\(paths\\)\\)\")",
+      "Bash(curl -sv \"http://13.219.217.9:3000/residents\")",
+      "Bash(curl -s -X POST \"http://13.219.217.9:3000/auth/login\" -H \"Content-Type: application/json\" -d '{\"email\":\"admin@raaya.demo\",\"password\":\"Raaya@2025!\"}')",
+      "Bash(curl -s -X POST https://cognito-idp.us-east-1.amazonaws.com/ -H 'X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth' -H 'Content-Type: application/x-amz-json-1.1' -d '{\"AuthFlow\":\"USER_PASSWORD_AUTH\",\"ClientId\":\"ifk56gi2vp5jn4tshvp96vn06\",\"AuthParameters\":{\"USERNAME\":\"admin@raaya.demo\",\"PASSWORD\":\"Raaya@2025!\"}}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); r=d.get\\('AuthenticationResult',{}\\); t=r.get\\('IdToken',''\\); print\\('TOKEN:'+t[:50]+'...' if t else d\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('count:',len\\(d\\) if isinstance\\(d,list\\) else d\\)\")",
+      "Bash(aws --version)",
+      "Bash(aws sts *)",
+      "Bash(aws ec2 *)",
+      "Bash(psql \"postgresql://raaya_admin:Raaya_iaems_26@raaya-db.cqnwee6msacg.us-east-1.rds.amazonaws.com:5432/raaya\" -c \"SELECT COUNT\\(*\\) FROM residents;\")",
+      "Bash(python -c ' *)",
+      "Bash(curl -s \"http://13.219.217.9:3000/auth/register\" -X POST -H \"Content-Type: application/json\" -d '{\"test\":\"1\"}')",
+      "Bash(curl -s \"http://13.219.217.9:3000/health\")",
+      "Bash(curl -s \"http://13.219.217.9:3000/swagger-json\")",
+      "Bash(aws ssm *)",
+      "Bash(docker version *)",
+      "Bash(find /c/Users/amrha -name \"*.pem\" 2>/dev/null | head -10; find /c/Users/amrha -name \"*.ppk\" 2>/dev/null | head -5)",
+      "Read(//c/Users/amrha/**)",
+      "Bash(aws rds *)",
+      "Bash(sort -t: -k2 -rn)"
+    ]
+  }
+}

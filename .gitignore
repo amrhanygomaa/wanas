@@ -1,0 +1,112 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code (uncomment if you don't want to share launch config)
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android Build Artifacts (HEAVY - skip uploading)
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/.gradle/
+/android/local.properties
+/android/key.properties
+/android/captures/
+**/*.apk
+**/*.aab
+**/*.jar
+**/*.aar
+**/*.jks
+**/*.keystore
+
+# iOS Build Artifacts (HEAVY - skip uploading)
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+/ios/Runner/GeneratedPluginRegistrant.*
+*.xcworkspace
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.ipa
+
+# Web Build
+/web/flutter_service_worker.js
+/web/flutter_bootstrap.js
+
+# Analysis & Temporary outputs (personal)
+analysis_output*
+analysis_errors*
+full_analysis*
+full_errs*
+lint*
+lint2*
+final_lint*
+flutter_*.log
+
+# Metadata & IDE files
+.metadata
+devtools_options.yaml
+
+# Temporary test files
+test[0-9]*
+after_move*
+call_test*
+mem_test*
+
+# Misc personal files
+files.txt
+colors.txt
+mcolors.txt
+decs.txt
+mdecs.txt
+
+# Local backend snapshots (الباك اند في repo منفصل: amrhanygomaa/raaya-backend)
+aws_raaya_backend/
+aws_raaya_backend.rar
+aws_raaya_backend.zip
+external/
+
+# Sensitive (NEVER commit)
+**/*.pem
+**/*accessKeys*.csv
+**/*credentials*
+**/*.env
+*.key
+
+# Large media & assets (optional - uncomment if assets are large)
+# assets/videos/
+# assets/images/*.png
