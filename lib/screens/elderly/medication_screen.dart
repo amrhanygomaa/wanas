@@ -251,16 +251,14 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
   Widget _buildHeroChip(String value, String label, int index) {
     Color chipColor;
     Color borderColor;
-
+    
     switch (index) {
       case 0: // تم
-        chipColor =
-            const Color(0xFF6C63FF).withValues(alpha: 0.15); // بنفسجي أساسي
+        chipColor = const Color(0xFF6C63FF).withValues(alpha: 0.15); // بنفسجي أساسي
         borderColor = const Color(0xFF6C63FF).withValues(alpha: 0.3);
         break;
       case 1: // باقي
-        chipColor =
-            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
+        chipColor = const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
         borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
         break;
       case 2: // لاحقاً
@@ -536,8 +534,7 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
                 color: hc ? const Color(0xFF333333) : borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
-                  color: const Color(0xFF6C63FF)
-                      .withValues(alpha: hc ? 0.25 : 0.15),
+                  color: const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
                   blurRadius: 10,
                   offset: const Offset(0, 4))
             ]),
@@ -610,9 +607,7 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
                   height: 52,
                   decoration: BoxDecoration(
                       color: bgColor, borderRadius: BorderRadius.circular(16)),
-                  child: Center(
-                      child:
-                          _buildPillIcon(isDone, isLater, isElderlyConfirmed)),
+                  child: Center(child: _buildPillIcon(isDone, isLater, isElderlyConfirmed)),
                 ),
                 const SizedBox(height: 8),
                 if (badgeText.isNotEmpty)
@@ -814,7 +809,7 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
             child: InkWell(
               onTap: () {
                 provider.elderlyConfirmMedication(med.id);
-
+                
                 // Show central animation
                 setState(() => _showSuccessAnimation = true);
 
@@ -885,23 +880,14 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
               child: Text('لا توجد مواعيد مسجلة حالياً',
                   style: TextStyle(color: Colors.white70, fontSize: 13)))
         else
-          ...provider.medicalSessions.map((s) {
-            final dt = s.date == 'اليوم'
-                ? DateTime.now()
-                : s.date == 'غد'
-                    ? DateTime.now().add(const Duration(days: 1))
-                    : DateTime.tryParse(s.date) ?? DateTime.now();
-            const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-            final dayAr = dt.day.toString().replaceAllMapped(RegExp(r'\d'), (m) => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][int.parse(m[0]!)]);
-            return _buildAppointmentCard(
-              dayAr,
-              months[dt.month - 1],
-              s.specialistName,
-              '${s.type == 'doctor' ? 'كشف طبي' : 'جلسة علاج'} · ${s.time}',
-              s.type == 'doctor',
-              0,
-            );
-          }),
+          ...provider.medicalSessions.map((s) => _buildAppointmentCard(
+                s.date == 'اليوم' ? '٢١' : '٢٠',
+                'أبريل',
+                s.specialistName,
+                '${s.type == 'doctor' ? 'كشف طبي' : 'جلسة علاج'} · ${s.time}',
+                s.type == 'doctor',
+                0,
+              )),
       ],
     );
   }
@@ -1000,11 +986,10 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
     );
   }
 
-  Widget _buildPillIcon(bool isDone, bool isLater,
-      [bool isElderlyConfirmed = false]) {
+  Widget _buildPillIcon(bool isDone, bool isLater, [bool isElderlyConfirmed = false]) {
     // Icon continues to animate if it's pending nurse confirmation (isElderlyConfirmed and not yet isDone)
     bool shouldAnimate = !isDone || (isElderlyConfirmed && !isDone);
-
+    
     return Opacity(
       opacity: isLater ? 0.5 : 1.0,
       child: Lottie.asset(

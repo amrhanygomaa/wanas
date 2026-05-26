@@ -15,7 +15,7 @@ class AlbumDetailsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = ref.watch(appRiverpod);
     bool hc = provider.isHighContrast;
-
+    
     // الحصول على الصور الخاصة بهذا الألبوم
     List<dynamic> items = provider.getMemoriesByCategory(albumName);
 
@@ -33,27 +33,18 @@ class AlbumDetailsScreen extends ConsumerWidget {
             color: hc ? Colors.white : const Color(0xFF0F172A),
           ),
         ),
-        iconTheme:
-            IconThemeData(color: hc ? Colors.white : const Color(0xFF0F172A)),
+        iconTheme: IconThemeData(color: hc ? Colors.white : const Color(0xFF0F172A)),
       ),
       body: items.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.folder_open_rounded,
-                      size: 80, color: Colors.grey.withValues(alpha: 0.5)),
+                  Icon(Icons.folder_open_rounded, size: 80, color: Colors.grey.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
-                  Text('الألبوم فارغ',
-                      style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.grey.withValues(alpha: 0.8),
-                          fontWeight: FontWeight.bold)),
+                  Text('الألبوم فارغ', style: TextStyle(fontSize: 20, color: Colors.grey.withValues(alpha: 0.8), fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('اضغط على الزر أدناه لإضافة صور',
-                      style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey.withValues(alpha: 0.6))),
+                  Text('اضغط على الزر أدناه لإضافة صور', style: TextStyle(fontSize: 16, color: Colors.grey.withValues(alpha: 0.6))),
                 ],
               ),
             )
@@ -87,45 +78,30 @@ class AlbumDetailsScreen extends ConsumerWidget {
                   url = mem;
                 }
 
-                return _buildPhotoCell(
-                    context, index, type, url, label, assetPath, hc, mem, ref);
+                return _buildPhotoCell(context, index, type, url, label, assetPath, hc, mem, ref);
               },
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final ImagePicker picker = ImagePicker();
-          final XFile? image =
-              await picker.pickImage(source: ImageSource.gallery);
+          final XFile? image = await picker.pickImage(source: ImageSource.gallery);
           if (image != null) {
-            ref.read(appRiverpod).addPhotoToAlbum(albumName, image.path);
+             ref.read(appRiverpod).addPhotoToAlbum(albumName, image.path);
           }
         },
         backgroundColor: const Color(0xFF6C63FF),
         icon: const Icon(Icons.add_a_photo_rounded, color: Colors.white),
-        label: const Text('إضافة صورة',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16)),
+        label: const Text('إضافة صورة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
       ),
     );
   }
 
-  Widget _buildPhotoCell(
-      BuildContext context,
-      int index,
-      String type,
-      String? url,
-      String? label,
-      String? assetPath,
-      bool hc,
-      dynamic mem,
-      WidgetRef ref) {
+  Widget _buildPhotoCell(BuildContext context, int index, String type, String? url, String? label, String? assetPath, bool hc, dynamic mem, WidgetRef ref) {
     final gradients = [
-      const [Color(0xFF8B5CF6), Color(0xFFC4B5FD)],
-      const [Color(0xFFEC4899), Color(0xFFF9A8D4)],
-      const [Color(0xFF3B82F6), Color(0xFF93C5FD)],
-      const [Color(0xFF10B981), Color(0xFF6EE7B7)],
+      const [Color(0xFF8B5CF6), Color(0xFFC4B5FD)], 
+      const [Color(0xFFEC4899), Color(0xFFF9A8D4)], 
+      const [Color(0xFF3B82F6), Color(0xFF93C5FD)], 
+      const [Color(0xFF10B981), Color(0xFF6EE7B7)], 
     ];
     final gradient = gradients[index % gradients.length];
     bool hasImage = url != null || (assetPath != null && assetPath.isNotEmpty);
@@ -135,25 +111,17 @@ class AlbumDetailsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: hc ? const Color(0xFF1E1E1E) : Colors.white,
-        gradient: !hasImage
-            ? LinearGradient(
-                colors: gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)
-            : null,
+        gradient: !hasImage ? LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
         image: url != null
             ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
             : (assetPath != null && assetPath.isNotEmpty)
                 ? (assetPath.startsWith('assets/')
-                    ? DecorationImage(
-                        image: AssetImage(assetPath), fit: BoxFit.cover)
-                    : DecorationImage(
-                        image: FileImage(File(assetPath)), fit: BoxFit.cover))
+                    ? DecorationImage(image: AssetImage(assetPath), fit: BoxFit.cover)
+                    : DecorationImage(image: FileImage(File(assetPath)), fit: BoxFit.cover))
                 : null,
         boxShadow: [
           BoxShadow(
-            color:
-                (hasImage ? Colors.black : gradient[0]).withValues(alpha: 0.15),
+            color: (hasImage ? Colors.black : gradient[0]).withValues(alpha: 0.15),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -185,35 +153,26 @@ class AlbumDetailsScreen extends ConsumerWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: Colors.white.withValues(alpha: 0.25), 
                     shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
                   ),
-                  child: const Icon(Icons.play_arrow_rounded,
-                      color: Colors.white, size: 28),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                 ),
               )
             else if (!hasImage)
               Center(
-                child: Icon(Icons.image_outlined,
-                    color: Colors.white.withValues(alpha: 0.5), size: 40),
+                child: Icon(Icons.image_outlined, color: Colors.white.withValues(alpha: 0.5), size: 40),
               ),
             if (label != null && label.isNotEmpty)
               Positioned(
-                bottom: 12,
-                right: 12,
-                left: 12,
+                bottom: 12, right: 12, left: 12,
                 child: Text(
                   label,
                   textAlign: TextAlign.right,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3),
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.3),
                 ),
               ),
           ],
@@ -237,18 +196,12 @@ class AlbumDetailsScreen extends ConsumerWidget {
                 Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading:
-                      const Icon(Icons.image_rounded, color: Color(0xFF6C63FF)),
-                  title: Text('تعيين كواجهة للألبوم',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: hc ? Colors.white : Colors.black)),
+                  leading: const Icon(Icons.image_rounded, color: Color(0xFF6C63FF)),
+                  title: Text('تعيين كواجهة للألبوم', style: TextStyle(fontWeight: FontWeight.bold, color: hc ? Colors.white : Colors.black)),
                   onTap: () {
                     String coverImg = url ?? assetPath ?? '';
                     if (coverImg.isNotEmpty) {
@@ -259,11 +212,8 @@ class AlbumDetailsScreen extends ConsumerWidget {
                 ),
                 if (mem is MemoryItem)
                   ListTile(
-                    leading:
-                        const Icon(Icons.delete_rounded, color: Colors.red),
-                    title: const Text('مسح الصورة',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.red)),
+                    leading: const Icon(Icons.delete_rounded, color: Colors.red),
+                    title: const Text('مسح الصورة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
                     onTap: () {
                       ref.read(appRiverpod).deleteMemoryItem(mem.id);
                       Navigator.pop(context);
@@ -280,15 +230,14 @@ class AlbumDetailsScreen extends ConsumerWidget {
           Navigator.push(
             context,
             PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
+              pageBuilder: (context, animation, secondaryAnimation) => 
                   FullScreenImageScreen(
-                heroTag: heroTag,
-                url: url,
-                assetPath: assetPath,
-                label: label,
-              ),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
+                    heroTag: heroTag,
+                    url: url,
+                    assetPath: assetPath,
+                    label: label,
+                  ),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
             ),

@@ -1,9 +1,11 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../models/app_models.dart';
 import '../../providers/app_riverpod.dart';
-import '../../services/family_media_service.dart';
+import '../../models/app_models.dart';
 import '../../widgets/taptaba_scaffold.dart';
 
 // شاشة "جسر العائلة" - تتيح للأقارب التواصل مع المقيم عبر الصور والرسائل الصوتية
@@ -23,8 +25,9 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   String _uploadStatus = ''; // نص حالة الرفع
   bool _showDoneAnimation = false; // هل نعرض أنيميشن الانتهاء؟
   bool _showDeleteAnimation = false; // هل نعرض أنيميشن الحذف؟
-  bool _isLoadingMedia = false;
-  List<BackendFamilyMedia> _mediaItems = [];
+  bool _isRecording = false; // هل يجري تسجيل صوتي الآن؟
+  int _recordDuration = 0; // مدة التسجيل بالثواني
+  Timer? _timer; // مؤقت لحساب وقت التسجيل
 
   @override
   void initState() {
@@ -35,14 +38,32 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
     _rotationController =
         AnimationController(vsync: this, duration: const Duration(seconds: 25))
           ..repeat();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMedia());
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _floatController.dispose();
     _rotationController.dispose();
     super.dispose();
+  }
+
+  // بدء عملية التسجيل الصوتي (محاكاة)
+  void _startRecording() {
+    setState(() {
+      _isRecording = true;
+      _recordDuration = 0;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() => _recordDuration++);
+    });
+  }
+
+  // إيقاف التسجيل وفتح نافذة التأكيد
+  void _stopRecording() {
+    _timer?.cancel();
+    setState(() => _isRecording = false);
+    _showConfirmUpload('تسجيل صوتي');
   }
 
   // فتح المعرض واختيار صورة
@@ -50,114 +71,47 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      _showConfirmUpload('صورة', image: image);
+      _showConfirmUpload('صورة', imagePath: image.path);
     }
   }
 
-  Future<void> _loadMedia() async {
-    final provider = ref.read(appRiverpod);
-    final residentId = provider.backendResidentId;
-    if (residentId == null || residentId.isEmpty) return;
-
-    setState(() => _isLoadingMedia = true);
-    try {
-      final items = await FamilyMediaService.instance.list(
-        residentId: residentId,
-      );
-      if (!mounted) return;
-      setState(() => _mediaItems = items);
-    } catch (e) {
-      if (mounted) {
-        final msg = e.toString().contains('403') || e.toString().contains('linked')
-            ? 'حسابك غير مرتبط بهذا المقيم. تواصل مع الإدارة لإضافة بريدك الإلكتروني.'
-            : 'تعذّر تحميل الصور — تأكد من الاتصال بالإنترنت.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoadingMedia = false);
-    }
-  }
-
-  void _uploadMemory(String title, String type, {XFile? image}) async {
-    final provider = ref.read(appRiverpod);
-    final residentId = provider.backendResidentId;
-    if (residentId == null || residentId.isEmpty || image == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لا يوجد مقيم مرتبط من AWS لإرسال الذكرى'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
+  // محاكاة عملية الرفع مع تحديث شريط التقدم
+  void _simulateUpload(String title, String type, {String? imagePath}) async {
     setState(() {
       _isUploading = true;
-      _uploadProgress = 0.25;
-      _uploadStatus = 'جاري تجهيز رابط S3...';
+      _uploadProgress = 0.0;
+      _uploadStatus = 'جاري رفع $type...';
       _showDoneAnimation = false;
     });
 
-    try {
+    // محاكاة تأخير الرفع
+    for (int i = 1; i <= 10; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
       setState(() {
-        _uploadProgress = 0.55;
-        _uploadStatus = 'جاري رفع $type إلى S3...';
+        _uploadProgress = i / 10.0;
       });
-      final uploaded = await FamilyMediaService.instance.uploadImage(
-        residentId: residentId,
-        image: image,
-        caption: title,
-      );
-      if (!mounted) return;
-      setState(() {
-        _mediaItems.insert(0, uploaded);
-        _uploadProgress = 1.0;
-        _showDoneAnimation = true;
-      });
-
-      final residentName = provider.residentFiles.isNotEmpty
-          ? provider.residentFiles.first.name
-          : '';
-      provider.insertFamilyBridgeMoment(MemoryMoment(
-        id: 'fb_${uploaded.id}',
-        residentId: uploaded.residentId,
-        residentName: residentName,
-        imageUrl: uploaded.mediaUrl ?? '',
-        activityTitle: uploaded.caption ?? title,
-        date: 'اليوم',
-      ));
-
-      await provider.triggerNotification(
-        title: 'لحظة عائلية جديدة',
-        body: 'تم رفع "$title" إلى معرض جسر العائلة.',
-        type: 'social',
-        targetRole: 'أخصائي',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isUploading = false);
-      final msg = e.toString().contains('403') || e.toString().contains('linked')
-          ? 'حسابك غير مرتبط بهذا المقيم. تواصل مع الإدارة لإضافة بريدك الإلكتروني.'
-          : 'فشل رفع الصورة — تأكد من الاتصال بالإنترنت.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 5),
-        ),
-      );
-      return;
     }
+
+    setState(() {
+      _showDoneAnimation = true;
+    });
+
+    // إنشاء كائن ذكرى جديدة وإضافته للمزود
+    final newMoment = MemoryMoment(
+      id: 'm${DateTime.now().millisecondsSinceEpoch}',
+      residentId: 'r1',
+      residentName: 'محمود', // إضافة المعامل المطلوب لاسم المقيم
+      imageUrl: imagePath ?? 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?q=80&w=400',
+      activityTitle: title,
+      date: 'الآن',
+      appreciations: 0,
+    );
+
+    ref.read(appRiverpod).addMemoryMoment(newMoment);
 
     // إخفاء الأنيميشن بعد ثانيتين
     await Future.delayed(const Duration(seconds: 2));
-
+    
     if (mounted) {
       setState(() {
         _isUploading = false;
@@ -167,12 +121,8 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   }
 
   // إظهار نافذة تأكيد قبل الرفع الفعلي
-  void _showConfirmUpload(String type, {XFile? image}) {
+  void _showConfirmUpload(String type, {String? imagePath}) {
     String title = type == 'صورة' ? 'صورة عائلية جديدة' : 'رسالة صوتية للأب';
-    final provider = ref.read(appRiverpod);
-    final residentName = provider.residentFiles.isNotEmpty
-        ? provider.residentFiles.first.name
-        : 'المقيم';
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -198,7 +148,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1e293b))),
             const SizedBox(height: 8),
-            Text('هل تريد إرسال ال$type الآن إلى $residentName؟',
+            Text('هل تريد إرسال ال$type الآن إلى الحاج محمود؟',
                 style: const TextStyle(fontSize: 14, color: Color(0xFF64748b))),
             const SizedBox(height: 24),
             Row(
@@ -207,7 +157,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _uploadMemory(title, type, image: image);
+                      _simulateUpload(title, type, imagePath: imagePath);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFea580c),
@@ -245,6 +195,11 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final provider = ref.watch(appRiverpod);
+    final moments = provider.memoryMoments
+        .where((m) => m.residentId == 'r1')
+        .toList();
+
     return TaptabaScaffold(
       title: 'جسر العائلة',
       overrideRole: 'عائلة',
@@ -255,7 +210,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
             children: [
               _buildHeader(),
               _buildUploadActions(), // أزرار الرفع (صوت وصورة)
-              Expanded(child: _buildGallery(_mediaItems)),
+              Expanded(child: _buildGallery(moments)), // معرض الذكريات المرفوعة
             ],
           ),
           if (_isUploading) _buildUploadOverlay(), // واجهة التحميل عند الرفع
@@ -440,8 +395,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   }
 
   // بناء زر الرفع الفردي بتصميم عصري
-  Widget _uploadBtn(
-      IconData icon, String label, Color color, VoidCallback onTap,
+  Widget _uploadBtn(IconData icon, String label, Color color, VoidCallback onTap,
       {bool isRecording = false}) {
     return Expanded(
       child: GestureDetector(
@@ -475,47 +429,29 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, String id) {
-    final messenger = ScaffoldMessenger.of(context);
+  void _showDeleteConfirmation(BuildContext context, WidgetRef ref, String id) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('حذف الصورة', textAlign: TextAlign.center),
-        content: const Text(
-            'هل أنت متأكد أنك تريد حذف هذه الصورة من حائط الذكريات؟'),
+        content: const Text('هل أنت متأكد أنك تريد حذف هذه الصورة من حائط الذكريات؟'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(context),
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              Navigator.pop(dialogContext); // Close dialog
+              Navigator.pop(context); // Close dialog
               setState(() {
                 _showDeleteAnimation = true;
               });
-
-              try {
-                await FamilyMediaService.instance.delete(id);
-                if (mounted) {
-                  setState(() {
-                    _mediaItems.removeWhere((m) => m.id == id);
-                  });
-                }
-              } catch (e) {
-                if (mounted) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(e.toString()),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              }
-
+              
+              ref.read(appRiverpod).deleteMemoryMoment(id);
+              
               await Future.delayed(const Duration(milliseconds: 1500));
-
+              
               if (mounted) {
                 setState(() {
                   _showDeleteAnimation = false;
@@ -530,22 +466,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   }
 
   // بناء معرض الصور والرسائل المرفوعة (Grid View)
-  Widget _buildGallery(List<BackendFamilyMedia> items) {
-    if (_isLoadingMedia) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFea580c)),
-      );
-    }
-
-    if (items.isEmpty) {
-      return const Center(
-        child: Text(
-          'لا توجد صور عائلية مرفوعة بعد',
-          style: TextStyle(color: Color(0xFF64748b)),
-        ),
-      );
-    }
-
+  Widget _buildGallery(List<MemoryMoment> moments) {
     return GridView.builder(
       padding: const EdgeInsets.all(20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -554,10 +475,9 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
         mainAxisSpacing: 16,
         childAspectRatio: 0.85,
       ),
-      itemCount: items.length,
+      itemCount: moments.length,
       itemBuilder: (context, i) {
-        final m = items[i];
-        final imageUrl = m.mediaUrl ?? '';
+        final m = moments[i];
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -578,27 +498,12 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                   children: [
                     Positioned.fill(
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(24)),
-                        child: imageUrl.isEmpty
-                            ? Container(
-                                color: const Color(0xFFf8fafc),
-                                child: const Icon(
-                                  Icons.image_not_supported_outlined,
-                                  color: Color(0xFF94a3b8),
-                                ),
-                              )
-                            : Image.network(
-                                imageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: const Color(0xFFf8fafc),
-                                  child: const Icon(
-                                    Icons.broken_image_outlined,
-                                    color: Color(0xFF94a3b8),
-                                  ),
-                                ),
-                              ),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        child: kIsWeb
+                            ? Image.network(m.imageUrl, fit: BoxFit.cover)
+                            : (m.imageUrl.startsWith('http') || m.imageUrl.startsWith('blob')
+                                ? Image.network(m.imageUrl, fit: BoxFit.cover)
+                                : Image.file(File(m.imageUrl), fit: BoxFit.cover)),
                       ),
                     ),
                     Positioned(
@@ -606,7 +511,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                       right: 8,
                       child: GestureDetector(
                         onTap: () {
-                          _showDeleteConfirmation(context, m.id);
+                          _showDeleteConfirmation(context, ref, m.id);
                         },
                         child: Container(
                           padding: const EdgeInsets.all(4),
@@ -617,8 +522,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                               BoxShadow(color: Colors.black26, blurRadius: 4),
                             ],
                           ),
-                          child: const Icon(Icons.close,
-                              color: Colors.red, size: 16),
+                          child: const Icon(Icons.close, color: Colors.red, size: 16),
                         ),
                       ),
                     ),
@@ -630,12 +534,12 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(_mediaTitle(m),
+                    Text(m.activityTitle,
                         style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1e293b))),
-                    Text(_dateLabel(m.createdAt),
+                    Text(m.date,
                         style: const TextStyle(
                             fontSize: 8, color: Color(0xFF94a3b8))),
                   ],
@@ -647,6 +551,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
       },
     );
   }
+
 
   // واجهة التغطية (Overlay) التي تظهر أثناء عملية الرفع
   Widget _buildUploadOverlay() {
@@ -725,8 +630,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                   color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(
-                        color: Colors.black26, blurRadius: 10, spreadRadius: 2),
+                    BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2),
                   ],
                 ),
                 child: const Column(
@@ -753,23 +657,5 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
         ),
       ),
     );
-  }
-
-  String _mediaTitle(BackendFamilyMedia media) {
-    final caption = media.caption?.trim();
-    if (caption != null && caption.isNotEmpty) return caption;
-    return media.fileName.isEmpty ? 'صورة عائلية' : media.fileName;
-  }
-
-  String _dateLabel(String value) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed == null) return 'الآن';
-    final now = DateTime.now();
-    if (parsed.year == now.year &&
-        parsed.month == now.month &&
-        parsed.day == now.day) {
-      return 'اليوم';
-    }
-    return '${parsed.year}/${parsed.month.toString().padLeft(2, '0')}/${parsed.day.toString().padLeft(2, '0')}';
   }
 }

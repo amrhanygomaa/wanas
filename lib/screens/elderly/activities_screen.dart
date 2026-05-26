@@ -34,9 +34,9 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
     _shimmerController =
         AnimationController(vsync: this, duration: const Duration(seconds: 2))
           ..repeat();
-    _bgController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 15))
-          ..repeat();
+    _bgController = AnimationController(
+        vsync: this, duration: const Duration(seconds: 15))
+      ..repeat();
   }
 
   @override
@@ -583,7 +583,40 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
             ],
           ),
           const SizedBox(height: 24),
-          const SizedBox(height: 0),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.end,
+            children: [
+              _chip('رياضة +٣٠', '🏃'),
+              _chip('ذاكرة +٢٥', '🧠'),
+              _chip('قراءة +٢٠', '📖'),
+              _chip('حضور +١٠', '✅'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String text, String emoji) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFf8fafc),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFf1f5f9)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text,
+              style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF6366f1),
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Text(emoji, style: const TextStyle(fontSize: 18)),
         ],
       ),
     );
@@ -593,16 +626,16 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
   Widget _buildBadgesSection() {
     final badges = [
       {
-        'icon': Icons.lock_outline_rounded,
+        'icon': Icons.stars_rounded,
         'label': 'وسام الحكمة',
-        'color': const Color(0xFF94A3B8),
-        'locked': true
+        'color': const Color(0xFFFBBF24),
+        'locked': false
       },
       {
-        'icon': Icons.lock_outline_rounded,
+        'icon': Icons.favorite_rounded,
         'label': 'صديق الجميع',
-        'color': const Color(0xFF94A3B8),
-        'locked': true
+        'color': const Color(0xFFEC4899),
+        'locked': false
       },
       {
         'icon': Icons.lock_outline_rounded,
@@ -687,16 +720,13 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: locked
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF1E293B),
+                    color: locked ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
                     letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: locked
                         ? Colors.transparent
@@ -733,18 +763,44 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
       }).join();
     }
 
-    final rows = residents.take(3).toList().asMap().entries.map((entry) {
-      final i = entry.key;
-      final r = entry.value;
-      final isMe = r.name == currentName;
-      return {
-        'rank': toArabicDigit(i + 1),
-        'ini': r.initials,
-        'name': r.name,
-        'pts': isMe ? toArabicDigit(provider.currentUser.points) : '—',
-        'me': isMe,
-      };
-    }).toList();
+    final rows = residents.isNotEmpty
+        ? residents.take(3).toList().asMap().entries.map((entry) {
+            final i = entry.key;
+            final r = entry.value;
+            final isMe = r.name == currentName;
+            return {
+              'rank': toArabicDigit(i + 1),
+              'ini': r.initials,
+              'name': r.name,
+              'pts': isMe
+                  ? toArabicDigit(provider.currentUser.points)
+                  : toArabicDigit(max(310, 370 - (i * 30)).toInt()),
+              'me': isMe,
+            };
+          }).toList()
+        : [
+            {
+              'rank': toArabicDigit(1),
+              'ini': 'مح',
+              'name': currentName.trim().isEmpty ? 'الحاج محمود' : currentName,
+              'pts': toArabicDigit(max(provider.currentUser.points, 370).toInt()),
+              'me': true,
+            },
+            {
+              'rank': toArabicDigit(2),
+              'ini': 'فا',
+              'name': 'الحاجة فاطمة',
+              'pts': toArabicDigit(340),
+              'me': false,
+            },
+            {
+              'rank': toArabicDigit(3),
+              'ini': 'أح',
+              'name': 'الحاج أحمد',
+              'pts': toArabicDigit(310),
+              'me': false,
+            },
+          ];
     final rankColors = [
       const Color(0xFFD97706),
       const Color(0xFF64748B),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import '../models/app_models.dart';
 import 'api_client.dart';
@@ -413,6 +414,8 @@ class BackendSyncService {
           .toList();
     } on TimeoutException {
       return null;
+    } on SocketException {
+      return null;
     } on ApiException catch (e) {
       if (e.statusCode == 401 || e.statusCode == 403 || e.statusCode == 404) {
         return null;
@@ -428,6 +431,8 @@ class BackendSyncService {
       if (res is! Map) return null;
       return Map<String, dynamic>.from(res);
     } on TimeoutException {
+      return null;
+    } on SocketException {
       return null;
     } on ApiException catch (e) {
       if (e.statusCode == 401 || e.statusCode == 403 || e.statusCode == 404) {

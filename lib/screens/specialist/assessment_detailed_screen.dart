@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,22 +8,17 @@ import 'package:lottie/lottie.dart';
 
 // شاشة التقييم الاجتماعي التفصيلي للمقيم - تسمح للأخصائي بإجراء التقييمات وحفظ النتائج
 class AssessmentDetailedScreen extends ConsumerStatefulWidget {
-  final SocialSpecialistAssessmentTool?
-      tool; // أداة التقييم المختارة (نفسي، اجتماعي، إلخ)
-  final SocialSpecialistResidentScore
-      resident; // بيانات المقيم المستهدف بالتقييم
+  final SocialSpecialistAssessmentTool? tool; // أداة التقييم المختارة (نفسي، اجتماعي، إلخ)
+  final SocialSpecialistResidentScore resident; // بيانات المقيم المستهدف بالتقييم
   final List<AssessmentQuestion>? initialQuestions; // الأسئلة المختارة مسبقاً
-  const AssessmentDetailedScreen(
-      {super.key, this.tool, required this.resident, this.initialQuestions});
+  const AssessmentDetailedScreen({super.key, this.tool, required this.resident, this.initialQuestions});
 
   @override
   ConsumerState<AssessmentDetailedScreen> createState() =>
       _AssessmentDetailedScreenState();
 }
 
-class _AssessmentDetailedScreenState
-    extends ConsumerState<AssessmentDetailedScreen>
-    with TickerProviderStateMixin {
+class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScreen> with TickerProviderStateMixin {
   late AnimationController _fadeController; // متحكم حركات الظهور
   late AnimationController _ringController; // متحكم حركات الحلقات
   late AnimationController _shimmerController; // متحكم حركة اللمعان
@@ -42,7 +36,7 @@ class _AssessmentDetailedScreenState
   @override
   void initState() {
     super.initState();
-
+    
     // تحميل الأسئلة ديناميكياً بناءً على نوع التقييم أو استخدام الأسئلة الممررة
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialQuestions != null) {
@@ -51,28 +45,18 @@ class _AssessmentDetailedScreenState
         });
       } else {
         final provider = ref.read(appRiverpod);
-        final rawQuestions =
-            provider.getQuestionsForTool(widget.tool?.id ?? 't1');
+        final rawQuestions = provider.getQuestionsForTool(widget.tool?.id ?? 't1');
         setState(() {
-          _questions = rawQuestions.isEmpty
-              ? [
-                  AssessmentQuestion(
-                      id: 'empty',
-                      text: 'لا توجد أسئلة مهيأة لهذه الأداة حالياً',
-                      type: 'text')
-                ]
-              : rawQuestions.asMap().entries.map((e) {
-                  final i = e.key;
-                  final q = e.value;
-                  return AssessmentQuestion(
-                    id: 'q$i',
-                    text: q['text'],
-                    type: q['type'],
-                    options: q['options'] != null
-                        ? List<String>.from(q['options'])
-                        : null,
-                  );
-                }).toList();
+          _questions = rawQuestions.asMap().entries.map((e) {
+            final i = e.key;
+            final q = e.value;
+            return AssessmentQuestion(
+              id: 'q$i',
+              text: q['text'],
+              type: q['type'],
+              options: q['options'] != null ? List<String>.from(q['options']) : null,
+            );
+          }).toList();
         });
       }
     });
@@ -83,19 +67,13 @@ class _AssessmentDetailedScreenState
     ];
 
     // إعداد الـ Animations
-    _fadeController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000));
-    _ringController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _shimmerController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2))
-          ..repeat();
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _shimmerController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
 
     _fadeAnimations = List.generate(12, (index) {
       return Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(
-            parent: _fadeController,
-            curve: Interval(index * 0.05, 1.0, curve: Curves.easeOut)),
+        CurvedAnimation(parent: _fadeController, curve: Interval(index * 0.05, 1.0, curve: Curves.easeOut)),
       );
     });
 
@@ -117,27 +95,26 @@ class _AssessmentDetailedScreenState
     final provider = ref.watch(appRiverpod);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFfff7ed),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           _buildHero(provider), // الواجهة العلوية (اسم المقيم)
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
                   _buildScoreOverview(), // ملخص الدرجات والتقدم
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   _buildQuestionnaire(provider), // منطقة الأسئلة والتقرير
-                  const SizedBox(height: 24),
-                  _buildHistoryComparison(
-                      provider), // مقارنة مع التقييمات السابقة
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+                  _buildHistoryComparison(provider), // مقارنة مع التقييمات السابقة
+                  const SizedBox(height: 20),
                   _buildSpecialistNotes(), // حقل ملاحظات الأخصائي
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   _buildInterventionToggle(), // تفعيل طلب التدخل
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -148,99 +125,240 @@ class _AssessmentDetailedScreenState
     );
   }
 
-  // بناء الترويسة العلوية التي تظهر بيانات المقيم
+  // بناء الترويسة العلوية التي تظهر بيانات المقيم بشكل متطور وفاخر للغاية
   Widget _buildHero(AppRiverpod provider) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 40, 14, 14),
+      padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFc2410c), Color(0xFFea580c), Color(0xFFf97316)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF8C1D04), Color(0xFFEA580C), Color(0xFFFF7A45)],
         ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x33EA580C),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('التقييم التفصيلي',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
-                    Text('أ. نور — الأخصائية الاجتماعية',
-                        style: TextStyle(color: Colors.white70, fontSize: 10)),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'أخصائي اجتماعي',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Cairo',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'التقييم التفصيلي',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Cairo',
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'أ. نور — الأخصائية الاجتماعية',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: 32,
-                  height: 32,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle),
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+                  ),
                   child: const Center(
-                      child: Icon(Icons.arrow_forward_ios_rounded,
-                          color: Colors.white, size: 14)),
+                    child: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           FadeTransition(
             opacity: _fadeAnimations[1],
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(14)),
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.28),
-                        shape: BoxShape.circle),
+                      gradient: const LinearGradient(
+                        colors: [Colors.white, Color(0xFFFFEFEA)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
                     child: Center(
-                        child: Text(widget.resident.initials,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold))),
+                      child: Text(
+                        widget.resident.initials,
+                        style: const TextStyle(
+                          color: Color(0xFFEA580C),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Cairo',
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.resident.name,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold)),
-                        Text('غرفة ${widget.resident.room} · آخر تقييم: ٣ أشهر',
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 10)),
+                        Text(
+                          widget.resident.name,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Cairo',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.meeting_room_rounded,
+                                  size: 11,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'غرفة ${widget.resident.room}',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 11,
+                                    fontFamily: 'Cairo',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.history_rounded,
+                                  size: 11,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'آخر تقييم: ٣ أشهر',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 11,
+                                    fontFamily: 'Cairo',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: const Text('يحتاج تجديد',
-                        style: TextStyle(color: Colors.white, fontSize: 9)),
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'يحتاج تجديد',
+                      style: TextStyle(
+                        color: Color(0xFFB45309),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -254,42 +372,16 @@ class _AssessmentDetailedScreenState
   // بناء تبويبات التبديل بين أنواع التقييمات
   Widget _buildToolTabs() {
     final tools = [
-      {
-        'label': 'نفسي',
-        'icon': '🧠',
-        'score': '٨/١٥',
-        'col': const Color(0xFFf59e0b),
-        'bg': const Color(0xFFfef3c7)
-      },
-      {
-        'label': 'اجتماعي',
-        'icon': '🤝',
-        'score': '٥/٢٠',
-        'col': const Color(0xFFef4444),
-        'bg': const Color(0xFFfee2e2)
-      },
-      {
-        'label': 'بدني',
-        'icon': '🏃',
-        'score': '٧٨/١٠٠',
-        'col': const Color(0xFF10b981),
-        'bg': const Color(0xFFd1fae5)
-      },
-      {
-        'label': 'جودة الحياة',
-        'icon': '❤️',
-        'score': '٦٢/١٠٠',
-        'col': const Color(0xFFf59e0b),
-        'bg': const Color(0xFFfef3c7)
-      },
+      {'label': 'نفسي', 'icon': '🧠', 'score': '٨/١٥', 'col': const Color(0xFFf59e0b), 'bg': const Color(0xFFfef3c7)},
+      {'label': 'اجتماعي', 'icon': '🤝', 'score': '٥/٢٠', 'col': const Color(0xFFef4444), 'bg': const Color(0xFFfee2e2)},
+      {'label': 'بدني', 'icon': '🏃', 'score': '٧٨/١٠٠', 'col': const Color(0xFF10b981), 'bg': const Color(0xFFd1fae5)},
+      {'label': 'جودة الحياة', 'icon': '❤️', 'score': '٦٢/١٠٠', 'col': const Color(0xFFf59e0b), 'bg': const Color(0xFFfef3c7)},
     ];
 
     return Container(
-      height: 44,
-      color: Colors.white,
+      height: 44, color: Colors.white,
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        reverse: true,
+        scrollDirection: Axis.horizontal, reverse: true,
         child: Row(
           children: List.generate(tools.length, (index) {
             final isAct = _currentToolIndex == index;
@@ -298,35 +390,16 @@ class _AssessmentDetailedScreenState
               onTap: () => setState(() => _currentToolIndex = index),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11),
-                decoration: BoxDecoration(
-                    border: Border(
-                        bottom: BorderSide(
-                            color: isAct
-                                ? const Color(0xFFea580c)
-                                : Colors.transparent,
-                            width: 2.5))),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isAct ? const Color(0xFFea580c) : Colors.transparent, width: 2.5))),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                          color: tool['bg'] as Color,
-                          borderRadius: BorderRadius.circular(6)),
-                      child: Text(tool['score'] as String,
-                          style: TextStyle(
-                              color: tool['col'] as Color,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold)),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(color: tool['bg'] as Color, borderRadius: BorderRadius.circular(6)),
+                      child: Text(tool['score'] as String, style: TextStyle(color: tool['col'] as Color, fontSize: 9, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 4),
-                    Text('${tool['icon']} ${tool['label']}',
-                        style: TextStyle(
-                            color: isAct
-                                ? const Color(0xFFea580c)
-                                : const Color(0xFF94a3b8),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold)),
+                    Text('${tool['icon']} ${tool['label']}', style: TextStyle(color: isAct ? const Color(0xFFea580c) : const Color(0xFF94a3b8), fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -342,62 +415,119 @@ class _AssessmentDetailedScreenState
     return FadeTransition(
       opacity: _fadeAnimations[2],
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFfed7aa), width: 1.5)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('تقييم الحالة النفسية GDS',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0f172a))),
-                  const Text('مؤشر اكتئاب متوسط · يحتاج متابعة',
-                      style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF334155),
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  _buildSubScoreBar('المزاج', 0.40, const Color(0xFFf59e0b)),
-                  _buildSubScoreBar('الطاقة', 0.30, const Color(0xFFef4444)),
-                  _buildSubScoreBar('الأمل', 0.65, const Color(0xFF10b981)),
+                  const Text(
+                    'تقييم الحالة النفسية GDS',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEA580C),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'مؤشر اكتئاب متوسط · يحتاج متابعة',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFEA580C),
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Cairo',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSubScoreBar('المزاج العام', 0.40, const Color(0xFFF59E0B)),
+                  _buildSubScoreBar('مستوى الطاقة', 0.30, const Color(0xFFEF4444)),
+                  _buildSubScoreBar('مؤشر التفاؤل', 0.65, const Color(0xFF10B981)),
                 ],
               ),
             ),
-            const SizedBox(width: 14),
-            const SizedBox(
-              width: 72,
-              height: 72,
+            const SizedBox(width: 16),
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEA580C).withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  SizedBox(
-                      width: 72,
-                      height: 72,
-                      child: CircularProgressIndicator(
-                          value: 0.53,
-                          strokeWidth: 6,
-                          backgroundColor: Color(0xFFfef3c7),
-                          color: Color(0xFFf59e0b))),
+                  const SizedBox(
+                    width: 80,
+                    height: 80,
+                    child: CircularProgressIndicator(
+                      value: 0.53,
+                      strokeWidth: 8,
+                      backgroundColor: Color(0xFFFFEFEA),
+                      color: Color(0xFFEA580C),
+                    ),
+                  ),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('٨',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF92400e))),
-                      Text('من ١٥',
-                          style: TextStyle(
-                              fontSize: 8,
-                              color: Color(0xFF92400e),
-                              fontWeight: FontWeight.bold)),
+                      const Text(
+                        '٨',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF7C2D12),
+                          fontFamily: 'Cairo',
+                          height: 1.1,
+                        ),
+                      ),
+                      Text(
+                        'من ١٥',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: const Color(0xFF7C2D12).withValues(alpha: 0.7),
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Cairo',
+                          height: 1.1,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -409,130 +539,222 @@ class _AssessmentDetailedScreenState
     );
   }
 
-  // بناء شريط التقدم الصغير للدرجات الفرعية
+  // بناء شريط التقدم الصغير للدرجات الفرعية مع تدرجات لونية ممتازة
   Widget _buildSubScoreBar(String label, double val, Color col) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          SizedBox(
-              width: 44,
-              child: Text(label,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      fontSize: 9,
-                      color: Color(0xFF334155),
-                      fontWeight: FontWeight.w600))),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Container(
-              height: 6,
-              decoration: BoxDecoration(
-                  color: const Color(0xFFf1f5f9),
-                  borderRadius: BorderRadius.circular(4)),
-              alignment: Alignment.centerRight,
-              child: FractionallySizedBox(
-                  widthFactor: val,
-                  child: Container(
-                      decoration: BoxDecoration(
-                          color: col, borderRadius: BorderRadius.circular(4)))),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48, maxWidth: 70),
+            child: Text(
+              label,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF475569),
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Cairo',
+              ),
             ),
           ),
-          const SizedBox(width: 6),
-          Text('${(val * 100).toInt()}%',
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: val,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [col, col.withValues(alpha: 0.7)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 34,
+            child: Text(
+              '${(val * 100).toInt()}%',
+              textAlign: TextAlign.left,
               style: TextStyle(
-                  fontSize: 9, fontWeight: FontWeight.bold, color: col)),
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: col,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // بناء الجزء الخاص بالأسئلة وتوليد التقارير
-  // بناء منطقة الأسئلة (تتغير بناءً على التقدم في التقييم)
+  // بناء منطقة الأسئلة وتوليد التقارير
   Widget _buildQuestionnaire(AppRiverpod provider) {
     final tool = widget.tool ?? provider.socialAssessmentTools[0];
     return FadeTransition(
       opacity: _fadeAnimations[3],
       child: Container(
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFfed7aa), width: 1.5)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             // الترويسة الداخلية للأسئلة
             Container(
-              padding: const EdgeInsets.all(11),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                      colors: [Color(0xFFea580c), Color(0xFFf97316)])),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF8C1D04), Color(0xFFEA580C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(26),
+                  topRight: Radius.circular(26),
+                ),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(tool.name,
+                  Flexible(
+                    child: Text(
+                      tool.name,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold)),
-                  Text('${_questionIndex + 1} / ${_questions.length} سؤال',
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 10)),
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${_questionIndex + 1} / ${_questions.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            // شريط تقدم الأسئلة
+            // شريط تقدم الأسئلة المتحرك
             AnimatedBuilder(
               animation: _shimmerController,
               builder: (context, child) {
                 return Container(
-                  height: 3,
+                  height: 5,
                   width: double.infinity,
                   color: Colors.white.withValues(alpha: 0.25),
                   child: FractionallySizedBox(
-                      alignment: Alignment.centerRight,
-                      widthFactor: (_questionIndex + 1) / _questions.length,
-                      child: Container(
-                          color: Colors.white.withValues(
-                              alpha: 0.8 +
-                                  0.2 *
-                                      sin(_shimmerController.value * 2 * pi)))),
+                    alignment: Alignment.centerRight,
+                    widthFactor: (_questionIndex + 1) / _questions.length,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFFF8C69),
+                            const Color(0xFFEA580C).withValues(alpha: 0.8 + 0.2 * sin(_shimmerController.value * 2 * pi)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
             // عرض السؤال الحالي
-            Builder(builder: (context) {
-              final q = _questions[_questionIndex];
-              return _buildQuestionItem(
+            Builder(
+              builder: (context) {
+                final q = _questions[_questionIndex];
+                return _buildQuestionItem(
                   'السؤال ${_questionIndex + 1} من ${_questions.length}',
                   q.text,
                   type: q.type,
                   options: q.options,
                   selected: _selections[_questionIndex],
-                  onSelected: (idx) =>
-                      setState(() => _selections[_questionIndex] = idx),
+                  onSelected: (idx) => setState(() => _selections[_questionIndex] = idx),
                   selectedScale: _scales[_questionIndex],
-                  onScaleSelected: (val) =>
-                      setState(() => _scales[_questionIndex] = val));
-            }),
-            const SizedBox(height: 24),
-            // زر توليد تقرير PDF
-            ElevatedButton.icon(
-              onPressed: () async {
-                await PdfService.generateAssessmentReport(
-                    widget.resident, tool, _selections, _questions);
-              },
-              icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
-              label: const Text('تحميل التقرير كـ PDF',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0f172a),
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
+                  onScaleSelected: (val) => setState(() => _scales[_questionIndex] = val),
+                );
+              }
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            // زر توليد تقرير PDF المطور كلياً
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    await PdfService.generateAssessmentReport(widget.resident, tool, _selections, _questions);
+                  },
+                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 20, color: Colors.white),
+                  label: const Text(
+                    'تحميل التقرير كـ PDF',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Colors.white,
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             _buildQuestionNav(), // أزرار التنقل (التالي/السابق)
           ],
         ),
@@ -540,99 +762,111 @@ class _AssessmentDetailedScreenState
     );
   }
 
-  // بناء عنصر السؤال الفردي (اختيارات، مقياس، أو نص)
-  Widget _buildQuestionItem(String num, String text,
-      {required String type,
-      List<String>? options,
-      int? selected,
-      int? selectedScale,
-      Function(int)? onSelected,
-      Function(int)? onScaleSelected}) {
+  // بناء عنصر السؤال الفردي بأسلوب فاخر وعصري للغاية
+  Widget _buildQuestionItem(
+    String num,
+    String text, {
+    required String type,
+    List<String>? options,
+    int? selected,
+    int? selectedScale,
+    Function(int)? onSelected,
+    Function(int)? onScaleSelected,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFfff7ed)))),
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1.5)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(num,
-              style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF475569),
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text(text,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                  fontSize: 13,
+          Row(
+            children: [
+              Icon(Icons.help_outline_rounded, size: 14, color: const Color(0xFFEA580C).withValues(alpha: 0.7)),
+              const SizedBox(width: 6),
+              Text(
+                num,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFFEA580C),
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0f172a),
-                  height: 1.5)),
-          const SizedBox(height: 16),
+                  fontFamily: 'Cairo',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+              height: 1.6,
+              fontFamily: 'Cairo',
+            ),
+          ),
+          const SizedBox(height: 24),
           // عرض الخيارات المتعددة
           if (type == 'choice' && options != null)
             Column(
               children: List.generate(options.length, (index) {
                 final isSel = selected == index;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.only(bottom: 12),
                   child: GestureDetector(
                     onTap: () => onSelected?.call(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       decoration: BoxDecoration(
-                        color: isSel
-                            ? const Color(0xFFea580c).withValues(alpha: 0.1)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        color: isSel ? const Color(0xFFFFF5F2) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: isSel
-                                ? const Color(0xFFea580c)
-                                : const Color(0xFFe2e8f0),
-                            width: 1.5),
-                        boxShadow: isSel
-                            ? [
-                                BoxShadow(
-                                    color: const Color(0xFFea580c)
-                                        .withValues(alpha: 0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2))
-                              ]
-                            : null,
+                          color: isSel ? const Color(0xFFFF7A45) : const Color(0xFFF1F5F9),
+                          width: isSel ? 2 : 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isSel 
+                                ? const Color(0xFFEA580C).withValues(alpha: 0.1)
+                                : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                            blurRadius: isSel ? 12 : 8,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 20,
-                            height: 20,
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 22,
+                            height: 22,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: isSel
-                                    ? const Color(0xFFea580c)
-                                    : const Color(0xFFcbd5e1),
+                                color: isSel ? const Color(0xFFEA580C) : const Color(0xFFCBD5E1),
                                 width: 2,
                               ),
-                              color: isSel
-                                  ? const Color(0xFFea580c)
-                                  : Colors.transparent,
+                              color: isSel ? const Color(0xFFEA580C) : Colors.transparent,
                             ),
                             child: isSel
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 12)
+                                ? const Icon(Icons.check, color: Colors.white, size: 14)
                                 : null,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           Expanded(
-                            child: Text(options[index],
-                                style: TextStyle(
-                                    color: isSel
-                                        ? const Color(0xFFea580c)
-                                        : const Color(0xFF0f172a),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800)),
+                            child: Text(
+                              options[index],
+                              style: TextStyle(
+                                color: isSel ? const Color(0xFFC2410C) : const Color(0xFF1E293B),
+                                fontSize: 14,
+                                fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                fontFamily: 'Cairo',
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -641,12 +875,19 @@ class _AssessmentDetailedScreenState
                 );
               }),
             ),
-          // عرض المقياس الرقمي (1-5)
+          // عرض المقياس الرقمي (1-5) المطور
           if (type == 'scale')
             Row(
               children: [
-                const Text('ممتاز',
-                    style: TextStyle(fontSize: 9, color: Color(0xFF94a3b8))),
+                const Text(
+                  'ممتاز',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF10B981),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -655,104 +896,174 @@ class _AssessmentDetailedScreenState
                       final isSel = selectedScale == i;
                       return GestureDetector(
                         onTap: () => onScaleSelected?.call(i),
-                        child: Container(
-                          width: 26,
-                          height: 26,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
-                              color: isSel ? null : const Color(0xFFf8fafc),
-                              gradient: isSel
-                                  ? const LinearGradient(colors: [
-                                      Color(0xFFea580c),
-                                      Color(0xFFf97316)
-                                    ])
-                                  : null,
-                              shape: BoxShape.circle,
-                              border: isSel
-                                  ? null
-                                  : Border.all(
-                                      color: const Color(0xFFe2e8f0),
-                                      width: 1.5)),
+                            color: isSel ? null : const Color(0xFFF8FAFC),
+                            gradient: isSel 
+                                ? const LinearGradient(colors: [Color(0xFFEA580C), Color(0xFFFF7A45)]) 
+                                : null,
+                            shape: BoxShape.circle,
+                            border: isSel ? null : Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                            boxShadow: isSel ? [
+                              BoxShadow(
+                                color: const Color(0xFFEA580C).withValues(alpha: 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ] : null,
+                          ),
                           child: Center(
-                              child: Text('$i',
-                                  style: TextStyle(
-                                      color: isSel
-                                          ? Colors.white
-                                          : const Color(0xFF94a3b8),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold))),
+                            child: Text(
+                              '$i',
+                              style: TextStyle(
+                                color: isSel ? Colors.white : const Color(0xFF64748B),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                fontFamily: 'Cairo',
+                              ),
+                            ),
+                          ),
                         ),
                       );
                     }),
                   ),
                 ),
-                const Text('سيء جداً',
-                    style: TextStyle(fontSize: 9, color: Color(0xFF94a3b8))),
+                const Text(
+                  'ضعيف',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFFEF4444),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
               ],
             ),
           // عرض رد نصي افتراضي
           if (type == 'text')
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: const Color(0xFFf8fafc),
-                  border: Border.all(color: const Color(0xFFe2e8f0)),
-                  borderRadius: BorderRadius.circular(10)),
+                color: const Color(0xFFF8FAFC),
+                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: const Text(
-                  'المقيم ذكر شعوره بالعجز في بعض المواقف اليومية البسيطة...',
-                  style: TextStyle(
-                      fontSize: 11, color: Color(0xFF0f172a), height: 1.4)),
+                'المقيم ذكر شعوره بالعجز في بعض المواقف اليومية البسيطة والأنشطة المشتركة مع زملائه بالدار...',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF1E293B),
+                  height: 1.6,
+                  fontFamily: 'Cairo',
+                ),
+              ),
             ),
         ],
       ),
     );
   }
 
-  // بناء أزرار التنقل بين الأسئلة
+  // بناء أزرار التنقل بين الأسئلة بأيقونات متناسقة مع اللغة العربية (RTL)
   Widget _buildQuestionNav() {
     return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(color: Color(0xFFf8fafc)),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(26),
+          bottomRight: Radius.circular(26),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // زر التالي على اليمين في اللغة العربية (RTL: التالي = اتجاه اليمين)
           GestureDetector(
-            onTap: () => setState(() {
-              if (_questionIndex > 0) _questionIndex--;
-            }),
+            onTap: () => setState(() { if (_questionIndex < _questions.length - 1) _questionIndex++; }),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
-                  color: const Color(0xFFfff7ed),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFfed7aa))),
-              child: const Text('→ السابق',
-                  style: TextStyle(
-                      color: Color(0xFF9a3412),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold)),
+                color: const Color(0xFFFFEDD5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFFD8C2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEA580C).withValues(alpha: 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'التالي',
+                      style: TextStyle(
+                        color: Color(0xFFC2410C),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFFC2410C)),
+                  ],
+                ),
+              ),
             ),
           ),
-          Text('${_questionIndex + 1} من ${_questions.length}',
-              style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF334155),
-                  fontWeight: FontWeight.w600)),
+          Text(
+            '${_questionIndex + 1} من ${_questions.length}',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF334155),
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Cairo',
+            ),
+          ),
+          // زر السابق على اليسار في اللغة العربية (RTL: السابق = اتجاه اليسار)
           GestureDetector(
-            onTap: () => setState(() {
-              if (_questionIndex < _questions.length - 1) _questionIndex++;
-            }),
+            onTap: () => setState(() { if (_questionIndex > 0) _questionIndex--; }),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
-                  color: const Color(0xFFfff7ed),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFfed7aa))),
-              child: const Text('التالي ←',
-                  style: TextStyle(
-                      color: Color(0xFF9a3412),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.arrow_back_rounded, size: 18, color: Color(0xFF475569)),
+                      SizedBox(width: 6),
+                      Text(
+                        'السابق',
+                        style: TextStyle(
+                          color: Color(0xFF475569),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Cairo',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ),
           ),
         ],
@@ -760,166 +1071,250 @@ class _AssessmentDetailedScreenState
     );
   }
 
-  // بناء مقارنة التقييمات التاريخية
+  // بناء مقارنة التقييمات التاريخية برسومات وجداول ملونة وجميلة
   Widget _buildHistoryComparison(AppRiverpod provider) {
     return FadeTransition(
       opacity: _fadeAnimations[4],
       child: Column(
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-            Container(
-                width: 7,
-                height: 7,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
                 decoration: const BoxDecoration(
-                    color: Color(0xFF6366f1), shape: BoxShape.circle)),
-            const SizedBox(width: 8),
-            const Text('مقارنة التقييمات السابقة',
+                  color: Color(0xFF6366F1),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'سجل ومقارنة التقييمات السابقة',
                 style: TextStyle(
-                    color: Color(0xFF9a3412),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold))
-          ]),
-          const SizedBox(height: 10),
+                  color: Color(0xFF1E293B),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Cairo',
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFfed7aa), width: 1.5)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
             child: Column(
-                children: provider.assessmentHistory
-                    .map((h) => _buildCompareRow(h))
-                    .toList()),
+              children: provider.assessmentHistory.map((h) => _buildCompareRow(h)).toList(),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // بناء صف المقارنة الفردي
+  // بناء صف المقارنة الفردي بنظام تدرج ونقاط ذكية
   Widget _buildCompareRow(AssessmentHistoricalEntry h) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          _buildTrendArrow(h.trend), // سهم الاتجاه (تحسن/تراجع)
-          const SizedBox(width: 6),
-          Text('${h.score.toInt()}/${h.total}',
+          _buildTrendArrow(h.trend), // سهم الاتجاه المطور
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 44,
+            child: Text(
+              '${h.score.toInt()}/${h.total}',
               style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFf59e0b))),
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFEA580C),
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
-              child: Container(
-                  height: 8,
+            child: Container(
+              height: 10,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: h.score / (double.tryParse(h.total) ?? 15.0),
+                child: Container(
                   decoration: BoxDecoration(
-                      color: const Color(0xFFf1f5f9),
-                      borderRadius: BorderRadius.circular(4)),
-                  alignment: Alignment.centerRight,
-                  child: FractionallySizedBox(
-                      widthFactor: h.score / (double.tryParse(h.total) ?? 15.0),
-                      child: Container(
-                          decoration: BoxDecoration(
-                              color: const Color(0xFFf59e0b),
-                              borderRadius: BorderRadius.circular(4)))))),
-          const SizedBox(width: 8),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFEA580C), Color(0xFFFF7A45)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
           SizedBox(
-              width: 72,
-              child: Text(h.date,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF334155),
-                      fontWeight: FontWeight.w600))),
+            width: 85,
+            child: Text(
+              h.date,
+              textAlign: TextAlign.left,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  // إرجاع أيقونة الاتجاه المناسبة بشكل جمالي
   Widget _buildTrendArrow(String trend) {
     if (trend == 'up') {
-      return const Text('↑',
-          style:
-              TextStyle(color: Color(0xFF10b981), fontWeight: FontWeight.bold));
+      return Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD1FAE5),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.trending_up_rounded,
+          color: Color(0xFF10B981),
+          size: 16,
+        ),
+      );
     }
     if (trend == 'down') {
-      return const Text('↓',
-          style:
-              TextStyle(color: Color(0xFFef4444), fontWeight: FontWeight.bold));
+      return Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEE2E2),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.trending_down_rounded,
+          color: Color(0xFFEF4444),
+          size: 16,
+        ),
+      );
     }
-    return const Text('—',
-        style:
-            TextStyle(color: Color(0xFF94a3b8), fontWeight: FontWeight.bold));
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.trending_flat_rounded,
+        color: Color(0xFF94A3B8),
+        size: 16,
+      ),
+    );
   }
 
-  // بناء منطقة ملاحظات الأخصائي مع الكلمات الدلالية (Tags)
+  // بناء منطقة ملاحظات الأخصائي مع الكلمات الدلالية (Tags) الملونة والمنعشة
   Widget _buildSpecialistNotes() {
-    final tags = [
-      'متابعة شهرية',
-      'جلسة أسبوعية',
-      'تنسيق مع الأسرة',
-      'يحتاج دعم نفسي'
-    ];
+    final tags = ['متابعة شهرية', 'جلسة أسبوعية', 'تنسيق مع الأسرة', 'يحتاج دعم نفسي'];
     return FadeTransition(
       opacity: _fadeAnimations[5],
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFfed7aa), width: 1.5)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Column(
           children: [
-            Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-              Container(
-                  width: 7,
-                  height: 7,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
                   decoration: const BoxDecoration(
-                      color: Color(0xFFf97316), shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              const Text('ملاحظات الأخصائية',
+                    color: Color(0xFFEA580C),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'توصيات وملاحظات الأخصائية',
                   style: TextStyle(
-                      color: Color(0xFF9a3412),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold))
-            ]),
-            const SizedBox(height: 10),
+                    color: Color(0xFF1E293B),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Cairo',
+                  ),
+                )
+              ],
+            ),
+            const SizedBox(height: 14),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                  color: const Color(0xFFfff7ed),
-                  border: Border.all(color: const Color(0xFFfed7aa)),
-                  borderRadius: BorderRadius.circular(12)),
+                color: const Color(0xFFF8FAFC),
+                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: TextField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF0f172a), height: 1.6),
-                  decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'اكتب ملاحظاتك هنا...',
-                      hintStyle: TextStyle(color: Color(0xFF94a3b8)))),
+                controller: _notesController,
+                maxLines: 3,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF1E293B),
+                  height: 1.6,
+                  fontFamily: 'Cairo',
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'اكتب ملاحظاتك وتوجيهاتك السريرية...',
+                  hintStyle: TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                alignment: WrapAlignment.start,
-                children: tags
-                    .map((t) => GestureDetector(
-                        onTap: () => setState(() {
-                              if (_activeNotes.contains(t)) {
-                                _activeNotes.remove(t);
-                              } else {
-                                _activeNotes.add(t);
-                              }
-                            }),
-                        child: _NoteChip('+ $t',
-                            isSelected: _activeNotes.contains(t))))
-                    .toList()),
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.start,
+              children: tags.map((t) => GestureDetector(
+                onTap: () => setState(() {
+                  if (_activeNotes.contains(t)) {
+                    _activeNotes.remove(t);
+                  } else {
+                    _activeNotes.add(t);
+                  }
+                }),
+                child: _NoteChip('+ $t', isSelected: _activeNotes.contains(t)),
+              )).toList(),
+            ),
           ],
         ),
       ),
@@ -928,136 +1323,208 @@ class _AssessmentDetailedScreenState
 
   // بناء خيار تفعيل التدخل الاجتماعي العاجل
   Widget _buildInterventionToggle() {
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _isInterventionRequired ? const Color(0xFFfee2e2) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: _isInterventionRequired ? const Color(0xFFFFF1F1) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-            color: _isInterventionRequired
-                ? const Color(0xFFef4444)
-                : const Color(0xFFfed7aa),
-            width: 1.5),
+          color: _isInterventionRequired ? const Color(0xFFFCA5A5) : const Color(0xFFF1F5F9),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (_isInterventionRequired ? const Color(0xFFEF4444) : const Color(0xFF0F172A)).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.report_problem_rounded, color: Color(0xFFef4444)),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('تفعيل طلب تدخل عاجل',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF991b1b))),
-              Text('سيتم إخطار الإدارة والزملاء فوراً',
-                  style: TextStyle(fontSize: 10, color: Color(0xFFb91c1c))),
-            ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE2E2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.report_problem_rounded, color: Color(0xFFEF4444), size: 24),
           ),
-          const Spacer(),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'طلب تدخل علاجي عاجل',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF991B1B),
+                    fontFamily: 'Cairo',
+                  ),
+                ),
+                Text(
+                  'سيتم إخطار الطاقم الطبي والإدارة فوراً',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFFEF4444),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
+              ],
+            ),
+          ),
           Switch(
             value: _isInterventionRequired,
             onChanged: (v) => setState(() => _isInterventionRequired = v),
-            activeThumbColor: const Color(0xFFef4444),
+            activeColor: const Color(0xFFEF4444),
+            activeTrackColor: const Color(0xFFFCA5A5),
           ),
         ],
       ),
     );
   }
 
-  // بناء شريط الإجراءات السفلي مع منطق الحفظ الفعلي
+  // بناء شريط الإجراءات السفلي مع منطق الحفظ وأيقونة الحفظ المتناسقة
   Widget _buildActionBar() {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFfed7aa)))),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
-              child: ElevatedButton(
-                  onPressed: () {
-                    if (_questions.isEmpty || _questions.first.id == 'empty') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('لا توجد أسئلة متاحة لحفظ التقييم')),
-                      );
-                      return;
-                    }
-                    // حساب الدرجة التقريبية بناءً على عدد الإجابات المختارة
-                    final Map<String, double> newScores = {};
-                    if (widget.tool != null) {
-                      newScores[widget.tool!.name] =
-                          (_selections.length / _questions.length)
-                              .clamp(0.1, 1.0);
-                    }
-
-                    // استدعاء دالة الحفظ في الـ Provider لتحديث بيانات المقيم في النظام
-                    ref.read(appRiverpod).saveSocialAssessment(
-                          residentId: widget.resident.id,
-                          newScores: newScores,
-                          needsIntervention: _isInterventionRequired,
-                          notes: _notesController.text,
-                        );
-
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (dialogContext) => AlertDialog(
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18)),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Lottie.asset('assets/animations/Done.json',
-                                width: 120, height: 120, repeat: false),
-                            const SizedBox(height: 16),
-                            const Text('تم حفظ التقييم بنجاح',
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0f172a))),
-                            const SizedBox(height: 8),
-                            const Text('تم تحديث حالة المقيم في النظام',
-                                style: TextStyle(
-                                    fontSize: 12, color: Color(0xFF64748b))),
-                            const SizedBox(height: 20),
-                            ElevatedButton(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEA580C), Color(0xFFFF7A45)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEA580C).withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // حساب الدرجة التقريبية بناءً على عدد الإجابات المختارة
+                  final Map<String, double> newScores = {};
+                  if (widget.tool != null) {
+                    newScores[widget.tool!.name] = (_selections.length / _questions.length).clamp(0.1, 1.0);
+                  }
+                  
+                  // استدعاء دالة الحفظ في الـ Provider لتحديث بيانات المقيم في النظام
+                  ref.read(appRiverpod).saveSocialAssessment(
+                    residentId: widget.resident.id,
+                    newScores: newScores,
+                    needsIntervention: _isInterventionRequired,
+                    notes: _notesController.text,
+                  );
+                  
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (dialogContext) => AlertDialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Lottie.asset('assets/animations/Done.json', width: 130, height: 130, repeat: false),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'تم حفظ التقييم بنجاح',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                              fontFamily: 'Cairo',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'تم تحديث الملف الاجتماعي والسلوكي للمقيم بنجاح',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                              fontFamily: 'Cairo',
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
                               onPressed: () {
                                 Navigator.pop(dialogContext); // Close dialog
                                 Navigator.pop(context); // Close screen
                               },
                               style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFea580c),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10))),
-                              child: const Text('موافق'),
+                                backgroundColor: const Color(0xFFEA580C),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'موافق',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFea580c),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 0),
-                  child: const Text('حفظ التقييم وإرساله للإدارة',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)))),
+                    ),
+                  );
+                }, 
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.save_rounded, color: Colors.white, size: 20),
+                label: const Text(
+                  'حفظ التقييم وإرساله للإدارة',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Colors.white,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// عنصر الـ Chip الخاص بالملاحظات السريعة
+// عنصر الـ Chip الخاص بالملاحظات السريعة بتأثيرات وتدرجات حركية رائعة
 class _NoteChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -1065,19 +1532,36 @@ class _NoteChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFea580c) : const Color(0xFFfff7ed),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color:
-                  isSelected ? Colors.transparent : const Color(0xFFfed7aa))),
-      child: Text(label,
-          style: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF9a3412),
-              fontSize: 9,
-              fontWeight: FontWeight.bold)),
+        color: isSelected ? null : const Color(0xFFF1F5F9),
+        gradient: isSelected 
+            ? const LinearGradient(colors: [Color(0xFFEA580C), Color(0xFFFF7A45)]) 
+            : null,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? Colors.transparent : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+        boxShadow: isSelected ? [
+          BoxShadow(
+            color: const Color(0xFFEA580C).withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          )
+        ] : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : const Color(0xFF475569),
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Cairo',
+        ),
+      ),
     );
   }
 }

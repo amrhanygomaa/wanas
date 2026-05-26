@@ -16,6 +16,8 @@ class SpecialistAssessmentView extends ConsumerWidget {
   final AnimationController
       popController; // متحكم حركة القفز للأيقونات التفاعلية
   final void Function(int) onNavigate; // دالة للتنقل بين التبويبات الرئيسية
+  static bool _showNeedMap =
+      false; // متغير ثابت للتبديل بين وضع القائمة ووضع الخريطة
 
   const SpecialistAssessmentView({
     super.key,
@@ -42,8 +44,8 @@ class SpecialistAssessmentView extends ConsumerWidget {
               _buildSectionLabel(
                   'أدوات التقييم المتاحة', const Color(0xFF6366f1), 0),
               const SizedBox(height: 12),
-              _buildToolsCard(context, provider,
-                  ref), // كارت يحتوي على روابط سريعة لأدوات التقييم المختلفة
+              _buildToolsCard(context,
+                  provider), // كارت يحتوي على روابط سريعة لأدوات التقييم المختلفة
               const SizedBox(height: 24),
               _buildSectionLabel(
                   'خريطة توزيع الاحتياجات', const Color(0xFFef4444), 1),
@@ -53,7 +55,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
               const SizedBox(height: 12),
 
               // التبديل البرمجي بين واجهة الخريطة التفاعلية وواجهة القائمة التقليدية
-              if (provider.showSpecialistNeedMap)
+              if (SpecialistAssessmentView._showNeedMap)
                 _buildNeedMap(context,
                     provider) // عرض خريطة المقيمين الملونة بناءً على حالتهم
               else ...[
@@ -142,8 +144,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
   }
 
   // بناء الكارت الخاص بأدوات التقييم (نفسي، اجتماعي...)
-  Widget _buildToolsCard(
-      BuildContext context, AppRiverpod provider, WidgetRef ref) {
+  Widget _buildToolsCard(BuildContext context, AppRiverpod provider) {
     return FadeTransition(
       opacity: fadeAnimations[2],
       child: Container(
@@ -160,24 +161,17 @@ class SpecialistAssessmentView extends ConsumerWidget {
         ),
         child: Column(
             children: provider.socialAssessmentTools
-                .map((tool) => _buildToolRow(context, tool, provider, ref))
+                .map((tool) => _buildToolRow(context, tool, provider))
                 .toList()),
       ),
     );
   }
 
   // بناء صف أداة التقييم الفردية
-  Widget _buildToolRow(
-      BuildContext context,
-      SocialSpecialistAssessmentTool tool,
-      AppRiverpod provider,
-      WidgetRef ref) {
+  Widget _buildToolRow(BuildContext context,
+      SocialSpecialistAssessmentTool tool, AppRiverpod provider) {
     return GestureDetector(
-      onTap: () async {
-        await ref.read(appRiverpod).loadQuestionsForTool(tool.id);
-        if (!context.mounted) return;
-        _showToolDetails(context, tool, provider);
-      },
+      onTap: () => _showToolDetails(context, tool, provider),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
@@ -219,9 +213,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
                           color: Color(0xFF1e293b))),
                   Text(tool.subtitle,
                       style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF334155),
-                          fontWeight: FontWeight.w600))
+                          fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600))
                 ])),
             const Spacer(), // نقل الـ Spacer هنا ليدفع الحالة والسهم لليسار
             _buildToolAction(tool.status), // عرض حالة الأداة (مكتمل/جديد)
@@ -243,10 +235,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
     final questions = provider.getQuestionsForTool(tool.id);
     final Set<int> selectedIndices =
         Set.from(Iterable.generate(questions.length));
-    SocialSpecialistResidentScore? selectedResident =
-        provider.filteredResidentScores.isNotEmpty
-            ? provider.filteredResidentScores.first
-            : null;
+    SocialSpecialistResidentScore? selectedResident = provider.filteredResidentScores.isNotEmpty ? provider.filteredResidentScores.first : null;
 
     showModalBottomSheet(
       context: context,
@@ -277,59 +266,52 @@ class SpecialistAssessmentView extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Container(
-                                    width: 56,
-                                    height: 56,
-                                    decoration: BoxDecoration(
-                                        color: _getToolColor(tool.icon),
-                                        borderRadius:
-                                            BorderRadius.circular(18)),
-                                    child: Center(
-                                        child: tool.icon == '🧠'
+                          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                            Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                    color: _getToolColor(tool.icon),
+                                    borderRadius: BorderRadius.circular(18)),
+                                child: Center(
+                                    child: tool.icon == '🧠'
+                                        ? Lottie.asset(
+                                            'assets/animations/brian.json',
+                                            width: 40,
+                                            height: 40)
+                                        : tool.icon == '🤝'
                                             ? Lottie.asset(
-                                                'assets/animations/brian.json',
+                                                'assets/animations/social.json',
                                                 width: 40,
                                                 height: 40)
-                                            : tool.icon == '🤝'
+                                            : tool.icon == '🏃'
                                                 ? Lottie.asset(
-                                                    'assets/animations/social.json',
+                                                    'assets/animations/Jogging.json',
                                                     width: 40,
                                                     height: 40)
-                                                : tool.icon == '🏃'
+                                                : tool.icon == '❤️'
                                                     ? Lottie.asset(
-                                                        'assets/animations/Jogging.json',
+                                                        'assets/animations/hearts.json',
                                                         width: 40,
                                                         height: 40)
-                                                    : tool.icon == '❤️'
-                                                        ? Lottie.asset(
-                                                            'assets/animations/hearts.json',
-                                                            width: 40,
-                                                            height: 40)
-                                                        : Text(tool.icon,
-                                                            style:
-                                                                const TextStyle(
-                                                                    fontSize:
-                                                                        28)))),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                      Text(tool.name,
-                                          style: const TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w900,
-                                              color: Color(0xFF1e293b))),
-                                      Text(tool.subtitle,
-                                          style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey[600]))
-                                    ])),
-                              ]),
+                                                    : Text(tool.icon,
+                                                        style: const TextStyle(
+                                                            fontSize: 28)))),
+                            const SizedBox(width: 16),
+                            Expanded(
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                  Text(tool.name,
+                                      style: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF1e293b))),
+                                  Text(tool.subtitle,
+                                      style: TextStyle(
+                                          fontSize: 14, color: Colors.grey[600]))
+                                ])),
+                          ]),
                           const SizedBox(height: 32),
                           const Text('اختر المقيم المراد تقييمه',
                               style: TextStyle(
@@ -337,17 +319,13 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF334155))),
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<
-                              SocialSpecialistResidentScore>(
-                            initialValue: selectedResident,
+                          DropdownButtonFormField<SocialSpecialistResidentScore>(
+                            value: selectedResident,
                             isExpanded: true,
-                            items: provider.filteredResidentScores
-                                .map((r) => DropdownMenuItem(
-                                      value: r,
-                                      child: Text(r.name,
-                                          style: const TextStyle(fontSize: 14)),
-                                    ))
-                                .toList(),
+                            items: provider.filteredResidentScores.map((r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(r.name, style: const TextStyle(fontSize: 14)),
+                            )).toList(),
                             onChanged: (v) {
                               setBottomSheetState(() {
                                 selectedResident = v;
@@ -356,16 +334,9 @@ class SpecialistAssessmentView extends ConsumerWidget {
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                      color: Color(0xFFe2e8f0))),
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                      color: Color(0xFFe2e8f0))),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             ),
                           ),
                           const SizedBox(height: 32),
@@ -420,7 +391,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                 ],
                               ),
                             );
-                          }),
+                          }).toList(),
                           const SizedBox(height: 32),
                           _buildInfoRow(
                               'الحالة الحالية',
@@ -429,47 +400,40 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                   ? const Color(0xFF059669)
                                   : const Color(0xFFea580c)),
                           const SizedBox(height: 16),
-                          _buildInfoRow('آخر تحديث', 'منذ يومين',
-                              const Color(0xFF64748b)),
+                          _buildInfoRow(
+                              'آخر تحديث', 'منذ يومين', const Color(0xFF64748b)),
                           const SizedBox(height: 32),
                           Row(children: [
                             Expanded(
                                 child: ElevatedButton(
-                                    onPressed: questions.isEmpty ||
-                                            selectedResident == null
-                                        ? null
-                                        : () {
-                                            Navigator.pop(context);
-                                            // تصفية الأسئلة المختارة
-                                            final List<AssessmentQuestion>
-                                                selectedQuestions = [];
-                                            for (int i in selectedIndices) {
-                                              final q = questions[i];
-                                              selectedQuestions
-                                                  .add(AssessmentQuestion(
-                                                id: 'q$i',
-                                                text: q['text'],
-                                                type: q['type'],
-                                                options: q['options'] != null
-                                                    ? List<String>.from(
-                                                        q['options'])
-                                                    : null,
-                                              ));
-                                            }
-                                            Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        AssessmentDetailedScreen(
-                                                            tool: tool,
-                                                            resident:
-                                                                selectedResident!,
-                                                            initialQuestions:
-                                                                selectedQuestions)));
-                                          },
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      // تصفية الأسئلة المختارة
+                                      final List<AssessmentQuestion>
+                                          selectedQuestions = [];
+                                      for (int i in selectedIndices) {
+                                        final q = questions[i];
+                                        selectedQuestions.add(AssessmentQuestion(
+                                          id: 'q$i',
+                                          text: q['text'],
+                                          type: q['type'],
+                                          options: q['options'] != null
+                                              ? List<String>.from(q['options'])
+                                              : null,
+                                        ));
+                                      }
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  AssessmentDetailedScreen(
+                                                      tool: tool,
+                                                      resident: selectedResident!,
+                                                      initialQuestions:
+                                                          selectedQuestions)));
+                                    },
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFFea580c),
+                                        backgroundColor: const Color(0xFFea580c),
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 16),
@@ -640,9 +604,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
                           color: Color(0xFF1e293b))),
                   Text('غرفة ${score.room} · ${score.date}',
                       style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF334155),
-                          fontWeight: FontWeight.w600))
+                          fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600))
                 ]),
                 const Spacer(),
                 if (score.isUrgent)
@@ -796,10 +758,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
             width: 60,
             child: Text(label,
                 textAlign: TextAlign.right,
-                style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF334155),
-                    fontWeight: FontWeight.w600))),
+                style: const TextStyle(fontSize: 10, color: Color(0xFF334155), fontWeight: FontWeight.w600))),
         const SizedBox(width: 8),
         Expanded(
             child: Container(
@@ -846,16 +805,16 @@ class SpecialistAssessmentView extends ConsumerWidget {
       builder: (context, setState) => Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _toggleBtn(
-              'قائمة', !provider.showSpecialistNeedMap, Icons.list_alt_rounded,
-              () {
-            setState(() => provider.setShowSpecialistNeedMap(false));
+          _toggleBtn('قائمة', !SpecialistAssessmentView._showNeedMap,
+              Icons.list_alt_rounded, () {
+            setState(() => SpecialistAssessmentView._showNeedMap = false);
+            provider.notifyListeners();
           }),
           const SizedBox(width: 8),
-          _toggleBtn(
-              'خريطة', provider.showSpecialistNeedMap, Icons.grid_view_rounded,
-              () {
-            setState(() => provider.setShowSpecialistNeedMap(true));
+          _toggleBtn('خريطة', SpecialistAssessmentView._showNeedMap,
+              Icons.grid_view_rounded, () {
+            setState(() => SpecialistAssessmentView._showNeedMap = true);
+            provider.notifyListeners();
           }),
         ],
       ),
@@ -982,8 +941,7 @@ class _CardDustParticle {
   Offset position;
   double speed;
   double radius;
-  _CardDustParticle(
-      {required this.position, required this.speed, required this.radius});
+  _CardDustParticle({required this.position, required this.speed, required this.radius});
 }
 
 class CardDustAnimation extends StatefulWidget {
@@ -993,18 +951,15 @@ class CardDustAnimation extends StatefulWidget {
   State<CardDustAnimation> createState() => _CardDustAnimationState();
 }
 
-class _CardDustAnimationState extends State<CardDustAnimation>
-    with SingleTickerProviderStateMixin {
+class _CardDustAnimationState extends State<CardDustAnimation> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<_CardDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 15))
-          ..repeat();
-
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
+    
     final random = Random();
     _dust = List.generate(45, (index) {
       return _CardDustParticle(
@@ -1028,8 +983,7 @@ class _CardDustAnimationState extends State<CardDustAnimation>
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: _CardDustPainter(
-                dust: _dust, animationValue: _controller.value),
+            painter: CardDustPainter(dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -1037,11 +991,11 @@ class _CardDustAnimationState extends State<CardDustAnimation>
   }
 }
 
-class _CardDustPainter extends CustomPainter {
+class CardDustPainter extends CustomPainter {
   final List<_CardDustParticle> dust;
   final double animationValue;
 
-  _CardDustPainter({required this.dust, required this.animationValue});
+  CardDustPainter({required this.dust, required this.animationValue});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1051,13 +1005,11 @@ class _CardDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-
-      double dy = (p.position.dy * size.height) -
-          (animationValue * p.speed * size.height);
+      
+      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx =
-          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 
@@ -1069,7 +1021,7 @@ class _CardDustPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CardDustPainter oldDelegate) {
+  bool shouldRepaint(covariant CardDustPainter oldDelegate) {
     return true;
   }
 }

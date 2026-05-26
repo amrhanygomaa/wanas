@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -71,46 +73,76 @@ class ApiClient {
 
   Future<dynamic> get(String path,
       {Map<String, dynamic>? query, bool auth = true}) async {
-    final res = await http
-        .get(_uri(path, query), headers: await _buildHeaders(auth: auth))
-        .timeout(ApiConfig.requestTimeout);
-    return _handle(res);
+    try {
+      final res = await http
+          .get(_uri(path, query), headers: await _buildHeaders(auth: auth))
+          .timeout(ApiConfig.requestTimeout);
+      return _handle(res);
+    } on SocketException {
+      throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');
+    } on TimeoutException {
+      throw ApiException(0, 'انتهت مهلة الاتصال بالسيرفر — حاول مرة أخرى');
+    }
   }
 
   Future<dynamic> post(String path, {Object? body, bool auth = true}) async {
-    final res = await http
-        .post(_uri(path),
-            headers: await _buildHeaders(auth: auth),
-            body: body == null ? null : jsonEncode(body))
-        .timeout(ApiConfig.requestTimeout);
-    return _handle(res);
+    try {
+      final res = await http
+          .post(_uri(path),
+              headers: await _buildHeaders(auth: auth),
+              body: body == null ? null : jsonEncode(body))
+          .timeout(ApiConfig.requestTimeout);
+      return _handle(res);
+    } on SocketException {
+      throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');
+    } on TimeoutException {
+      throw ApiException(0, 'انتهت مهلة الاتصال بالسيرفر — حاول مرة أخرى');
+    }
   }
 
   Future<dynamic> patch(String path, {Object? body, bool auth = true}) async {
-    final res = await http
-        .patch(_uri(path),
-            headers: await _buildHeaders(auth: auth),
-            body: body == null ? null : jsonEncode(body))
-        .timeout(ApiConfig.requestTimeout);
-    return _handle(res);
+    try {
+      final res = await http
+          .patch(_uri(path),
+              headers: await _buildHeaders(auth: auth),
+              body: body == null ? null : jsonEncode(body))
+          .timeout(ApiConfig.requestTimeout);
+      return _handle(res);
+    } on SocketException {
+      throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');
+    } on TimeoutException {
+      throw ApiException(0, 'انتهت مهلة الاتصال بالسيرفر — حاول مرة أخرى');
+    }
   }
 
   Future<dynamic> put(String path, {Object? body, bool auth = true}) async {
-    final res = await http
-        .put(_uri(path),
-            headers: await _buildHeaders(auth: auth),
-            body: body == null ? null : jsonEncode(body))
-        .timeout(ApiConfig.requestTimeout);
-    return _handle(res);
+    try {
+      final res = await http
+          .put(_uri(path),
+              headers: await _buildHeaders(auth: auth),
+              body: body == null ? null : jsonEncode(body))
+          .timeout(ApiConfig.requestTimeout);
+      return _handle(res);
+    } on SocketException {
+      throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');
+    } on TimeoutException {
+      throw ApiException(0, 'انتهت مهلة الاتصال بالسيرفر — حاول مرة أخرى');
+    }
   }
 
   Future<dynamic> delete(String path, {Object? body, bool auth = true}) async {
-    final res = await http
-        .delete(_uri(path),
-            headers: await _buildHeaders(auth: auth),
-            body: body == null ? null : jsonEncode(body))
-        .timeout(ApiConfig.requestTimeout);
-    return _handle(res);
+    try {
+      final res = await http
+          .delete(_uri(path),
+              headers: await _buildHeaders(auth: auth),
+              body: body == null ? null : jsonEncode(body))
+          .timeout(ApiConfig.requestTimeout);
+      return _handle(res);
+    } on SocketException {
+      throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');
+    } on TimeoutException {
+      throw ApiException(0, 'انتهت مهلة الاتصال بالسيرفر — حاول مرة أخرى');
+    }
   }
 
   dynamic _handle(http.Response res) {

@@ -1,11 +1,8 @@
-// ignore_for_file: unused_element
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart' as file_picker_lib;
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/video_call_service.dart';
 
 class CallsScreen extends ConsumerStatefulWidget {
   const CallsScreen({super.key});
@@ -49,8 +46,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     // طلب إذن جهات الاتصال وجلب المفضلين عند فتح الشاشة
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(appRiverpod).fetchFavoriteContacts();
-      ref.read(appRiverpod).refreshActiveVideoCalls();
-      ref.read(appRiverpod).loadCallHistory();
     });
   }
 
@@ -68,18 +63,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-
-    final banner = provider.voiceMessageBanner;
-    if (banner != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(banner), behavior: SnackBarBehavior.floating),
-        );
-        provider.clearVoiceMessageBanner();
-      });
-    }
-
     return Stack(
       children: [
         SingleChildScrollView(
@@ -98,7 +81,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                     const SizedBox(height: 12),
                     _buildVoiceMessages(provider),
                     const SizedBox(height: 12),
-                    _buildRecentCalls(provider),
+                    _buildRecentCalls(),
                   ],
                 ),
               ),
@@ -155,8 +138,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
 
   void _showRecordDialog(AppRiverpod provider) {
     bool isRecording = false;
-    String? pickedAudioPath;
-    String? pickedAudioName;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -217,26 +198,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-                TextButton.icon(
-                  onPressed: () async {
-                    final picked =
-                        await file_picker_lib.FilePicker.platform.pickFiles(
-                      type: file_picker_lib.FileType.custom,
-                      allowedExtensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg'],
-                    );
-                    if (picked == null) return;
-                    setS(() {
-                      pickedAudioPath = picked.files.single.path;
-                      pickedAudioName = picked.files.single.name;
-                    });
-                  },
-                  icon: const Icon(Icons.upload_file_rounded),
-                  label: Text(
-                    pickedAudioName ?? 'اختيار تسجيل صوتي',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -253,9 +214,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                         onPressed: () {
                           Navigator.pop(ctx);
                           provider.sendVoiceMessageFromResident(
-                            'رسالة من الجد — أنا بخير وبشوقكم',
-                            audioPath: pickedAudioPath,
-                          );
+                              'رسالة من الجد — أنا بخير وبشوقكم');
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content:
@@ -336,7 +295,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                                   fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
                           Text('$availableCount متاحين الآن',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold)),
@@ -396,16 +355,14 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     bool hc = provider.isHighContrast;
     Color chipColor;
     Color borderColor;
-
+    
     switch (index) {
       case 0: // متاح
-        chipColor =
-            const Color(0xFF10B981).withValues(alpha: 0.15); // أخضر خفيف
+        chipColor = const Color(0xFF10B981).withValues(alpha: 0.15); // أخضر خفيف
         borderColor = const Color(0xFF10B981).withValues(alpha: 0.3);
         break;
       case 1: // مشغول
-        chipColor =
-            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
+        chipColor = const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
         borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
         break;
       case 2: // رسائل
@@ -456,7 +413,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
@@ -671,7 +628,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                           const SizedBox(width: 3),
                           _buildWaveBar(4, 4),
                           const SizedBox(width: 8),
-                          const Text('مكالمة واردة',
+                          Text('مكالمة واردة',
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -713,6 +670,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     bool hc = provider.isHighContrast;
     return LayoutBuilder(
       builder: (context, constraints) {
+        final bool isLargeText = provider.fontScaleFactor >= 1.25;
+        final cardWidth = isLargeText
+            ? constraints.maxWidth
+            : ((constraints.maxWidth - 46) / 2).floorToDouble();
         final pinnedMembers =
             provider.familyMembersList.where((m) => m.isPinned).toList();
         final displayMembers =
@@ -863,18 +824,8 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               // زر الإضافة من الهاتف
               OutlinedButton.icon(
                 onPressed: () async {
-                  final granted = await provider.pickAndAddContact();
-                  if (!granted && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                            Text('يرجى منح إذن جهات الاتصال من إعدادات الهاتف'),
-                        backgroundColor: Color(0xFFef4444),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                  setModalState(() {});
+                  await provider.pickAndAddContact();
+                  setModalState(() {}); // تحديث القائمة داخل الشاشة المنبثقة
                 },
                 icon: const Icon(Icons.contact_phone_rounded),
                 label: const Text('إضافة من جهات اتصال الهاتف 📱',
@@ -930,7 +881,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('تم الحفظ ✅',
+                  child: const Text('حفظ',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -955,13 +906,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
       tween: Tween<double>(begin: 0, end: 1),
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutBack,
-      builder: (context, value, child) {
-        final opacity = value.clamp(0.0, 1.0).toDouble();
-        return Transform.scale(
+      builder: (context, value, child) => Transform.scale(
           scale: 0.95 + (0.05 * value),
-          child: Opacity(opacity: opacity, child: child),
-        );
-      },
+          child: Opacity(opacity: value, child: child)),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1088,15 +1035,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
             Column(
               children: [
                 _buildActionCircle(
-                  onTap: () {
-                    provider.startVideoCall(
-                      name,
-                      initials,
-                      calleeId: member.id,
-                      residentId: provider.backendResidentId,
-                      joinUrl: member.zoomLink,
-                    );
-                  },
+                  onTap: () => provider.launchZoom(member.zoomLink),
                   icon: Icons.videocam_rounded,
                   color: const Color(0xFF6C63FF),
                   isActive: isOnline,
@@ -1229,13 +1168,13 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                   children: [
                     Icon(Icons.mic, color: Colors.white, size: 22),
                     SizedBox(width: 10),
-                    Text('رسائل من القلب ✨',
+                    const Text('رسائل من القلب ✨',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold)),
-                    SizedBox(width: 8),
-                    Text('— عائلتك بانتظارك',
+                    const SizedBox(width: 8),
+                    const Text('— عائلتك بانتظارك',
                         style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -1250,16 +1189,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
             ...provider.voiceMessages.asMap().entries.map((entry) {
               final index = entry.key;
               final msg = entry.value;
-              final sender =
-                  provider.familyMembers.firstWhere((m) => m.id == msg.senderId,
-                      orElse: () => FamilyMember(
-                            id: msg.senderId,
-                            name: 'الأسرة',
-                            relation: 'قريب',
-                            avatarPath: '',
-                            initials: 'أ',
-                            phoneNumber: '',
-                          ));
+              final sender = provider.familyMembers.firstWhere(
+                  (m) => m.id == msg.senderId,
+                  orElse: () => provider.familyMembers.first);
               final gradients = [
                 const [Color(0xFFf472b6), Color(0xFFdb2777)],
                 const [Color(0xFF34d399), Color(0xFF059669)],
@@ -1383,96 +1315,126 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     );
   }
 
-  Widget _buildRecentCalls(AppRiverpod provider) {
-    final bool hc = provider.isHighContrast;
-    final Color bg = hc ? const Color(0xFF1a1a1a) : Colors.white;
-    final Color border = hc ? const Color(0xFF333333) : const Color(0xFFE2E8F0);
-
+  Widget _buildRecentCalls() {
     return Container(
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: border),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFFede9fe), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+                color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 4))
+          ]),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Icon(Icons.assignment_rounded,
+                    color: Color(0xFF6C63FF), size: 24),
+                SizedBox(width: 8),
+                Text('آخر المكالمات',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6C63FF))),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildRecentCallRow(
+                'أم أحمد',
+                'فيديو · ١٢ دقيقة · أمس ٦:٣٠ م',
+                'أم',
+                const [Color(0xFFf472b6), Color(0xFFdb2777)],
+                'واردة',
+                const Color(0xFFd1fae5),
+                const Color(0xFF065f46)),
+            const Divider(color: Color(0xFFf5f3ff)),
+            _buildRecentCallRow(
+                'أحمد',
+                'صوت · ٥ دقائق · أمس ٢:١٥ م',
+                'أح',
+                const [Color(0xFF818cf8), Color(0xFF4f46e5)],
+                'صادرة',
+                const Color(0xFFede9fe),
+                const Color(0xFF4c1d95)),
+            const Divider(color: Color(0xFFf5f3ff)),
+            _buildRecentCallRow(
+                'سارة',
+                'فيديو · الأحد ١١:٠٠ ص',
+                'سا',
+                const [Color(0xFF34d399), Color(0xFF059669)],
+                'فائتة',
+                const Color(0xFFfee2e2),
+                const Color(0xFF7f1d1d)),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _buildRecentCallRow(String name, String detail, String initials,
+      List<Color> gradient, String badge, Color badgeBg, Color badgeText) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Text(
-              'آخر المكالمات',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: hc ? Colors.white : const Color(0xFF1e293b),
-              ),
+          // Right: Avatar
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+                gradient: LinearGradient(colors: gradient),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: gradient[0].withValues(alpha: 0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]),
+            child: Center(
+                child: Text(initials,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold))),
+          ),
+          const SizedBox(width: 12),
+          // Middle: Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1e293b))),
+                const SizedBox(height: 2),
+                Text(detail,
+                    style: const TextStyle(
+                        fontSize: 13, color: Color(0xFF64748b))),
+              ],
             ),
           ),
-          if (provider.isLoadingCallHistory)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (provider.callHistory.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(
-                  'لا توجد مكالمات سابقة',
-                  style: TextStyle(
-                    color: hc ? Colors.white54 : const Color(0xFF94a3b8),
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            )
-          else
-            ...provider.callHistory.take(5).map((BackendVideoCall call) {
-              final isVideo = call.callType == 'family_video';
-              final name = call.calleeName?.isNotEmpty == true
-                  ? call.calleeName!
-                  : 'مكالمة';
-              final initial = name.isNotEmpty ? name.substring(0, 1) : '؟';
-              final dateStr = call.startedAt.isNotEmpty
-                  ? call.startedAt.substring(0, 10)
-                  : '';
-              return ListTile(
-                dense: true,
-                leading: CircleAvatar(
-                  backgroundColor: isVideo
-                      ? const Color(0xFF6d28d9).withValues(alpha: 0.15)
-                      : const Color(0xFF0369a1).withValues(alpha: 0.15),
-                  child: Text(
-                    initial,
-                    style: TextStyle(
-                      color: isVideo
-                          ? const Color(0xFF6d28d9)
-                          : const Color(0xFF0369a1),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                title: Text(name,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: hc ? Colors.white : const Color(0xFF1e293b))),
-                subtitle: Text(
-                  dateStr,
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: hc ? Colors.white38 : const Color(0xFF94a3b8)),
-                ),
-                trailing: Icon(
-                  isVideo ? Icons.videocam_outlined : Icons.call_outlined,
-                  color: isVideo
-                      ? const Color(0xFF6d28d9)
-                      : const Color(0xFF0369a1),
-                  size: 20,
-                ),
-              );
-            }),
-          const SizedBox(height: 8),
+          // Left: Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+                color: badgeBg.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(10)),
+            child: Text(badge,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: badgeText)),
+          ),
         ],
       ),
     );

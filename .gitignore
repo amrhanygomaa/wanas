@@ -42,14 +42,11 @@ app.*.map.json
 /android/app/release/
 /android/.gradle/
 /android/local.properties
-/android/key.properties
 /android/captures/
 **/*.apk
 **/*.aab
 **/*.jar
 **/*.aar
-**/*.jks
-**/*.keystore
 
 # iOS Build Artifacts (HEAVY - skip uploading)
 /ios/Pods/
@@ -69,13 +66,11 @@ DerivedData/
 
 # Analysis & Temporary outputs (personal)
 analysis_output*
-analysis_errors*
 full_analysis*
 full_errs*
 lint*
 lint2*
-final_lint*
-flutter_*.log
+final_lint
 
 # Metadata & IDE files
 .metadata
@@ -83,29 +78,16 @@ devtools_options.yaml
 
 # Temporary test files
 test[0-9]*
-after_move*
+after_move
 call_test*
-mem_test*
+mem_test
 
 # Misc personal files
-files.txt
-colors.txt
-mcolors.txt
-decs.txt
-mdecs.txt
-
-# Local backend snapshots (الباك اند في repo منفصل: amrhanygomaa/raaya-backend)
-aws_raaya_backend/
-aws_raaya_backend.rar
-aws_raaya_backend.zip
-external/
-
-# Sensitive (NEVER commit)
-**/*.pem
-**/*accessKeys*.csv
-**/*credentials*
-**/*.env
-*.key
+files
+colors
+mcolors
+decs
+mdecs
 
 # Large media & assets (optional - uncomment if assets are large)
 # assets/videos/

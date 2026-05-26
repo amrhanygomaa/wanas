@@ -253,8 +253,7 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
                           fontSize: 18,
                           color: Color(0xFF1e293b))),
                   Text(widget.report.authorRole,
-                      style: const TextStyle(
-                          color: Color(0xFF64748b), fontSize: 13)),
+                      style: const TextStyle(color: Color(0xFF64748b), fontSize: 13)),
                 ],
               ),
               const SizedBox(width: 16),
@@ -326,12 +325,12 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
     return Row(
       children: [
         Expanded(
-            child: _buildMetricBox('التفاعل', widget.report.interactionLevel,
-                const Color(0xFFf0fdf4), const Color(0xFF16a34a))),
+            child: _buildMetricBox('التفاعل', widget.report.interactionLevel, const Color(0xFFf0fdf4),
+                const Color(0xFF16a34a))),
         const SizedBox(width: 16),
         Expanded(
-            child: _buildMetricBox('المزاج', widget.report.moodStatus,
-                const Color(0xFFeff6ff), const Color(0xFF2563eb))),
+            child: _buildMetricBox('المزاج', widget.report.moodStatus, const Color(0xFFeff6ff),
+                const Color(0xFF2563eb))),
       ],
     );
   }

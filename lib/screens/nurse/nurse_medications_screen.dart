@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
@@ -6,7 +5,6 @@ import '../../models/app_models.dart';
 import 'nurse_resident_detail_screen.dart';
 import 'nurse_residents_screen.dart';
 import 'package:lottie/lottie.dart';
-import '../../widgets/live_medications_banner.dart';
 
 // شاشة جدول الأدوية للممرض - المحرك الأساسي لمتابعة الحالة الدوائية للمقيمين
 class NurseMedicationsScreen extends ConsumerStatefulWidget {
@@ -55,7 +53,6 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
       barrierDismissible: false,
       builder: (context) {
         Future.delayed(const Duration(seconds: 2), () {
-          if (!context.mounted) return;
           if (Navigator.canPop(context)) {
             Navigator.pop(context);
           }
@@ -111,7 +108,6 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
     return SingleChildScrollView(
       child: Column(
         children: [
-          const LiveMedicationsBanner(), // جداول دوائية حية من AWS RDS
           _buildSearchFilter(), // شريط البحث والفرز المتقدم
           _buildPeriodTabs(), // التبويبات الزمنية (الصباح، الظهر، إلخ)
           const SizedBox(height: 10),
@@ -345,44 +341,38 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
           ...groupedMeds.entries.map((entry) {
             final name = entry.key;
             final meds = entry.value;
-            final isCritical = meds.any((med) => med.isMissed || med.isSkipped);
+            final isCritical =
+                name.contains('محمود'); // محاكاة الأولوية للحالات الحرجة
             return _buildResidentCard(name, meds, isCritical);
           }),
           const SizedBox(height: 10),
-          Builder(builder: (context) {
-            final remaining =
-                provider.residentFiles.length - groupedMeds.keys.length;
-            final label = remaining > 0
-                ? '+ $remaining مقيم آخر — اضغط لعرض الكل'
-                : 'عرض جميع المقيمين';
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NurseResidentsScreen(),
-                  ),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBAE6FD)),
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NurseResidentsScreen(),
                 ),
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0369A1)),
-                ),
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
               ),
-            );
-          })
+              child: const Text(
+                '+ ٢١ مقيم آخر — اضغط لعرض الكل',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0369A1)),
+              ),
+            ),
+          )
         ],
       ),
     );

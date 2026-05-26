@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
 import '../../../models/app_models.dart';
-import '../../../widgets/live_kpi_banner.dart';
 
 class SpecialistKPIView extends ConsumerWidget {
   final List<Animation<double>> fadeAnimations;
@@ -28,13 +27,11 @@ class SpecialistKPIView extends ConsumerWidget {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        const SliverToBoxAdapter(child: LiveKpiBanner()),
         SliverPadding(
           padding: const EdgeInsets.all(14),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              _buildSectionLabel(
-                  'مؤشرات الأداء الاجتماعي', const Color(0xFF10b981), 0),
+              _buildSectionLabel('مؤشرات الأداء الاجتماعي', const Color(0xFF10b981), 0),
               const SizedBox(height: 12),
             ]),
           ),
@@ -51,7 +48,7 @@ class SpecialistKPIView extends ConsumerWidget {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final kpi = provider.socialKPIs[index];
-                return _buildKPICard(context, provider, kpi, index);
+                return _buildKPICard(context, kpi, index);
               },
               childCount: provider.socialKPIs.length,
             ),
@@ -68,29 +65,21 @@ class SpecialistKPIView extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 8),
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF9a3412),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Color(0xFF9a3412), fontSize: 11, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildKPICard(BuildContext context, AppRiverpod provider,
-      SocialSpecialistKPI kpi, int index) {
+  Widget _buildKPICard(BuildContext context, SocialSpecialistKPI kpi, int index) {
     return FadeTransition(
       opacity: fadeAnimations[min(index + 1, 11)],
       child: ScaleTransition(
         scale: popController,
         child: GestureDetector(
-          onTap: () => _showKPIDetails(context, provider, kpi),
+          onTap: () => _showKPIDetails(context, kpi),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -110,19 +99,13 @@ class SpecialistKPIView extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: kpi.isPositive
-                        ? const Color(0xFFd1fae5)
-                        : const Color(0xFFfee2e2),
+                    color: kpi.isPositive ? const Color(0xFFd1fae5) : const Color(0xFFfee2e2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    kpi.isPositive
-                        ? Icons.trending_up_rounded
-                        : Icons.trending_down_rounded,
+                    kpi.isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
                     size: 16,
-                    color: kpi.isPositive
-                        ? const Color(0xFF059669)
-                        : const Color(0xFFdc2626),
+                    color: kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -130,9 +113,7 @@ class SpecialistKPIView extends ConsumerWidget {
                     style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
-                        color: kpi.isPositive
-                            ? const Color(0xFF059669)
-                            : const Color(0xFFdc2626))),
+                        color: kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626))),
                 const SizedBox(height: 4),
                 Text(kpi.label,
                     textAlign: TextAlign.center,
@@ -142,8 +123,7 @@ class SpecialistKPIView extends ConsumerWidget {
                         color: Color(0xFF1e293b))),
                 const SizedBox(height: 10),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: kpi.isPositive
                         ? const Color(0xFFd1fae5).withValues(alpha: 0.5)
@@ -152,9 +132,7 @@ class SpecialistKPIView extends ConsumerWidget {
                   ),
                   child: Text(kpi.trend,
                       style: TextStyle(
-                          color: kpi.isPositive
-                              ? const Color(0xFF065f46)
-                              : const Color(0xFF7f1d1d),
+                          color: kpi.isPositive ? const Color(0xFF065f46) : const Color(0xFF7f1d1d),
                           fontSize: 9,
                           fontWeight: FontWeight.w900)),
                 ),
@@ -166,8 +144,7 @@ class SpecialistKPIView extends ConsumerWidget {
     );
   }
 
-  void _showKPIDetails(
-      BuildContext context, AppRiverpod provider, SocialSpecialistKPI kpi) {
+  void _showKPIDetails(BuildContext context, SocialSpecialistKPI kpi) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -185,8 +162,7 @@ class SpecialistKPIView extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2)),
+                  color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -215,29 +191,18 @@ class SpecialistKPIView extends ConsumerWidget {
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
                                     color: Color(0xFF1e293b))),
-                            const Text('تحليل الأداء للفترة الحالية',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF334155),
-                                    fontWeight: FontWeight.w600)),
+                            Text('تحليل الأداء للفترة الحالية',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 32),
-                    _buildDetailMetricRow(
-                        'القيمة الحالية',
-                        kpi.value,
-                        kpi.isPositive
-                            ? const Color(0xFF059669)
-                            : const Color(0xFFdc2626)),
+                    _buildDetailMetricRow('القيمة الحالية', kpi.value,
+                        kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626)),
                     const Divider(height: 32),
-                    _buildDetailMetricRow(
-                        'معدل التغير',
-                        kpi.trend,
-                        kpi.isPositive
-                            ? const Color(0xFF059669)
-                            : const Color(0xFFdc2626)),
+                    _buildDetailMetricRow('معدل التغير', kpi.trend,
+                        kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626)),
                     const SizedBox(height: 32),
                     const Text('مخطط النمو الزمني',
                         style: TextStyle(
@@ -245,7 +210,7 @@ class SpecialistKPIView extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1e293b))),
                     const SizedBox(height: 16),
-                    _buildChart(provider, kpi),
+                    _buildMockChart(),
                     const SizedBox(height: 32),
                     const Text('توصيات الأداء',
                         style: TextStyle(
@@ -269,8 +234,7 @@ class SpecialistKPIView extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(15)),
                         ),
                         child: const Text('فهمت',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
                   ],
@@ -287,21 +251,16 @@ class SpecialistKPIView extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF334155),
-                fontWeight: FontWeight.w600)),
+        Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
         Text(value,
-            style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
       ],
     );
   }
 
-  Widget _buildChart(AppRiverpod provider, SocialSpecialistKPI kpi) {
-    final values = _liveChartValues(provider, kpi);
-    final labels = List.generate(values.length, (i) => '${i + 1}');
+  Widget _buildMockChart() {
+    final days = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+    final values = [45, 60, 55, 75, 80, 70, 90];
 
     return Container(
       height: 160,
@@ -316,7 +275,7 @@ class SpecialistKPIView extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: List.generate(
-            values.length,
+            7,
             (i) => Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -328,7 +287,7 @@ class SpecialistKPIView extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Container(
                       width: 14,
-                      height: 20 + (values[i].toDouble().clamp(0, 100) * 0.9),
+                      height: values[i].toDouble(),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           begin: Alignment.bottomCenter,
@@ -339,7 +298,7 @@ class SpecialistKPIView extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(labels[i],
+                    Text(days[i],
                         style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -348,44 +307,6 @@ class SpecialistKPIView extends ConsumerWidget {
                 )),
       ),
     );
-  }
-
-  List<int> _liveChartValues(AppRiverpod provider, SocialSpecialistKPI kpi) {
-    List<int> values;
-    if (kpi.id == 'k1') {
-      values = provider.socialResidentScores
-          .map((resident) {
-            if (resident.scores.isEmpty) return 0;
-            final sum = resident.scores.values
-                .fold<double>(0, (total, score) => total + score);
-            return ((sum / resident.scores.length) * 100).round();
-          })
-          .where((value) => value > 0)
-          .toList();
-    } else if (kpi.id == 'k2') {
-      var done = 0;
-      values = provider.activities.asMap().entries.map((entry) {
-        if (entry.value.status == 'done') done++;
-        return ((done / (entry.key + 1)) * 100).round();
-      }).toList();
-    } else if (kpi.id == 'k3') {
-      values = provider.socialResidentScores
-          .map((resident) => resident.healthStatus == 'critical' ? 100 : 20)
-          .toList();
-    } else {
-      values = provider.socialComplaints
-          .map((complaint) => complaint.status == 'open' ? 100 : 30)
-          .toList();
-    }
-
-    if (values.isEmpty) {
-      final parsed = int.tryParse(kpi.value.replaceAll(RegExp(r'[^0-9]'), ''));
-      values = [parsed ?? 0];
-    }
-    if (values.length > 7) {
-      values = values.sublist(values.length - 7);
-    }
-    return values.map((value) => value.clamp(0, 100)).toList();
   }
 
   Widget _buildRecommendationCard(String text, IconData icon) {

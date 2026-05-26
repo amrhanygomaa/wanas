@@ -6,27 +6,19 @@ class AIInsightsPanel extends StatelessWidget {
   final bool isEnabled;
   final AIInsight? insight;
   final VoidCallback? onToggle;
-  final VoidCallback? onRefresh;
-  final bool isLoading;
-  final String mode;
 
   const AIInsightsPanel({
     super.key,
     required this.isEnabled,
     this.insight,
     this.onToggle,
-    this.onRefresh,
-    this.isLoading = false,
-    this.mode = 'backend',
   });
 
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
-      child: isEnabled
-          ? _buildEnabledState(context)
-          : _buildDisabledState(context),
+      child: isEnabled ? _buildEnabledState(context) : _buildDisabledState(context),
     );
   }
 
@@ -73,8 +65,7 @@ class AIInsightsPanel extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildBadge(
-                        'يتطلب مراجعة بشرية ⚖️', const Color(0xFFF59E0B)),
+                    _buildBadge('يتطلب مراجعة بشرية ⚖️', const Color(0xFFF59E0B)),
                     const Row(
                       children: [
                         Text(
@@ -87,93 +78,12 @@ class AIInsightsPanel extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 8),
-                        Icon(Icons.auto_awesome_rounded,
-                            color: Color(0xFF6366F1), size: 18),
+                        Icon(Icons.auto_awesome_rounded, color: Color(0xFF6366F1), size: 18),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                // شريط مصدر البيانات + زر التحديث من Bedrock
-                Row(
-                  children: [
-                    if (onRefresh != null)
-                      InkWell(
-                        onTap: isLoading ? null : onRefresh,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFF9900), Color(0xFFFFB14E)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isLoading)
-                                const SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              else
-                                const Icon(Icons.refresh_rounded,
-                                    color: Colors.white, size: 14),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'توليد من AWS Bedrock',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  fontFamily: 'Cairo',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: mode == 'bedrock'
-                            ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                            : mode == 'error'
-                                ? const Color(0xFFEF4444)
-                                    .withValues(alpha: 0.15)
-                                : const Color(0xFF94A3B8)
-                                    .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        mode == 'bedrock'
-                            ? '● Live من السحابة'
-                            : mode == 'error'
-                                ? '● فشل الاتصال'
-                                : '○ في انتظار Bedrock',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Cairo',
-                          color: mode == 'bedrock'
-                              ? const Color(0xFF065F46)
-                              : mode == 'error'
-                                  ? const Color(0xFF991B1B)
-                                  : const Color(0xFF475569),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Text(
                   insight!.summary,
                   textAlign: TextAlign.right,
@@ -252,8 +162,7 @@ class AIInsightsPanel extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.auto_awesome_motion_rounded,
-              color: Color(0xFF94A3B8), size: 32),
+          const Icon(Icons.auto_awesome_motion_rounded, color: Color(0xFF94A3B8), size: 32),
           const SizedBox(height: 12),
           const Text(
             'رؤى الذكاء الاصطناعي غير مفعلة',
@@ -280,18 +189,12 @@ class AIInsightsPanel extends StatelessWidget {
               onPressed: onToggle,
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text(
                 'تفعيل الآن',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    fontFamily: 'Cairo'),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Cairo'),
               ),
             ),
           ],

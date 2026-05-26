@@ -1,11 +1,8 @@
-// ignore_for_file: unused_element
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
 import '../../../models/app_models.dart';
 import '../admin_resident_detail_screen.dart';
-import '../../../widgets/live_kpi_banner.dart';
-import '../../../widgets/live_cloud_residents_banner.dart';
 
 // واجهة التحكم الرئيسية للمدير - تعرض مؤشرات الأداء والتنبيهات العاجلة
 class AdminHomeView extends ConsumerStatefulWidget {
@@ -35,74 +32,72 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
         .where((n) => n.isRead == _showResolved)
         .toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        // مؤشرات مباشرة من AWS RDS (US-Live-KPI)
-        const LiveKpiBanner(),
-        const LiveCloudResidentsBanner(),
-        const SizedBox(height: 8),
-        // عنوان قسم الأداء مع فلتر التاريخ الجديد
-        FadeTransition(
-          opacity: widget.fadeAnimations[0],
-          child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 20),
+          // عنوان قسم الأداء مع فلتر التاريخ الجديد
+          FadeTransition(
+            opacity: widget.fadeAnimations[0],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: _buildSectionTitle('الأداء التشغيلي')),
+                const SizedBox(width: 8),
+                _buildDateFilter(provider),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // شبكة مربعات مؤشرات الأداء (KPIs) - الآن تفاعلية
+          _buildKPIGrid(provider.adminStats, context),
+
+          const SizedBox(height: 25),
+          // قسم مميزات المنشأة المستعرضة
+          if (provider.currentAccount?.amenities != null && provider.currentAccount!.amenities!.isNotEmpty)
+            _buildAmenitiesSection(provider.currentAccount!.amenities!),
+
+          const SizedBox(height: 32),
+          // عنوان قسم الرسوم البيانية للنمو والصحة
+          FadeTransition(
+              opacity: widget.fadeAnimations[1],
+              child: _buildSectionTitle('منحنى النمو والصحة')),
+          const SizedBox(height: 16),
+          _buildLargeChartCard(provider),
+
+          const SizedBox(height: 32),
+          // قسم التنبيهات مع شريط الفلترة
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(child: _buildSectionTitle('الأداء التشغيلي')),
+              Expanded(
+                  child: FadeTransition(
+                      opacity: widget.fadeAnimations[2],
+                      child: _buildSectionTitle('تنبيهات المركز العاجلة'))),
               const SizedBox(width: 8),
-              _buildDateFilter(provider),
+              _buildAlertFilter(),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        // شبكة مربعات مؤشرات الأداء (KPIs) - الآن تفاعلية
-        _buildKPIGrid(provider.adminStats, context),
-
-        const SizedBox(height: 25),
-        // قسم مميزات المنشأة المستعرضة
-        if (provider.currentAccount?.amenities != null &&
-            provider.currentAccount!.amenities!.isNotEmpty)
-          _buildAmenitiesSection(provider.currentAccount!.amenities!),
-
-        const SizedBox(height: 32),
-        // عنوان قسم الرسوم البيانية للنمو والصحة
-        FadeTransition(
-            opacity: widget.fadeAnimations[1],
-            child: _buildSectionTitle('منحنى النمو والصحة')),
-        const SizedBox(height: 16),
-        _buildLargeChartCard(provider),
-
-        const SizedBox(height: 32),
-        // قسم التنبيهات مع شريط الفلترة
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-                child: FadeTransition(
-                    opacity: widget.fadeAnimations[2],
-                    child: _buildSectionTitle('تنبيهات المركز العاجلة'))),
-            const SizedBox(width: 8),
-            _buildAlertFilter(),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (adminAlerts.isEmpty)
-          _buildAlertCard(
-              TaptabaNotification(
-                  id: '0',
-                  title: 'لا توجد تنبيهات حالياً',
-                  body: '',
-                  time: 'الآن',
-                  type: 'stable',
-                  isRead: true),
-              Colors.green,
-              provider)
-        else
-          ...adminAlerts
-              .take(5)
-              .map((n) => _buildAlertCard(n, _getAlertColor(n.type), provider)),
-      ],
+          const SizedBox(height: 16),
+          if (adminAlerts.isEmpty)
+            _buildAlertCard(
+                TaptabaNotification(
+                    id: '0',
+                    title: 'لا توجد تنبيهات حالياً',
+                    body: '',
+                    time: 'الآن',
+                    type: 'stable',
+                    isRead: true),
+                Colors.green,
+                provider)
+          else
+            ...adminAlerts
+                .take(5)
+                .map((n) => _buildAlertCard(n, _getAlertColor(n.type), provider)),
+        ],
+      ),
     );
   }
 
@@ -127,8 +122,7 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
           children: [
             Row(
               children: [
-                const Icon(Icons.stars_rounded,
-                    color: Color(0xFF6C63FF), size: 24),
+                const Icon(Icons.stars_rounded, color: Color(0xFF6C63FF), size: 24),
                 const SizedBox(width: 10),
                 _buildSectionTitle('مميزات المنشأة'),
               ],
@@ -137,28 +131,22 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: amenities
-                  .map((a) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color:
-                              const Color(0xFF6C63FF).withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: const Color(0xFF6C63FF)
-                                  .withValues(alpha: 0.1)),
-                        ),
-                        child: Text(
-                          a,
-                          style: const TextStyle(
-                            color: Color(0xFF6C63FF),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ))
-                  .toList(),
+              children: amenities.map((a) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.1)),
+                ),
+                child: Text(
+                  a,
+                  style: const TextStyle(
+                    color: Color(0xFF6C63FF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              )).toList(),
             ),
           ],
         ),
@@ -320,14 +308,29 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFf1f5f9)),
+                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                gradient: const LinearGradient(
+                  colors: [
+                    Colors.white,
+                    Color(0xFFF8FAFC),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
                 boxShadow: [
+                  // 3D solid edge below the card
+                  const BoxShadow(
+                    color: Color(0xFFCBD5E1),
+                    offset: Offset(0, 5),
+                    blurRadius: 0,
+                  ),
+                  // Soft ambient shadow
                   BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 15,
-                      offset: const Offset(0, 10))
+                    color: Colors.black.withValues(alpha: 0.04),
+                    offset: const Offset(0, 10),
+                    blurRadius: 10,
+                  ),
                 ],
               ),
               child: Column(
@@ -447,9 +450,7 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                 left: 0,
                                 top: 0,
                                 child: Text(
-                                    stat.history
-                                        .reduce((a, b) => a > b ? a : b)
-                                        .toStringAsFixed(1),
+                                    '${stat.history.reduce((a, b) => a > b ? a : b).toStringAsFixed(1)}',
                                     style: const TextStyle(
                                         color: Color(0xFF1e293b),
                                         fontSize: 11,
@@ -459,9 +460,7 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                 left: 0,
                                 bottom: 25,
                                 child: Text(
-                                    stat.history
-                                        .reduce((a, b) => a < b ? a : b)
-                                        .toStringAsFixed(1),
+                                    '${stat.history.reduce((a, b) => a < b ? a : b).toStringAsFixed(1)}',
                                     style: const TextStyle(
                                         color: Color(0xFF1e293b),
                                         fontSize: 11,
@@ -577,9 +576,7 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                       left: 0,
                                       top: 0,
                                       child: Text(
-                                          stat.history
-                                              .reduce((a, b) => a > b ? a : b)
-                                              .toStringAsFixed(1),
+                                          '${stat.history.reduce((a, b) => a > b ? a : b).toStringAsFixed(1)}',
                                           style: const TextStyle(
                                               color: Color(0xFF1e293b),
                                               fontSize: 11,
@@ -589,9 +586,7 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                       left: 0,
                                       bottom: 25,
                                       child: Text(
-                                          stat.history
-                                              .reduce((a, b) => a < b ? a : b)
-                                              .toStringAsFixed(1),
+                                          '${stat.history.reduce((a, b) => a < b ? a : b).toStringAsFixed(1)}',
                                           style: const TextStyle(
                                               color: Color(0xFF1e293b),
                                               fontSize: 11,

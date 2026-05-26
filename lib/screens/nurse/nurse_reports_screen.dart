@@ -7,8 +7,6 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/medication_adherence_service.dart';
-import '../../services/nursing_reports_service.dart';
 
 class NurseReportsScreen extends ConsumerStatefulWidget {
   const NurseReportsScreen({super.key});
@@ -34,9 +32,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
   String _weeklyDay = 'الجمعة';
   bool _isCriticalAlertOn = true;
   bool _isMissedMedAlertOn = true;
-  bool _isLoadingBackendReports = false;
-  List<NursingReportCompletenessItem> _reportCompleteness = [];
-  MedicationAdherenceReport? _adherenceReport;
 
   String _getShiftName() {
     int hour = DateTime.now().hour;
@@ -60,10 +55,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     _floatController =
         AnimationController(vsync: this, duration: const Duration(seconds: 3))
           ..repeat(reverse: true);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBackendReportData();
-    });
   }
 
   @override
@@ -74,71 +65,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     super.dispose();
   }
 
-  Future<void> _loadBackendReportData() async {
-    setState(() => _isLoadingBackendReports = true);
-    try {
-      final settings = await NursingReportsService.instance.settings();
-      final completeness = await NursingReportsService.instance.completeness();
-      final adherence =
-          await MedicationAdherenceService.instance.report(period: 'weekly');
-      if (!mounted) return;
-      setState(() {
-        _dailyTime = settings.dailyTime;
-        _weeklyDay = settings.weeklyDay;
-        _isCriticalAlertOn = settings.criticalAlertEnabled;
-        _isMissedMedAlertOn = settings.missedMedicationAlertEnabled;
-        if (settings.recipients.isNotEmpty) {
-          for (final key in _activeRecipients.keys.toList()) {
-            _activeRecipients[key] = settings.recipients.contains(key);
-          }
-        }
-        _reportCompleteness = completeness;
-        _adherenceReport = adherence;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تعذر تحميل إعدادات التقارير من AWS: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoadingBackendReports = false);
-    }
-  }
-
-  Future<void> _saveBackendReportSettings() async {
-    try {
-      final settings = await NursingReportsService.instance.updateSettings(
-        dailyTime: _dailyTime,
-        weeklyDay: _weeklyDay,
-        criticalAlertEnabled: _isCriticalAlertOn,
-        missedMedicationAlertEnabled: _isMissedMedAlertOn,
-        recipients: _activeRecipients.entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList(),
-      );
-      if (!mounted) return;
-      setState(() {
-        _dailyTime = settings.dailyTime;
-        _weeklyDay = settings.weeklyDay;
-        _isCriticalAlertOn = settings.criticalAlertEnabled;
-        _isMissedMedAlertOn = settings.missedMedicationAlertEnabled;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تعذر حفظ إعدادات التقارير: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
-  }
-
-  Future<void> _sendReport(String reportType) async {
+  void _showSendSimulation(String reportType) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
@@ -174,71 +101,33 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
         ),
       ),
     );
-    final provider = ref.read(appRiverpod);
-    String icon = '📋';
-    if (reportType == 'تقرير أسبوعي') icon = '📊';
-    if (reportType == 'تنبيه حرج') icon = '🚨';
-    if (reportType == 'تقرير أدوية') icon = '💊';
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!context.mounted) return;
+      Navigator.pop(context);
 
-    await provider.addSentReport(SentReport(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      icon: icon,
-      title: '$reportType — ${DateTime.now().day} مايو',
-      meta: 'أُرسل يدوياً · ${DateTime.now().hour}:${DateTime.now().minute}',
-      status: 'أُرسل',
-      date: DateTime.now().toIso8601String(),
-    ));
+      final provider = ref.read(appRiverpod);
+      String icon = '📋';
+      if (reportType == 'تقرير أسبوعي') icon = '📊';
+      if (reportType == 'تنبيه حرج') icon = '🚨';
+      if (reportType == 'تقرير أدوية') icon = '💊';
 
-    if (!mounted) return;
-    Navigator.pop(context);
-    final error = provider.backendSyncError;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error ?? 'تم إرسال $reportType بنجاح'),
-      backgroundColor:
-          error == null ? const Color(0xFF10B981) : Colors.redAccent,
-    ));
+      provider.addSentReport(SentReport(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        icon: icon,
+        title: '$reportType — ${DateTime.now().day} مايو',
+        meta: 'أُرسل يدوياً · ${DateTime.now().hour}:${DateTime.now().minute}',
+        status: 'أُرسل',
+        date: DateTime.now().toIso8601String(),
+      ));
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('تم إرسال $reportType بنجاح'),
+        backgroundColor: const Color(0xFF10B981),
+      ));
+    });
   }
 
   Future<void> _generatePDF(String reportType) async {
-    try {
-      final exported = await NursingReportsService.instance.export(
-        reportType: reportType,
-        format: 'pdf',
-      );
-      await _printBackendReport(exported);
-      return;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('تعذر تصدير تقرير AWS، سيتم إنشاء نسخة محلية: $e'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    }
-
-    final provider = ref.read(appRiverpod);
-    final residentCount = provider.residentFiles.length;
-    final openComplaints = provider.unresolvedComplaintsCount;
-    final completedTasks =
-        provider.careTasks.where((task) => task.isCompleted).length;
-    final totalTasks = provider.careTasks.length;
-    final taskCompletion =
-        totalTasks == 0 ? 0 : ((completedTasks / totalTasks) * 100).round();
-    final medicationTotal = provider.medications.length;
-    final medicationTaken =
-        provider.medications.where((med) => med.isTaken).length;
-    final medicationRate = medicationTotal == 0
-        ? 0
-        : ((medicationTaken / medicationTotal) * 100).round();
-    final criticalComplaints = provider.socialComplaints
-        .where((complaint) =>
-            complaint.priority == 'critical' || complaint.priority == 'high')
-        .toList();
-    final criticalResident = criticalComplaints.isEmpty
-        ? null
-        : criticalComplaints.first.residentName;
     final fontData = await rootBundle.load('assets/fonts/Cairo-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
     final fontBoldData = await rootBundle.load('assets/fonts/Cairo-Bold.ttf');
@@ -261,37 +150,16 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('تطبيق طبطبة',
-                          style: pw.TextStyle(
-                              font: ttfBold,
-                              fontSize: 18,
-                              color: PdfColors.blue600)),
-                      pw.Text(
-                          provider.facilityName.isNotEmpty
-                              ? provider.facilityName
-                              : 'اسم المنشأة غير مهيأ',
-                          style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 12,
-                              color: PdfColors.grey700)),
+                      pw.Text('تطبيق ونس', style: pw.TextStyle(font: ttfBold, fontSize: 18, color: PdfColors.blue600)),
+                      pw.Text('دار الأمل لرعاية كبار السن', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey700)),
                     ],
                   ),
                   pw.SizedBox(height: 5),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text(
-                          'الممرض: ${provider.currentAccount?.name ?? 'الممرض'}',
-                          style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 12,
-                              color: PdfColors.grey700)),
-                      pw.Text(
-                          'التاريخ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}  الوقت: ${DateTime.now().hour}:${DateTime.now().minute}',
-                          style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 12,
-                              color: PdfColors.grey700)),
+                      pw.Text('الممرض: أ. منى', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey700)),
+                      pw.Text('التاريخ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}  الوقت: ${DateTime.now().hour}:${DateTime.now().minute}', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey700)),
                     ],
                   ),
                   pw.SizedBox(height: 10),
@@ -308,6 +176,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   ),
                   pw.SizedBox(height: 30),
 
+                  // Content (Mock data based on type)
                   pw.Text('تفاصيل التقرير:',
                       style: pw.TextStyle(
                           font: ttfBold,
@@ -316,25 +185,17 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   pw.SizedBox(height: 15),
 
                   if (reportType == 'تقرير أسبوعي') ...[
-                    _pdfRow(
-                        ttf, ttfBold, 'عدد المقيمين من AWS', '$residentCount'),
-                    _pdfRow(
-                        ttf, ttfBold, 'الشكاوى المفتوحة', '$openComplaints'),
-                    _pdfRow(ttf, ttfBold, 'متوسط الالتزام الدوائي',
-                        '$medicationRate٪'),
+                    _pdfRow(ttf, ttfBold, 'الأسبوع الحالي', '١٩ - ٢٦ أبريل'),
+                    _pdfRow(ttf, ttfBold, 'نسبة الرضا العام', '٩٨٪'),
+                    _pdfRow(ttf, ttfBold, 'متوسط الالتزام', '٩٥٪'),
                   ] else if (reportType == 'تنبيه حرج') ...[
-                    _pdfRow(ttf, ttfBold, 'المقيم',
-                        criticalResident ?? 'لا توجد حالة حرجة مسجلة'),
-                    _pdfRow(ttf, ttfBold, 'الحالة',
-                        criticalResident == null ? 'مستقرة' : 'حرجة'),
-                    _pdfRow(ttf, ttfBold, 'مصدر البيانات', 'AWS RDS'),
+                    _pdfRow(ttf, ttfBold, 'المقيم', 'الحاج محمود'),
+                    _pdfRow(ttf, ttfBold, 'الحالة', 'ارتفاع مفاجئ في ضغط الدم'),
+                    _pdfRow(ttf, ttfBold, 'القياس', '١٦٠/١٠٠'),
                   ] else ...[
-                    _pdfRow(ttf, ttfBold, 'حالة الوردية',
-                        openComplaints == 0 ? 'مستقرة' : 'تحتاج متابعة'),
-                    _pdfRow(ttf, ttfBold, 'عدد المقيمين المتابعين',
-                        '$residentCount'),
-                    _pdfRow(
-                        ttf, ttfBold, 'نسبة اكتمال المهام', '$taskCompletion٪'),
+                    _pdfRow(ttf, ttfBold, 'حالة الوردية', 'مستقرة'),
+                    _pdfRow(ttf, ttfBold, 'عدد المقيمين المتابعين', '٢٤'),
+                    _pdfRow(ttf, ttfBold, 'نسبة اكتمال المهام', '٩٠٪'),
                   ],
 
                   pw.Spacer(),
@@ -345,21 +206,10 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.center,
                       children: [
-                        pw.Container(
-                            width: 120,
-                            child: pw.Divider(
-                                color: PdfColors.grey400, thickness: 1)),
+                        pw.Container(width: 120, child: pw.Divider(color: PdfColors.grey400, thickness: 1)),
                         pw.SizedBox(height: 4),
-                        pw.Text('توقيع الممرض',
-                            style: pw.TextStyle(
-                                font: ttfBold,
-                                fontSize: 12,
-                                color: PdfColors.grey800)),
-                        pw.Text(provider.currentAccount?.name ?? 'الممرض',
-                            style: pw.TextStyle(
-                                font: ttf,
-                                fontSize: 11,
-                                color: PdfColors.grey600)),
+                        pw.Text('توقيع الممرض', style: pw.TextStyle(font: ttfBold, fontSize: 12, color: PdfColors.grey800)),
+                        pw.Text('أ. منى', style: pw.TextStyle(font: ttf, fontSize: 11, color: PdfColors.grey600)),
                       ],
                     ),
                   ),
@@ -370,7 +220,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   pw.SizedBox(height: 10),
                   pw.Center(
                     child: pw.Text(
-                        'تم إنشاء هذا التقرير تلقائياً عبر تطبيق طبطبة',
+                        'تم إنشاء هذا التقرير تلقائياً عبر تطبيق ونس',
                         style: pw.TextStyle(
                             font: ttf, fontSize: 10, color: PdfColors.grey600)),
                   ),
@@ -385,61 +235,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: '$reportType.pdf',
-    );
-  }
-
-  Future<void> _printBackendReport(NursingReportExport report) async {
-    final fontData = await rootBundle.load('assets/fonts/Cairo-Regular.ttf');
-    final ttf = pw.Font.ttf(fontData);
-    final fontBoldData = await rootBundle.load('assets/fonts/Cairo-Bold.ttf');
-    final ttfBold = pw.Font.ttf(fontBoldData);
-    final pdf = pw.Document();
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        theme: pw.ThemeData.withFont(base: ttf, bold: ttfBold),
-        textDirection: pw.TextDirection.rtl,
-        build: (pw.Context context) => [
-          pw.Text(
-            report.title,
-            style: pw.TextStyle(font: ttfBold, fontSize: 20),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Text(
-            report.summary,
-            style: pw.TextStyle(font: ttf, fontSize: 12),
-          ),
-          pw.SizedBox(height: 18),
-          ...report.metrics.map(
-            (metric) => _pdfRow(ttf, ttfBold, metric.label, metric.value),
-          ),
-          pw.SizedBox(height: 18),
-          pw.Text(
-            'ملاحظات',
-            style: pw.TextStyle(font: ttfBold, fontSize: 14),
-          ),
-          ...report.notes.map(
-            (note) => pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(vertical: 3),
-              child: pw.Text(note, style: pw.TextStyle(font: ttf)),
-            ),
-          ),
-          pw.SizedBox(height: 18),
-          pw.Text(
-            'اكتمال التقرير',
-            style: pw.TextStyle(font: ttfBold, fontSize: 14),
-          ),
-          ...report.completeness.map(
-            (item) => _pdfRow(ttf, ttfBold, item.title, item.value),
-          ),
-        ],
-      ),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: report.filename,
     );
   }
 
@@ -460,89 +255,100 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     );
   }
 
-  Future<void> _showPreviewDialog(String type) async {
+  void _showPreviewDialog(String type) {
+    String title = 'معاينة $type';
+    Widget content;
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const CircularProgressIndicator(color: Color(0xFF0EA5E9)),
-        ),
-      ),
-    );
-
-    NursingReportPreview preview;
-    try {
-      preview = await NursingReportsService.instance.preview(reportType: type);
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تعذر تحميل معاينة التقرير من AWS: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          preview.summary,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.5,
-            color: isDark ? Colors.white70 : const Color(0xFF475569),
-          ),
-        ),
-        Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
-        ...preview.metrics.map((metric) => _previewRow(
-              metric.label,
-              metric.value,
-            )),
-        if (preview.notes.isNotEmpty) ...[
+    if (type == 'تقرير أسبوعي') {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _previewRow('الأسبوع الحالي', '١٩ - ٢٦ أبريل'),
+          _previewRow('نسبة الرضا العام', '٩٨٪'),
+          _previewRow('متوسط الالتزام', '٩٥٪'),
           Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
-          Text(
-            'ملاحظات AWS:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 6),
-          ...preview.notes.map(
-            (note) => Text(
-              note,
+          Text('تقرير الاتجاهات:',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: isDark ? Colors.white : Colors.black87)),
+          Text('• تحسن ملحوظ في النشاط الجماعي للمقيمين.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontSize: 11,
-                color: isDark ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ),
+                  fontSize: 11,
+                  color: isDark ? Colors.white70 : Colors.black54)),
         ],
-      ],
-    );
+      );
+    } else if (type == 'تنبيه حرج') {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('⚠️ سيتم إرسال تنبيه فوري للطبيب المشرف والإدارة',
+              style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12)),
+          const SizedBox(height: 12),
+          _previewRow('المقيم', 'الحاج محمود سالم'),
+          _previewRow('نوع الحالة', 'ارتفاع ضغط مفاجئ'),
+          _previewRow('القراءة', '١٦٠/١٠٠'),
+        ],
+      );
+    } else if (type == 'تقرير أدوية') {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _previewRow('إجمالي الجرعات اليوم', '٧٢ جرعة'),
+          _previewRow('جرعات منفذة', '٦٨ جرعة'),
+          _previewRow('جرعات متبقية', '٤ جرعات'),
+          Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
+          Text('تفاصيل الجرعات المعلقة:',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: isDark ? Colors.white : Colors.black87)),
+          Text('• بانادول اكسترا (عند اللزوم).',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white70 : Colors.black54)),
+        ],
+      );
+    } else {
+      // Daily
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _previewRow('تاريخ التقرير', '٢٦ أبريل ٢٠٢٤'),
+          _previewRow('عدد المقيمين', '٢٤ مقيم'),
+          _previewRow('حالات حرجة', '٢ حالة'),
+          _previewRow('الالتزام بالأدوية', '٩٢٪'),
+          Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
+          Text('أهم الملاحظات:',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: isDark ? Colors.white : Colors.black87)),
+          Text('• استقرار حالة الحاج محمود بعد تعديل الجرعة.',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white70 : Colors.black54)),
+        ],
+      );
+    }
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(preview.title,
+        title: Text(title,
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -559,7 +365,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                 ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    _sendReport(type);
+                    _showSendSimulation(type);
                   },
                   style: ElevatedButton.styleFrom(
                       backgroundColor: type == 'تنبيه حرج'
@@ -597,8 +403,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   onPressed: () => Navigator.pop(context),
                   child: Text('إلغاء',
                       style: TextStyle(
-                          color:
-                              isDark ? Colors.white38 : const Color(0xFF64748B),
+                          color: isDark ? Colors.white38 : const Color(0xFF64748B),
                           fontFamily: 'Cairo')),
                 ),
               ],
@@ -652,8 +457,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                 const SizedBox(height: 10),
                 _buildReportCompleteness(),
                 const SizedBox(height: 10),
-                _buildMedicationAdherence(),
-                const SizedBox(height: 10),
                 _buildSentHistory(),
                 const SizedBox(height: 20),
                 const SizedBox(height: 100), // Space for parent's bottom nav
@@ -695,7 +498,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${ref.read(appRiverpod).currentAccount?.name ?? 'الممرض'} — ${_getShiftName()}',
+                      'أ. منى — ${_getShiftName()}',
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                     const SizedBox(height: 8),
@@ -822,24 +625,10 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
                       const SizedBox(height: 2),
-                      Builder(builder: (context) {
-                        final p = ref.read(appRiverpod);
-                        final totalMeds = p.medications.length;
-                        final takenMeds =
-                            p.medications.where((m) => m.isTaken).length;
-                        final adherencePct = totalMeds > 0
-                            ? (takenMeds * 100 ~/ totalMeds)
-                            : 0;
-                        final criticalCount = p.residentFiles
-                            .where((r) => r.status == 'critical')
-                            .length;
-                        return Text(
-                          '${p.residentFiles.length} مقيم · $criticalCount حالة حرجة · $adherencePct٪ التزام بالأدوية',
+                      Text('٢٤ مقيم · ٢ حالة حرجة · ٩٢٪ التزام بالأدوية',
                           style: TextStyle(
                               fontSize: 13,
-                              color: Colors.white.withValues(alpha: 0.9)),
-                        );
-                      }),
+                              color: Colors.white.withValues(alpha: 0.9))),
                       const SizedBox(height: 11),
                       Row(
                         children: [
@@ -872,7 +661,8 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => _sendReport('التقرير اليومي'),
+                              onTap: () =>
+                                  _showSendSimulation('التقرير اليومي'),
                               child: Container(
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 8),
@@ -928,31 +718,22 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Builder(builder: (_) {
-                final provider = ref.read(appRiverpod);
-                final critical = provider.residentFiles
-                    .where((f) => f.status == 'critical')
-                    .toList();
-                final name = critical.isNotEmpty
-                    ? critical.first.name
-                    : 'مقيم بحالة حرجة';
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('إرسال تنبيه حرج — $name',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
-                    const SizedBox(height: 1),
-                    const Text('تنبيه فوري للطبيب والإدارة',
-                        style: TextStyle(fontSize: 12, color: Colors.white)),
-                  ],
-                );
-              }),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('إرسال تنبيه حرج — الحاج محمود',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  const SizedBox(height: 1),
+                  Text('ضغط ١٦٠/١٠٠ · تجاوز الحد منذ ٢٣ د',
+                      style: TextStyle(fontSize: 12, color: Colors.white)),
+                ],
+              ),
             ),
             GestureDetector(
-              onTap: () => _sendReport('التنبيه الحرج'),
+              onTap: () => _showSendSimulation('التنبيه الحرج'),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1209,7 +990,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
           setState(() {
             _activeRecipients[key] = !isOn;
           });
-          _saveBackendReportSettings();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(isOn
                 ? 'تم إيقاف الإرسال لـ $key 🛑'
@@ -1279,11 +1059,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
               final picked = await showTimePicker(
                   context: context, initialTime: TimeOfDay.now());
               if (picked != null) {
-                setState(() {
-                  _dailyTime =
-                      '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                });
-                await _saveBackendReportSettings();
+                setState(() => _dailyTime = picked.format(context));
               }
             }),
             Divider(
@@ -1298,7 +1074,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
             _schRowTog('تنبيه القراءات الحرجة', 'إرسال فوري عند تجاوز الحد',
                 _isCriticalAlertOn, (val) {
               setState(() => _isCriticalAlertOn = val);
-              _saveBackendReportSettings();
             }),
             Divider(
                 color: isDark ? Colors.white10 : const Color(0xFFF0F9FF),
@@ -1306,7 +1081,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
             _schRowTog('تنبيه الدواء الفائت', 'بعد ٣٠ دقيقة من الموعد',
                 _isMissedMedAlertOn, (val) {
               setState(() => _isMissedMedAlertOn = val);
-              _saveBackendReportSettings();
             }),
           ],
         ),
@@ -1340,7 +1114,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                     onTap: () {
                       setState(() => _weeklyDay = d);
                       Navigator.pop(context);
-                      _saveBackendReportSettings();
                     },
                   ))
               .toList(),
@@ -1452,7 +1225,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
 
   Widget _buildReportCompleteness() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final items = _reportCompleteness;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Container(
@@ -1468,41 +1240,14 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
           children: [
             _sectionHeader('اكتمال التقرير اليومي', const Color(0xFF0EA5E9)),
             const SizedBox(height: 4),
-            if (_isLoadingBackendReports && items.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: CircularProgressIndicator(
-                  color: Color(0xFF0EA5E9),
-                  strokeWidth: 2,
-                ),
-              )
-            else if (items.isEmpty) ...[
-              _progRow(
-                  'القراءات الحيوية', '٠٪', 0, const Color(0xFF0EA5E9), 900),
-              const SizedBox(height: 9),
-              _progRow('تأكيد الأدوية', '٠٪', 0, const Color(0xFF10B981), 1500),
-              const SizedBox(height: 9),
-              _progRow(
-                  'ملاحظات الممرضة', '٠٪', 0, const Color(0xFFF59E0B), 1600),
-            ] else
-              ...items.asMap().entries.expand((entry) {
-                final colors = [
-                  const Color(0xFF0EA5E9),
-                  const Color(0xFF10B981),
-                  const Color(0xFFF59E0B),
-                ];
-                final item = entry.value;
-                return [
-                  _progRow(
-                    item.title,
-                    item.value,
-                    item.percentage.clamp(0.0, 1.0).toDouble(),
-                    colors[entry.key % colors.length],
-                    900 + (entry.key * 250),
-                  ),
-                  const SizedBox(height: 9),
-                ];
-              }),
+            _progRow(
+                'القراءات الحيوية', '٨٧٪', 0.87, const Color(0xFF0EA5E9), 900),
+            const SizedBox(height: 9),
+            _progRow(
+                'تأكيد الأدوية', '٩٢٪', 0.92, const Color(0xFF10B981), 1500),
+            const SizedBox(height: 9),
+            _progRow(
+                'ملاحظات الممرضة', '٦٠٪', 0.60, const Color(0xFFF59E0B), 1600),
             const SizedBox(height: 7),
             const Text('أكمل الملاحظات الناقصة قبل إرسال التقرير',
                 style: TextStyle(fontSize: 12, color: Color(0xFF475569))),
@@ -1561,90 +1306,6 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     );
   }
 
-  Widget _buildMedicationAdherence() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final report = _adherenceReport;
-    final pct = ((report?.facilityAdherence.percentage ?? 0) / 100)
-        .clamp(0.0, 1.0)
-        .toDouble();
-    final residents = (report?.residents ?? const [])
-        .where((resident) => resident.totalDoses > 0)
-        .take(3)
-        .toList();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-              color: isDark ? Colors.white12 : const Color(0xFFE0F2FE),
-              width: 1.5),
-        ),
-        child: Column(
-          children: [
-            _sectionHeader('تقرير الالتزام الدوائي', const Color(0xFF10B981)),
-            if (_isLoadingBackendReports && report == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: CircularProgressIndicator(
-                  color: Color(0xFF10B981),
-                  strokeWidth: 2,
-                ),
-              )
-            else ...[
-              _progRow(
-                'التزام المنشأة',
-                '${(report?.facilityAdherence.percentage ?? 0).toStringAsFixed(0)}٪',
-                pct,
-                const Color(0xFF10B981),
-                1200,
-              ),
-              const SizedBox(height: 10),
-              if (residents.isEmpty)
-                const Text(
-                  'لا توجد جرعات مسجلة في فترة التقرير بعد',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                )
-              else
-                ...residents.map((resident) {
-                  final name = resident.residentName.isEmpty
-                      ? 'مقيم ${resident.roomNumber}'
-                      : resident.residentName;
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 7),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${resident.givenDoses}/${resident.totalDoses} جرعات',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF475569),
-                          ),
-                        ),
-                        Text(
-                          '$name · ${resident.percentage.toStringAsFixed(0)}٪',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSentHistory() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = ref.watch(appRiverpod);
@@ -1652,91 +1313,288 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('سجل الإرسال', const Color(0xFF10B981)),
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                  color: isDark ? Colors.white12 : const Color(0xFFE0F2FE),
-                  width: 1.5),
-            ),
-            child: Column(
-              children: provider.sentReports.map((report) {
-                Color bg = isDark
-                    ? const Color(0xFF065F46).withValues(alpha: 0.2)
-                    : const Color(0xFFD1FAE5);
-                Color fg = const Color(0xFF10B981);
-
-                if (report.status == 'مجدول') {
-                  bg = isDark
-                      ? const Color(0xFF78350F).withValues(alpha: 0.2)
-                      : const Color(0xFFFEF3C7);
-                  fg = const Color(0xFFF59E0B);
-                }
-
-                return Column(
-                  children: [
-                    _histRow(report.icon, bg, report.title, report.meta,
-                        report.status, bg, fg),
-                    if (report != provider.sentReports.last)
-                      Divider(
-                          color:
-                              isDark ? Colors.white10 : const Color(0xFFF0F9FF),
-                          height: 1),
-                  ],
+          _sectionHeader('سجل الإرسال ', const Color(0xFF10B981)),
+          const SizedBox(height: 8),
+          if (provider.sentReports.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(24),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.history_toggle_off_rounded,
+                    size: 40,
+                    color: isDark ? Colors.white30 : Colors.grey[400],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'لا يوجد سجل إرسال حتى الآن',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 13,
+                      color: isDark ? Colors.white38 : Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: provider.sentReports.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final report = provider.sentReports[index];
+                return TweenAnimationBuilder<double>(
+                  duration: Duration(milliseconds: 300 + (index * 100)),
+                  tween: Tween<double>(begin: 0.0, end: 1.0),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0.0, 20.0 * (1.0 - value)),
+                      child: Opacity(
+                        opacity: value,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _buildSentReportCard(report),
                 );
-              }).toList(),
+              },
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _histRow(String icon, Color iconBg, String title, String meta,
-      String stLabel, Color stBg, Color stFg) {
+  Widget _buildSentReportCard(SentReport report) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-                color: iconBg, borderRadius: BorderRadius.circular(10)),
-            child:
-                Center(child: Text(icon, style: const TextStyle(fontSize: 15))),
+    
+    // 1. Determine category colors and icons
+    Color categoryColor = const Color(0xFF10B981); // Emerald (Daily)
+    IconData cardIcon = Icons.assignment_turned_in_rounded;
+    IconData metaIcon = Icons.info_outline_rounded;
+    
+    if (report.title.contains('حرج') || report.icon == '🚨') {
+      categoryColor = const Color(0xFFEF4444); // Red (Critical Alert)
+      cardIcon = Icons.emergency_rounded;
+      metaIcon = Icons.bolt_rounded;
+    } else if (report.title.contains('أسبوعي') || report.icon == '📊') {
+      categoryColor = const Color(0xFF8B5CF6); // Purple (Weekly)
+      cardIcon = Icons.analytics_rounded;
+      metaIcon = Icons.calendar_month_rounded;
+    } else if (report.status == 'مجدول') {
+      categoryColor = const Color(0xFFF59E0B); // Amber (Scheduled)
+      cardIcon = Icons.calendar_today_rounded;
+      metaIcon = Icons.schedule_rounded;
+    }
+    
+    // Dynamic meta icon override
+    if (report.meta.contains('تلقائياً')) {
+      metaIcon = Icons.autorenew_rounded;
+    } else if (report.meta.contains('يدوياً')) {
+      metaIcon = Icons.send_rounded;
+    } else if (report.meta.contains('مجدول')) {
+      metaIcon = Icons.schedule_rounded;
+    }
+
+    // 2. Parse title for beautiful visual hierarchy
+    String mainTitle = report.title;
+    String subtitle = '';
+    if (report.title.contains('—')) {
+      final parts = report.title.split('—');
+      mainTitle = parts[0].trim();
+      subtitle = parts[1].trim();
+    } else if (report.title.contains('-')) {
+      final parts = report.title.split('-');
+      mainTitle = parts[0].trim();
+      subtitle = parts[1].trim();
+    }
+
+    // 3. Status Badge colors
+    Color statusBg = isDark
+        ? const Color(0xFF065F46).withValues(alpha: 0.15)
+        : const Color(0xFFE6FDF5);
+    Color statusFg = const Color(0xFF059669);
+    IconData statusIcon = Icons.check_circle_outline_rounded;
+
+    if (report.status == 'مجدول') {
+      statusBg = isDark
+          ? const Color(0xFF78350F).withValues(alpha: 0.15)
+          : const Color(0xFFFFFBEB);
+      statusFg = const Color(0xFFD97706);
+      statusIcon = Icons.schedule_rounded;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            isDark ? Colors.white : const Color(0xFF0F172A))),
-                const SizedBox(height: 2),
-                Text(meta,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF475569))),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-                color: stBg, borderRadius: BorderRadius.circular(8)),
-            child: Text(stLabel,
-                style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.bold, color: stFg)),
-          )
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // 4. Accent line indicator on the right side (RTL friendly)
+              Container(
+                width: 5,
+                color: categoryColor,
+              ),
+              
+              // Card content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      // 5. Styled Glowing Icon Container
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: categoryColor.withValues(alpha: isDark ? 0.15 : 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: categoryColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            cardIcon,
+                            color: categoryColor,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      
+                      // 6. Report info (Title & Meta)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  mainTitle,
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                if (subtitle.isNotEmpty) ...[
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '•  $subtitle',
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Icon(
+                                  metaIcon,
+                                  size: 13,
+                                  color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    report.meta,
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontSize: 11,
+                                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      
+                      // 7. Dynamic Status Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: statusFg.withValues(alpha: 0.15),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              statusIcon,
+                              size: 11,
+                              color: statusFg,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              report.status,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: statusFg,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -50,7 +50,7 @@ class RealtimeService {
     final socket = io.io(
       endpoint,
       io.OptionBuilder()
-          .setTransports(['websocket', 'polling'])
+          .setTransports(['polling'])
           .disableAutoConnect()
           .setQuery({
             'facilityId': user.facilityId,

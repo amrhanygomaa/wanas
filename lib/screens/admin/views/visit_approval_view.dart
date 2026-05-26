@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
 import '../../../models/app_models.dart';
-import '../../../widgets/live_family_visits_banner.dart';
 
 class VisitApprovalView extends ConsumerWidget {
   final List<Animation<double>> fadeAnimations;
@@ -18,8 +17,6 @@ class VisitApprovalView extends ConsumerWidget {
     return Column(
       children: [
         _buildHeader(pendingVisits.length),
-        // أزرار الموافقة/الرفض الحقيقية (PATCH على AWS RDS)
-        const LiveFamilyVisitsBanner(showActions: true),
         if (pendingVisits.isEmpty)
           _buildEmptyState()
         else
@@ -107,7 +104,8 @@ class VisitApprovalView extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Image.asset('assets/icons/calendar.png', width: 14, height: 14),
+              Image.asset('assets/icons/calendar.png',
+                  width: 14, height: 14),
               const SizedBox(width: 8),
               Text(v.date,
                   style: const TextStyle(

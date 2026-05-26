@@ -1,34 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
-import '../../services/auth_service.dart';
-import '../../services/api_client.dart';
+import '../../providers/app_riverpod.dart';
 
-class AdminRegisterScreen extends StatefulWidget {
+class AdminRegisterScreen extends ConsumerStatefulWidget {
   const AdminRegisterScreen({super.key});
 
   @override
-  State<AdminRegisterScreen> createState() => _AdminRegisterScreenState();
+  ConsumerState<AdminRegisterScreen> createState() => _AdminRegisterScreenState();
 }
 
-class _AdminRegisterScreenState extends State<AdminRegisterScreen>
+class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-
+  
   // Account Controllers
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
+  
   // Facility Controllers
   final _facilityNameController = TextEditingController();
   final _facilityAddressController = TextEditingController();
-  final _facilityIdController = TextEditingController();
   final _facilityYearController = TextEditingController();
   final _facilityCapacityController = TextEditingController();
   final _facilityLicenseController = TextEditingController();
   final _facilityLocationController = TextEditingController();
-  final _setupSecretController = TextEditingController();
-
+  
   final List<String> _allAmenities = [
     'حديقة واسعة',
     'رعاية طبية 24/7',
@@ -41,7 +39,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
     'أنشطة ترفيهية يومية',
     'صالون عناية شخصية',
   ];
-
+  
   final List<String> _selectedAmenities = [];
   bool _isLoading = false;
   late AnimationController _fadeController;
@@ -53,35 +51,19 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..forward();
-    _facilityNameController.addListener(_autoFillFacilityId);
-  }
-
-  void _autoFillFacilityId() {
-    final name = _facilityNameController.text;
-    final slug = name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s-]'), '')
-        .trim()
-        .replaceAll(RegExp(r'\s+'), '-');
-    if (slug.isNotEmpty) {
-      _facilityIdController.text = slug;
-    }
   }
 
   @override
   void dispose() {
-    _facilityNameController.removeListener(_autoFillFacilityId);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _facilityNameController.dispose();
     _facilityAddressController.dispose();
-    _facilityIdController.dispose();
     _facilityYearController.dispose();
     _facilityCapacityController.dispose();
     _facilityLicenseController.dispose();
     _facilityLocationController.dispose();
-    _setupSecretController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -115,8 +97,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
                             ),
                             child: const Icon(
                               Icons.arrow_forward_ios_rounded,
@@ -137,8 +118,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                           errorBuilder: (context, error, stackTrace) {
                             return Icon(Icons.business_rounded,
                                 size: 80,
-                                color: const Color(0xFF6C63FF)
-                                    .withValues(alpha: 0.3));
+                                color: const Color(0xFF6C63FF).withValues(alpha: 0.3));
                           },
                         ),
                       ),
@@ -162,7 +142,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
-
+                    
                     _sectionTitle('بيانات المدير المسؤول'),
                     const SizedBox(height: 12),
                     _buildTextField(
@@ -177,9 +157,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                       label: 'البريد الإلكتروني للعمل',
                       icon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => v!.isEmpty || !v.contains('@')
-                          ? 'بريد غير صالح'
-                          : null,
+                      validator: (v) => v!.isEmpty || !v.contains('@') ? 'بريد غير صالح' : null,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
@@ -187,10 +165,9 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                       label: 'كلمة المرور',
                       icon: Icons.lock_outline_rounded,
                       isPassword: true,
-                      validator: (v) =>
-                          v!.length < 6 ? 'كلمة المرور قصيرة جداً' : null,
+                      validator: (v) => v!.length < 6 ? 'كلمة المرور قصيرة جداً' : null,
                     ),
-
+                    
                     const SizedBox(height: 32),
                     _sectionTitle('بيانات المنشأة (الدار)'),
                     const SizedBox(height: 12),
@@ -198,62 +175,43 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                       controller: _facilityNameController,
                       label: 'اسم الدار / المركز',
                       icon: Icons.apartment_rounded,
-                      validator: (v) =>
-                          v!.isEmpty ? 'يرجى إدخال اسم الدار' : null,
+                      validator: (v) => v!.isEmpty ? 'يرجى إدخال اسم الدار' : null,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
                       controller: _facilityAddressController,
                       label: 'العنوان بالتفصيل',
                       icon: Icons.location_on_outlined,
-                      validator: (v) =>
-                          v!.isEmpty ? 'يرجى إدخال العنوان' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _facilityIdController,
-                      label: 'رمز المنشأة (Facility ID)',
-                      icon: Icons.badge_outlined,
-                      validator: (v) =>
-                          v!.isEmpty ? 'يرجى إدخال رمز المنشأة' : null,
+                      validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
                       controller: _facilityYearController,
-                      label: 'سنة الإنشاء',
+                      label: 'سنة الإنشاء (مثال: ٢٠١٠)',
                       icon: Icons.date_range_rounded,
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
                       controller: _facilityCapacityController,
-                      label: 'السعة الاستيعابية',
+                      label: 'السعة الاستيعابية للمكان',
                       icon: Icons.group_add_rounded,
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
                       controller: _facilityLicenseController,
-                      label: 'رقم الترخيص الحكومي',
+                      label: 'رقم ترخيص وزارة التضامن',
                       icon: Icons.verified_user_outlined,
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
                       controller: _facilityLocationController,
-                      label: 'رابط الموقع على الخريطة',
+                      label: 'رابط الموقع على خرائط جوجل',
                       icon: Icons.map_rounded,
                       keyboardType: TextInputType.url,
                     ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _setupSecretController,
-                      label: 'رمز الإعداد السري',
-                      icon: Icons.vpn_key_outlined,
-                      isPassword: true,
-                      validator: (v) =>
-                          v!.isEmpty ? 'يرجى إدخال رمز الإعداد' : null,
-                    ),
-
+                    
                     const SizedBox(height: 32),
                     _sectionTitle('مميزات وخدمات الدار'),
                     const SizedBox(height: 12),
@@ -279,33 +237,25 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                               }
                             });
                           },
-                          selectedColor:
-                              const Color(0xFF6C63FF).withValues(alpha: 0.1),
+                          selectedColor: const Color(0xFF6C63FF).withValues(alpha: 0.1),
                           checkmarkColor: const Color(0xFF6C63FF),
                           labelStyle: TextStyle(
-                            color: isSelected
-                                ? const Color(0xFF6C63FF)
-                                : const Color(0xFF64748b),
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF64748b),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                           backgroundColor: const Color(0xFFF8FAFC),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: isSelected
-                                  ? const Color(0xFF6C63FF)
-                                  : const Color(0xFFE2E8F0),
+                              color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFFE2E8F0),
                               width: 1.5,
                             ),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         );
                       }).toList(),
                     ),
-
+                    
                     const SizedBox(height: 48),
                     SizedBox(
                       height: 58,
@@ -320,12 +270,10 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
                           ),
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
+                            ? const CircularProgressIndicator(color: Colors.white)
                             : const Text(
                                 'إنشاء حساب المنشأة',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
@@ -388,8 +336,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
           hintText: label,
           hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 16),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 22),
         ),
       ),
@@ -399,22 +346,21 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-
+      
       try {
-        await AuthService.instance.registerAdmin(
+        await ref.read(appRiverpod).registerAdmin(
           name: _nameController.text,
           email: _emailController.text,
           password: _passwordController.text,
-          facilityId: _facilityIdController.text,
-          setupSecret: _setupSecretController.text,
           facilityName: _facilityNameController.text,
           facilityAddress: _facilityAddressController.text,
-          licenseNumber: _facilityLicenseController.text,
-          facilityYearOfEst: _facilityYearController.text,
-          facilityCapacity: _facilityCapacityController.text,
-          facilityLocationUrl: _facilityLocationController.text,
+          amenities: _selectedAmenities,
+          facilityYearOfEst: _facilityYearController.text.isNotEmpty ? _facilityYearController.text : null,
+          facilityCapacity: _facilityCapacityController.text.isNotEmpty ? _facilityCapacityController.text : null,
+          facilityLicenseNumber: _facilityLicenseController.text.isNotEmpty ? _facilityLicenseController.text : null,
+          facilityLocationUrl: _facilityLocationController.text.isNotEmpty ? _facilityLocationController.text : null,
         );
-
+        
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -422,12 +368,6 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen>
               content: Text('تم تسجيل المنشأة بنجاح! يمكنك الآن تسجيل الدخول'),
               backgroundColor: Color(0xFF10b981),
             ),
-          );
-        }
-      } on ApiException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message)),
           );
         }
       } catch (e) {

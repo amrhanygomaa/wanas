@@ -1158,7 +1158,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                       onChanged: (val) {
                         setModalState(() => isCompleted = val);
                       },
-                      activeThumbColor: const Color(0xFF0369A1),
+                      activeColor: const Color(0xFF0369A1),
                     ),
                   ],
                 ),
@@ -1260,8 +1260,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: Text(
-                                'الخطة الغذائية لـ ${plan.residentName}',
+                            child: Text('الخطة الغذائية لـ ${plan.residentName}',
                                 textAlign: TextAlign.right,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

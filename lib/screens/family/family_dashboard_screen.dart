@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -13,7 +12,6 @@ import 'resident_id_screen.dart';
 import 'family_bridge_screen.dart';
 import 'family_activities_screen.dart';
 import '../../widgets/taptaba_scaffold.dart';
-import '../../widgets/live_family_visits_banner.dart';
 
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
@@ -74,7 +72,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     final provider = ref.watch(appRiverpod);
 
     return TaptabaScaffold(
-      title: 'طبطبـة',
+      title: 'ونس',
       titleColor: const Color(0xFFea580c),
       overrideRole: 'عائلة',
       useNestedScrollView: true,
@@ -90,8 +88,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                   : _selectedIndex == 2
                       ? _buildVisitsView(provider)
                       : _buildBillingView(provider),
-          if (_showMedicationDoneAnimation)
-            _buildMedicationDoneOverlay(), // أنيميشن التذكير
+          if (_showMedicationDoneAnimation) _buildMedicationDoneOverlay(), // أنيميشن التذكير
         ],
       ),
     );
@@ -121,14 +118,13 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                              'مرحباً ${provider.currentAccount?.name ?? 'سارة'} 👋',
+                          Text('مرحباً ${provider.currentAccount?.name ?? 'سارة'} 👋',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold)),
-                          Text(_lastVisitLabel(provider),
-                              style: const TextStyle(
+                          const Text('آخر زيارة: اليوم',
+                              style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500)),
@@ -225,8 +221,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         return Stack(
           children: [
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.05 +
-                  (50 * _floatController.value),
+              top: MediaQuery.of(context).size.height * 0.05 + (50 * _floatController.value),
               left: -50 + (30 * _floatController.value),
               child: _buildRealisticOrb(300, [
                 const Color(0xFFea580c).withValues(alpha: 0.25),
@@ -235,8 +230,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               ]),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.7 +
-                  (50 * (1 - _floatController.value)),
+              top: MediaQuery.of(context).size.height * 0.7 + (50 * (1 - _floatController.value)),
               right: -50 + (30 * _floatController.value),
               child: _buildRealisticOrb(250, [
                 const Color(0xFFf97316).withValues(alpha: 0.25),
@@ -245,50 +239,40 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               ]),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.4 +
-                  (40 * sin(_floatController.value * pi)),
-              left: MediaQuery.of(context).size.width * 0.05 +
-                  (40 * cos(_floatController.value * pi)),
+              top: MediaQuery.of(context).size.height * 0.4 + (40 * sin(_floatController.value * pi)),
+              left: MediaQuery.of(context).size.width * 0.05 + (40 * cos(_floatController.value * pi)),
               child: _buildRealisticOrb(150, [
                 const Color(0xFFea580c).withValues(alpha: 0.20),
                 Colors.transparent,
               ]),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.2 +
-                  (30 * _floatController.value),
-              right: MediaQuery.of(context).size.width * 0.05 +
-                  (40 * (1 - _floatController.value)),
+              top: MediaQuery.of(context).size.height * 0.2 + (30 * _floatController.value),
+              right: MediaQuery.of(context).size.width * 0.05 + (40 * (1 - _floatController.value)),
               child: _buildRealisticOrb(180, [
                 const Color(0xFFf97316).withValues(alpha: 0.20),
                 Colors.transparent,
               ]),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.8 +
-                  (60 * _floatController.value),
-              left: MediaQuery.of(context).size.width * 0.1 +
-                  (30 * _floatController.value),
+              top: MediaQuery.of(context).size.height * 0.8 + (60 * _floatController.value),
+              left: MediaQuery.of(context).size.width * 0.1 + (30 * _floatController.value),
               child: _buildRealisticOrb(200, [
                 const Color(0xFFfdba74).withValues(alpha: 0.18),
                 Colors.transparent,
               ]),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.3 +
-                  (40 * _floatController.value),
-              right: MediaQuery.of(context).size.width * 0.2 +
-                  (30 * (1 - _floatController.value)),
+              top: MediaQuery.of(context).size.height * 0.3 + (40 * _floatController.value),
+              right: MediaQuery.of(context).size.width * 0.2 + (30 * (1 - _floatController.value)),
               child: _buildRealisticOrb(140, [
                 const Color(0xFFea580c).withValues(alpha: 0.15),
                 Colors.transparent,
               ]),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.6 +
-                  (50 * sin(_floatController.value * pi)),
-              left: MediaQuery.of(context).size.width * 0.3 +
-                  (40 * cos(_floatController.value * pi)),
+              top: MediaQuery.of(context).size.height * 0.6 + (50 * sin(_floatController.value * pi)),
+              left: MediaQuery.of(context).size.width * 0.3 + (40 * cos(_floatController.value * pi)),
               child: _buildRealisticOrb(160, [
                 const Color(0xFFf97316).withValues(alpha: 0.15),
                 Colors.transparent,
@@ -356,14 +340,6 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
   }
 
   Widget _buildWellnessPulse(AppRiverpod provider) {
-    final residentName = provider.residentFiles.isNotEmpty
-        ? provider.residentFiles.first.name
-        : 'لا يوجد مقيم مرتبط';
-    final residentInitials = provider.residentFiles.isNotEmpty
-        ? _initials(provider.residentFiles.first.name)
-        : '؟';
-    final summaryBadges = provider.familyHealthMetrics.take(2).toList();
-
     return FadeTransition(
       opacity: _fadeAnimations[1],
       child: Container(
@@ -393,9 +369,9 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                   height: 52,
                   decoration: const BoxDecoration(
                       color: Colors.white24, shape: BoxShape.circle),
-                  child: Center(
-                      child: Text(residentInitials,
-                          style: const TextStyle(
+                  child: const Center(
+                      child: Text('مح',
+                          style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.bold))),
@@ -407,7 +383,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('نبض العافية — $residentName',
+                  Text('نبض العافية — ${provider.currentAccount?.linkedResidentId == 'res1' ? 'الحاج محمود' : 'المقيم'}',
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -457,20 +433,15 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                       ),
                     ],
                   ),
-                  if (summaryBadges.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final metric in summaryBadges)
-                          _buildMiniBadge(
-                            '${_metricIcon(metric.label)} ${metric.label}',
-                            _metricBadgeColor(metric.status),
-                          ),
-                      ],
-                    ),
-                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      _buildMiniBadge('🥣 فطر جيداً', const Color(0xFFfef3c7)),
+                      const SizedBox(width: 6),
+                      _buildMiniBadge('😴 نوم هادئ', const Color(0xFFdbeafe)),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -490,36 +461,6 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
           style: const TextStyle(
               color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
     );
-  }
-
-  String _lastVisitLabel(AppRiverpod provider) {
-    final visits = provider.familyVisits;
-    if (visits.isEmpty) return 'لا توجد زيارات مسجلة';
-    final completed = visits.where((v) => v.status == 'completed').toList();
-    final lastVisit = completed.isNotEmpty ? completed.first : visits.first;
-    return 'آخر زيارة: ${lastVisit.date}';
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
-    final letters =
-        parts.take(2).map((p) => String.fromCharCode(p.runes.first));
-    final value = letters.join();
-    return value.isEmpty ? '؟' : value;
-  }
-
-  String _metricIcon(String label) {
-    if (label.contains('نوم')) return '😴';
-    if (label.contains('أكل') || label.contains('غذاء')) return '🥣';
-    if (label.contains('مزاج')) return '😊';
-    if (label.contains('نشاط')) return '🚶';
-    return '•';
-  }
-
-  Color _metricBadgeColor(String status) {
-    if (status == 'good') return const Color(0xFFdcfce7);
-    if (status == 'medium') return const Color(0xFFfef3c7);
-    return const Color(0xFFfee2e2);
   }
 
   Widget _buildTabs() {
@@ -587,10 +528,6 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: LiveFamilyVisitsBanner(),
-          ),
           _buildHealthMetricsGrid(provider),
           const SizedBox(height: 24),
           _buildGamificationCard(provider, context),
@@ -649,8 +586,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                             color: Color(0xFF0F172A))),
                     SizedBox(height: 2),
                     Text('رأيك يهمنا لتحسين جودة الرعاية لوالدك.',
-                        style:
-                            TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                   ],
                 ),
               ),
@@ -659,17 +595,11 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(
-                  child: _reviewButton(
-                      'الأخصائي', () => _showReviewDialog('specialist'))),
+              Expanded(child: _reviewButton('الأخصائي', () => _showReviewDialog('specialist'))),
               const SizedBox(width: 8),
-              Expanded(
-                  child: _reviewButton(
-                      'الممرض', () => _showReviewDialog('nurse'))),
+              Expanded(child: _reviewButton('الممرض', () => _showReviewDialog('nurse'))),
               const SizedBox(width: 8),
-              Expanded(
-                  child:
-                      _reviewButton('الدار', () => _showReviewDialog('home'))),
+              Expanded(child: _reviewButton('الدار', () => _showReviewDialog('home'))),
             ],
           ),
         ],
@@ -687,24 +617,20 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         elevation: 0,
       ),
-      child: Text(label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
     );
   }
 
   void _showReviewDialog(String toRole) {
     double rating = 5;
     final commentController = TextEditingController();
-
+    
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: Text(
-              'تقييم ${toRole == 'specialist' ? 'الأخصائي' : toRole == 'nurse' ? 'الممرض' : 'الدار'}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'Cairo')),
+          title: Text('تقييم ${toRole == 'specialist' ? 'الأخصائي' : toRole == 'nurse' ? 'الممرض' : 'الدار'}', textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Cairo')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -712,8 +638,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (index) {
                   return IconButton(
-                    icon: Icon(index < rating ? Icons.star : Icons.star_border,
-                        color: const Color(0xFFEAB308)),
+                    icon: Icon(index < rating ? Icons.star : Icons.star_border, color: const Color(0xFFEAB308)),
                     onPressed: () => setState(() => rating = index + 1.0),
                   );
                 }),
@@ -730,16 +655,14 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             ],
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
             ElevatedButton(
               onPressed: () {
                 final provider = ref.read(appRiverpod);
                 provider.addReview(Review(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                   fromRole: 'family',
-                  fromName: provider.currentAccount?.name ?? 'الأسرة',
+                  fromName: 'سارة أحمد',
                   toRole: toRole,
                   rating: rating,
                   comment: commentController.text,
@@ -747,13 +670,10 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                 ));
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('تم إرسال تقييمك بنجاح! ⭐'),
-                      backgroundColor: Color(0xFFEA580C)),
+                  const SnackBar(content: Text('تم إرسال تقييمك بنجاح! ⭐'), backgroundColor: Color(0xFFEA580C)),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEA580C)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEA580C)),
               child: const Text('إرسال', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -763,11 +683,8 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
   }
 
   Widget _buildMemoryWall(AppRiverpod provider) {
-    final linkedId =
-        provider.backendResidentId ?? provider.currentAccount?.linkedResidentId;
-    final moments = linkedId != null && linkedId.length > 5
-        ? provider.memoryMoments.where((m) => m.residentId == linkedId).toList()
-        : provider.memoryMoments.toList();
+    final moments =
+        provider.memoryMoments.where((m) => m.residentId == 'r1').toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -896,6 +813,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     );
   }
 
+
   Widget _buildGamificationCard(AppRiverpod provider, BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -969,11 +887,12 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     );
   }
 
-  Widget _buildFamilyActivitiesCard(
-      AppRiverpod provider, BuildContext context) {
-    final residentName = provider.currentUser.name.isNotEmpty
-        ? provider.currentUser.name
+  Widget _buildFamilyActivitiesCard(AppRiverpod provider, BuildContext context) {
+    final residentName = provider.currentAccount?.linkedResidentId == 'res1'
+        ? 'الحاج محمود'
         : 'المقيم العزيز';
+
+    // فلترة أنشطة اليوم النشطة
     final todayActivities = provider.activities
         .where((a) => a.dayTag == 'اليوم' && a.status == 'active')
         .toList();
@@ -1057,7 +976,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                     const SizedBox(height: 4),
                     Text(
                       joinedCount > 0
-                          ? 'أنت مشارك في $joinedCount من أنشطة اليوم'
+                          ? 'أنت مشارك في $joinedCount من الأنشطة العائلية اليوم'
                           : '$residentName بانتظار مشاركتك اللطيفة اليوم',
                       style: const TextStyle(
                         fontSize: 12,
@@ -1072,11 +991,9 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            todayActivities.isEmpty
-                ? 'لا توجد أنشطة عائلية منشورة لليوم حالياً.'
-                : 'شارك في نشاط اليوم وابعث ملاحظة صغيرة تصل للمشرف داخل التطبيق.',
-            style: const TextStyle(
+          const Text(
+            'نشر الأخصائي الاجتماعي أنشطة اليوم. مشاركتك تخفف عنه وتصنع يومه بالكامل. هل تسجل حضورك معه الآن؟',
+            style: TextStyle(
               fontSize: 11.5,
               color: Color(0xFF065f46),
               fontWeight: FontWeight.w500,
@@ -1239,9 +1156,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                isRecording
-                    ? 'جارٍ التسجيل... $secondsث'
-                    : 'اضغط للبدء بالتسجيل',
+                isRecording ? 'جارٍ التسجيل... $secondsث' : 'اضغط للبدء بالتسجيل',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
@@ -1304,12 +1219,10 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFea580c)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFea580c)),
             onPressed: () {
               if (controller.text.isNotEmpty) {
-                provider.sendEncouragementMessage('text',
-                    text: controller.text);
+                provider.sendEncouragementMessage('text', text: controller.text);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -1443,21 +1356,11 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             const SizedBox(height: 24),
             Text('تفاصيل ${m.label}',
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildHistoryItem(
-                'اليوم',
-                '${(((m.history as List).isNotEmpty ? m.history[0] : m.value) * 100).toInt()}%',
-                m.status),
-            _buildHistoryItem(
-                'أمس',
-                '${(((m.history as List).length > 1 ? m.history[1] : m.value) * 100).toInt()}%',
-                m.status),
-            _buildHistoryItem(
-                'قبل يومين',
-                '${(((m.history as List).length > 2 ? m.history[2] : m.value) * 100).toInt()}%',
-                m.status),
+            _buildHistoryItem('اليوم', '${(((m.history as List).isNotEmpty ? m.history[0] : m.value) * 100).toInt()}%', m.status),
+            _buildHistoryItem('أمس', '${(((m.history as List).length > 1 ? m.history[1] : m.value) * 100).toInt()}%', m.status),
+            _buildHistoryItem('قبل يومين', '${(((m.history as List).length > 2 ? m.history[2] : m.value) * 100).toInt()}%', m.status),
             const SizedBox(height: 20),
           ],
         ),
@@ -1471,14 +1374,10 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(day,
-              style: const TextStyle(
-                  color: Colors.grey, fontWeight: FontWeight.bold)),
+          Text(day, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           Row(
             children: [
-              Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(width: 8),
               _buildMetricBadge(status),
             ],
@@ -1573,18 +1472,19 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               final medName =
                   ref.read(appRiverpod).nextMedication?.name ?? 'الدواء';
               ref.read(appRiverpod).sendMedicationReminder(medName);
-
+              
               setState(() {
                 _showMedicationDoneAnimation = true;
               });
-
+              
               await Future.delayed(const Duration(seconds: 2));
-
+              
               if (mounted) {
                 setState(() {
                   _showMedicationDoneAnimation = false;
                 });
               }
+              
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1695,9 +1595,8 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                 fontWeight: FontWeight.w900)),
         const SizedBox(width: 4),
         icon is IconData
-            ? Icon(icon, size: 14, color: const Color(0xFF334155))
-            : Image.asset(icon as String,
-                width: 14, height: 14, color: const Color(0xFF334155)),
+            ? Icon(icon as IconData, size: 14, color: const Color(0xFF334155))
+            : Image.asset(icon as String, width: 14, height: 14, color: const Color(0xFF334155)),
       ],
     );
   }
@@ -1713,7 +1612,11 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         _buildSectionHeader('آخر التقارير الطبية'),
         const SizedBox(height: 16),
         ...provider.careReports.map((r) => _buildReportCard(
-            r.title, r.date, r.summary, const Color(0xFF6366f1), r)),
+            r.title,
+            r.date,
+            r.summary,
+            const Color(0xFF6366f1),
+            r)),
       ],
     );
   }
@@ -1821,7 +1724,8 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => CareReportDetailScreen(report: report))),
+                    builder: (_) =>
+                        CareReportDetailScreen(report: report))),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
@@ -1940,7 +1844,8 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/icons/calendar.png', width: 64, height: 64),
+            Image.asset('assets/icons/calendar.png',
+                width: 64, height: 64),
             const SizedBox(height: 16),
             const Text('لا توجد زيارات حالياً',
                 style: TextStyle(color: Color(0xFF94a3b8), fontSize: 16)),
@@ -2231,23 +2136,16 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             const SizedBox(height: 12),
             const Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                  'يرجى التحويل إلى أحد الحسابات التالية لإتمام عملية الدفع أو التبرع:',
+              child: Text('يرجى التحويل إلى أحد الحسابات التالية لإتمام عملية الدفع أو التبرع:',
                   textAlign: TextAlign.right,
-                  style: TextStyle(
-                      color: Color(0xFF64748b),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
+                  style: TextStyle(color: Color(0xFF64748b), fontSize: 16, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 8),
-            Align(
+            const Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                  provider.billingPaymentInstructions ??
-                      'بيانات الدفع غير مهيأة حالياً. يرجى التواصل مع إدارة الدار.',
+              child: Text('رقم الحساب البنكي (بنك مصر): 1234 5678 9012 3456\nأو عبر محفظة إلكترونية (فودافون كاش): 01012345678',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      color: Color(0xFF1e293b), fontSize: 15, height: 1.5)),
+                  style: TextStyle(color: Color(0xFF1e293b), fontSize: 15, height: 1.5)),
             ),
             const SizedBox(height: 32),
             Container(
@@ -2277,25 +2175,19 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               alignment: Alignment.centerRight,
               child: Text('إرفاق صورة التحويل:',
                   textAlign: TextAlign.right,
-                  style: TextStyle(
-                      color: Color(0xFF64748b),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold)),
+                  style: TextStyle(color: Color(0xFF64748b), fontSize: 14, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 8),
             GestureDetector(
               onTap: () async {
                 try {
-                  final result = await file_picker_lib.FilePicker.platform
-                      .pickFiles(type: file_picker_lib.FileType.image);
-                  if (!context.mounted) return;
+                  final result = await file_picker_lib.FilePicker.platform.pickFiles(type: file_picker_lib.FileType.image);
                   if (result != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('تم إرفاق الصورة بنجاح!')),
                     );
                   }
                 } catch (e) {
-                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('حدث خطأ أثناء اختيار الملف')),
                   );
@@ -2306,18 +2198,14 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFFf8fafc),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: const Color(0xFFcbd5e1), style: BorderStyle.solid),
+                  border: Border.all(color: const Color(0xFFcbd5e1), style: BorderStyle.solid),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.upload_file_rounded, color: Color(0xFFea580c)),
                     SizedBox(width: 8),
-                    Text('اختر صورة الإيصال أو الإسكرين',
-                        style: TextStyle(
-                            color: Color(0xFFea580c),
-                            fontWeight: FontWeight.bold)),
+                    Text('اختر صورة الإيصال أو الإسكرين', style: TextStyle(color: Color(0xFFea580c), fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -2606,13 +2494,11 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           icon is IconData
-              ? Icon(icon,
-                  color:
-                      isAct ? const Color(0xFFea580c) : const Color(0xFF475569),
+              ? Icon(icon as IconData,
+                  color: isAct ? const Color(0xFFea580c) : const Color(0xFF475569),
                   size: 26)
               : Image.asset(icon as String,
-                  color:
-                      isAct ? const Color(0xFFea580c) : const Color(0xFF475569),
+                  color: isAct ? const Color(0xFFea580c) : const Color(0xFF475569),
                   width: 26,
                   height: 26),
           const SizedBox(height: 4),
@@ -2668,18 +2554,8 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
   String _getFormattedCurrentDate() {
     final now = DateTime.now();
     final months = [
-      'يناير',
-      'فبراير',
-      'مارس',
-      'أبريل',
-      'مايو',
-      'يونيو',
-      'يوليو',
-      'أغسطس',
-      'سبتمبر',
-      'أكتوبر',
-      'نوفمبر',
-      'ديسمبر'
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
     ];
     String day = _toArabicNumbers(now.day.toString());
     String year = _toArabicNumbers(now.year.toString());

@@ -1,11 +1,11 @@
 {
-    "name": "Raaya",
-    "short_name": "Raaya",
+    "name": "my_app",
+    "short_name": "my_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Elderly-care operations and family communication platform.",
+    "description": "A new Flutter project.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -141,13 +141,13 @@ class _StepIndicatorState extends State<StepIndicator>
                       },
                     )
                   : isDone
-                      ? Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        )
-                      : null,
+                  ? Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    )
+                  : null,
             ),
           ),
         );

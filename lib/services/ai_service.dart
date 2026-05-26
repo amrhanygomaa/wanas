@@ -58,6 +58,32 @@ class AiRecommendation {
   }
 }
 
+class AiSpeechResponse {
+  final String provider;
+  final String voiceId;
+  final String engine;
+  final String contentType;
+  final String audioBase64;
+
+  AiSpeechResponse({
+    required this.provider,
+    required this.voiceId,
+    required this.engine,
+    required this.contentType,
+    required this.audioBase64,
+  });
+
+  factory AiSpeechResponse.fromJson(Map<String, dynamic> json) {
+    return AiSpeechResponse(
+      provider: (json['provider'] ?? 'aws-polly').toString(),
+      voiceId: (json['voiceId'] ?? '').toString(),
+      engine: (json['engine'] ?? '').toString(),
+      contentType: (json['contentType'] ?? 'audio/mpeg').toString(),
+      audioBase64: (json['audioBase64'] ?? '').toString(),
+    );
+  }
+}
+
 // خدمة الذكاء الاصطناعي عبر AWS Bedrock (Claude Haiku 4.5)
 // متصلة فعلياً بالباك اند الإنتاجي على EC2.
 class AiService {
@@ -93,6 +119,23 @@ class AiService {
     }
 
     return AiChatResponse.fromJson(res as Map<String, dynamic>);
+  }
+
+  Future<AiSpeechResponse> synthesizeSpeech({
+    required String text,
+    String voiceId = 'Hala',
+    String engine = 'neural',
+  }) async {
+    final res = await ApiClient.instance.post(
+      '/ai/speech',
+      body: {
+        'text': text,
+        'voiceId': voiceId,
+        'engine': engine,
+      },
+      auth: false,
+    );
+    return AiSpeechResponse.fromJson(res as Map<String, dynamic>);
   }
 
   // جلب توصيات الذكاء الاصطناعي لمقيم

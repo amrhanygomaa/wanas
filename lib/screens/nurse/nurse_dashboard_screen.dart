@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'dart:async'; // مكتبة التوقيت والعمليات غير المتزامنة
 import 'dart:math'; // مكتبة العمليات الرياضية
 import 'package:flutter/material.dart'; // مكتبة فلاتر للواجهات
@@ -18,7 +17,13 @@ import '../../models/app_models.dart'; // نماذج البيانات الخاص
 import 'widgets/healing_particles.dart'; // الأنميشن الخاص بعلامات الشفاء
 // القائمة الجانبية الموحدة
 import '../../widgets/taptaba_scaffold.dart'; // الهيكل الموحد للتطبيق
-import '../../widgets/live_vitals_banner.dart';
+
+// أرقام الطوارئ (يمكن للإدارة تعديلها من هنا حالياً، ومستقبلاً من لوحة التحكم)
+class EmergencyContacts {
+  static const String ambulance = '128';
+  static const String doctor = '01012345678';
+  static const String codeBlue = '01112345678';
+}
 
 class NurseDashboardScreen extends ConsumerStatefulWidget {
   // شاشة لوحة تحكم الممرض
@@ -101,9 +106,6 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
       ..repeat(reverse: true); // تكرار الحركة ذهاباً وإياباً
 
     _startShiftTimer(); // بدء تشغيل مؤقت الوردية
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(appRiverpod).refreshActiveEmergencies();
-    });
   }
 
   @override
@@ -121,7 +123,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
 
     return TaptabaScaffold(
       // استخدام الهيكل الموحد
-      title: 'طبطبـة', // عنوان الصفحة
+      title: 'ونس', // عنوان الصفحة
       titleColor: const Color(0xFF0369A1), // لون العنوان الأزرق الطبي
       overrideRole: 'ممرض', // تحديد دور المستخدم كممرض
       bottomNavigationBar: _buildBottomNav(), // بناء شريط التنقل السفلي
@@ -135,12 +137,13 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                   child:
                       _buildHomeView(provider)), // واجهة الرئيسية (نظرة عامة)
               const NurseResidentsScreen(), // واجهة قائمة المقيمين (لديها خلفيتها الخاصة)
-              const AnimatedBackground(
-                  child: OperationsView()), // واجهة العمليات والرعاية
-              const AnimatedBackground(
-                  child: MedicalAdminView()), // واجهة الإدارة الطبية
-              const AnimatedBackground(
-                  child: NurseReportsScreen()), // واجهة التقارير والتحليلات
+              AnimatedBackground(
+                  child: const OperationsView()), // واجهة العمليات والرعاية
+              AnimatedBackground(
+                  child: const MedicalAdminView()), // واجهة الإدارة الطبية
+              AnimatedBackground(
+                  child:
+                      const NurseReportsScreen()), // واجهة التقارير والتحليلات
             ],
           ),
           _buildDraggableSOS(), // زر الطوارئ المخفي القابل للسحب
@@ -156,8 +159,6 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
       child: Column(
         children: [
           _buildHero(), // بناء الجزء العلوي (الهوية والوردية)
-          const LiveVitalsBanner(), // قراءات حيوية وتنبيهات حية من AWS RDS
-          _buildEmergencyQueue(provider),
           _buildOperationalAlerts(provider), // بناء تنبيهات المخزون والمهام
           _buildShiftHandoffCard(provider), // بناء بطاقة تسليم الوردية
           _buildKPIs(), // بناء مؤشرات الأداء الرئيسية
@@ -165,79 +166,6 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
               provider), // بناء قائمة المقيمين ذات الأولوية (مبسط)
           const SizedBox(height: 100), // مسافة فارغة في الأسفل
         ],
-      ),
-    );
-  }
-
-  Widget _buildEmergencyQueue(AppRiverpod provider) {
-    if (provider.activeEmergencies.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      child: Column(
-        children: provider.activeEmergencies.take(3).map((emergency) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFCA5A5)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.emergency_share_rounded,
-                    color: Color(0xFFDC2626), size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'نداء طوارئ نشط',
-                        style: TextStyle(
-                          color: Color(0xFF991B1B),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        emergency.location?.isNotEmpty == true
-                            ? '${emergency.message} · ${emergency.location}'
-                            : emergency.message,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF7F1D1D),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => provider.resolveEmergency(emergency.id),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFDC2626),
-                  ),
-                  child: const Text(
-                    'تم التعامل',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
       ),
     );
   }
@@ -508,7 +436,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                               builder: (context) =>
                                   const NurseProfileScreen())),
                       child: Text(
-                        '${ref.watch(appRiverpod).currentAccount?.name ?? 'الممرض'} — ${_getShiftName()}',
+                        'أ. منى — ${_getShiftName()}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -778,7 +706,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
   }
 
   Widget _buildResidentsSection(AppRiverpod provider) {
-    // بناء قسم قائمة المقيمين من بيانات الـ backend
+    // بناء قسم قائمة المقيمين (مبسط كمثال)
     String getLatestNote(String name) {
       final cleanName = name.split(' — ')[0];
       final notes = provider.getNotesForResident(cleanName);
@@ -786,14 +714,6 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
           ? '${notes.first.title}: ${notes.first.content}'
           : '';
     }
-
-    final critical =
-        provider.residentFiles.where((f) => f.status == 'critical').toList();
-    final featured = critical.isNotEmpty
-        ? critical.first
-        : (provider.residentFiles.isNotEmpty
-            ? provider.residentFiles.first
-            : null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -817,42 +737,26 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
             ],
           ),
         ),
-        if (featured != null)
-          _buildResCard(
-            name: '${featured.name} — غرفة ${featured.room}',
-            room: featured.age != null
-                ? '${featured.age} سنة · ${featured.lastUpdate}'
-                : featured.lastUpdate,
-            av: featured.initials,
-            avBg: const Color(0xFFFFE4E6),
-            avColor: const Color(0xFF9F1239),
-            statusColor: featured.status == 'critical'
-                ? const Color(0xFFEF4444)
-                : const Color(0xFFF59E0B),
-            borderColor: const Color(0xFFFCA5A5),
-            bg: const Color(0xFFFFF5F5),
-            btnText: featured.status == 'critical' ? 'تدخّل' : 'متابعة',
-            btnColor: featured.status == 'critical'
-                ? const Color(0xFFEF4444)
-                : const Color(0xFFF59E0B),
-            warnText: '',
-            category: featured.status == 'critical' ? 'حرجة 🔴' : 'متابعة 🟠',
-            note: getLatestNote(featured.name),
-          )
-        else
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'لا يوجد مقيمون مسجّلون بعد.',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
+        _buildResCard(
+          name: 'الحاج محمود سالم — غرفة ١٠٣',
+          room: '٧٨ سنة · متابعة دورية',
+          av: 'مح',
+          avBg: const Color(0xFFFFE4E6),
+          avColor: const Color(0xFF9F1239),
+          statusColor: const Color(0xFFEF4444),
+          borderColor: const Color(0xFFFCA5A5),
+          bg: const Color(0xFFFFF5F5),
+          btnText: 'تدخّل',
+          btnColor: const Color(0xFFEF4444),
+          warnText: '⏰ ميتفورمين — فات موعده منذ ٣٠ د',
+          category: 'حرجة 🔴',
+          note: getLatestNote('الحاج محمود سالم'),
+        ),
       ],
     );
   }
 
   Widget _buildResCard({
-    // قالب بطاقة المقيم المتقدمة
     required String name,
     required String room,
     required String av,
@@ -868,196 +772,128 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     bool isStable = false,
     String? note,
   }) {
+    final nameOnly = name.split(' — ')[0];
+    
     return Container(
-      // وعاء البطاقة الأساسي - تم تعديله لمنع الـ Overflow
-      margin: const EdgeInsets.only(bottom: 16, left: 12, right: 12),
+      margin: const EdgeInsets.only(bottom: 12, left: 12, right: 12),
       decoration: BoxDecoration(
-        color: bg,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.5),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: borderColor.withValues(alpha: 0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => NurseResidentDetailScreen(
+                residentName: nameOnly,
+                roomNumber: room.replaceAll('غرفة ', '').split(' · ')[0],
+              ),
+            ),
+          ),
+          child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Stack(
                   children: [
-                    Stack(
-                      // عرض الأفاتار مع نقطة الحالة
-                      children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor: avBg,
-                          child: Text(
-                            av,
-                            style: TextStyle(
-                                color: avColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16),
-                          ),
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: avBg,
+                      child: Text(
+                        av,
+                        style: TextStyle(
+                          color: avColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      // جعل قسم النصوص مرناً بالكامل لمنع الـ Overflow الأفقي
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name, // اسم المقيم والغرفة
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            room, // العمر والحالة العامة
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            warnText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isStable
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFF0369A1)),
-                          ),
-                        ],
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                if (note != null && note.isNotEmpty) ...[
-                  // عرض الملاحظة الأخيرة
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          // جعل نص الملاحظة يلتف للسطر التالي بدلاً من الـ Overflow
-                          child: Text(
-                            note,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF475569),
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                LayoutBuilder(// يضمن توزيع الأزرار بشكل صحيح حسب عرض الشاشة
-                    builder: (context, constraints) {
-                  return Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _actionBtn('طوارئ',
-                            color: const Color(0xFF7F1D1D),
-                            bg: const Color(0xFFFEE2E2),
-                            onTap: () => _showEmergencyAlert(name)),
+                      Text(
+                        nameOnly,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: _actionBtn('الملف',
-                            color: Colors.white,
-                            isPrimary: true,
-                            bg: const Color(0xFF0369A1),
-                            onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => NurseResidentDetailScreen(
-                                          residentName: name.split(' — ')[0],
-                                          roomNumber: room
-                                              .replaceAll('غرفة ', '')
-                                              .split(' · ')[0],
-                                        )))),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: _actionBtn('ملاحظة',
-                            color: const Color(0xFF0369A1),
-                            bg: const Color(0xFFF0F9FF),
-                            onTap: () => _showNoteDialog(name)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            isStable ? Icons.check_circle_rounded : Icons.info_rounded,
+                            size: 14,
+                            color: isStable ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              warnText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isStable ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  );
-                }),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // زر الطوارئ السريع
+                GestureDetector(
+                  onTap: () => _showEmergencyAlert(nameOnly),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.emergency_share_rounded,
+                      color: Color(0xFFEF4444),
+                      size: 20,
+                    ),
+                  ),
+                ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionBtn(String label, // دالة مساعدة لبناء أزرار الإجراءات
-      {required Color color,
-      required Color bg,
-      bool isPrimary = false,
-      VoidCallback? onTap}) {
-    return GestureDetector(
-      // كاشف لمسات مخصص بدلاً من أزرار فلاتر الافتراضية
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isPrimary ? const Color(0xFF0369A1) : bg,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Center(
-          child: Text(
-            // نص الزر
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -1546,17 +1382,16 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Text(
-                    'بواسطة: ${ref.read(appRiverpod).currentAccount?.name ?? 'الممرض'} (مشرف)',
-                    style: const TextStyle(
+                Text('بواسطة: أ. منى (مشرف)',
+                    style: TextStyle(
                         fontSize: 10,
                         color: Color(0xFF94A3B8),
                         fontWeight: FontWeight.bold)),
-                const SizedBox(width: 4),
-                const Icon(Icons.person_pin_rounded,
+                SizedBox(width: 4),
+                Icon(Icons.person_pin_rounded,
                     size: 14, color: Color(0xFF94A3B8)),
               ],
             ),
@@ -1576,8 +1411,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                   residentName: residentName,
                   title: titleController.text,
                   content: contentController.text,
-                  author:
-                      '${ref.read(appRiverpod).currentAccount?.name ?? 'الممرض'} (مشرف)',
+                  author: 'أ. منى (مشرف)',
                   timestamp: DateTime.now(),
                 );
                 ref.read(appRiverpod).addNursingNote(newNote);
@@ -1920,31 +1754,18 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
   Future<void> _triggerEmergency(String type) async {
     // معالجة تفعيل حالة الطوارئ (الاتصال بالإسعاف أو تنبيه الطاقم)
     Navigator.pop(context); // إغلاق النافذة
-    unawaited(ref.read(appRiverpod).triggerSOS(
-          type: type,
-          message: 'تنبيه طوارئ من الممرض: $type',
-          location: 'لوحة الممرض',
-        ));
 
     final status = await Permission.phone.request();
     if (!mounted) return;
 
     if (status.isGranted) {
-      final ec = ref.read(appRiverpod).emergencyContacts;
-      String? phoneNumber;
+      String phoneNumber = '';
       if (type == 'سيارة إسعاف') {
-        phoneNumber = ec['ambulance'];
+        phoneNumber = EmergencyContacts.ambulance;
       } else if (type == 'الطبيب المناوب') {
-        phoneNumber = ec['doctor'];
+        phoneNumber = EmergencyContacts.doctor;
       } else if (type == 'Code Blue') {
-        phoneNumber = ec['codeBlue'];
-      }
-
-      if (phoneNumber == null || phoneNumber.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('رقم الطوارئ غير مهيأ من الإدارة')),
-        );
-        return;
+        phoneNumber = EmergencyContacts.codeBlue;
       }
 
       if (phoneNumber.isNotEmpty) {
@@ -1953,7 +1774,6 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
           await launchUrl(telUri);
           return; // الخروج بعد الاتصال
         }
-        if (!mounted) return;
       }
     } else if (type == 'سيارة إسعاف' ||
         type == 'الطبيب المناوب' ||

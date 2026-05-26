@@ -47,7 +47,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     ),
     OnboardingData(
       title: 'معاك',
-      description: 'اختر هويتك وادخل عالم طبطبة المتكامل',
+      description: 'اختر هويتك وادخل عالم ونس المتكامل',
       primaryColor: const Color(0xFF21257C), // نيلي غامق
       secondaryColor: const Color(0xFF4AA5FF), // سماوي لامع
       icon: Icons.rocket_launch_rounded,

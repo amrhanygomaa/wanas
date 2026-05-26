@@ -2,7 +2,7 @@ import 'dart:io'; // للتعامل مع ملفات الصور المحلية
 import 'package:flutter/material.dart'; // مكتبة فلاتر الأساسية للواجهات
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // مكتبة إدارة الحالة
 import 'package:lottie/lottie.dart'; // مكتبة الأنيميشن
-import 'package:url_launcher/url_launcher.dart'; // فتح روابط الخريطة
+import 'package:url_launcher/url_launcher.dart'; // لفتح الروابط الجغرافية
 import '../../providers/app_riverpod.dart'; // مزود الحالة الرئيسي للتطبيق
 import '../../models/app_models.dart'; // نماذج البيانات المستخدمة
 import '../../widgets/taptaba_scaffold.dart'; // الهيكل الموحد للشاشة
@@ -59,37 +59,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     // دالة بناء الواجهة
     final provider = ref.watch(appRiverpod); // مراقبة حالة التطبيق
     final account = provider.currentAccount; // جلب بيانات الحساب الحالي
-    final role =
-        widget.overrideRole ?? provider.currentRole; // جلب الدور الوظيفي الحالي
+    final role = widget.overrideRole ?? provider.currentRole; // جلب الدور الوظيفي الحالي
     final themeColor =
         _getRoleColor(role); // تحديد اللون الرئيسي بناءً على الدور
 
     return TaptabaScaffold(
-      // استخدام الهيكل الموحد
-      title: 'الملف الشخصي', // عنوان الشاشة
-      titleColor: themeColor, // تلوين العنوان بلون الدور
+      // استخدام الهيكل الموحد مع إخفاء الـ AppBar الافتراضي لمطابقة تصميم الممرض
+      hideAppBar: true, 
       overrideRole: role, // تمرير الدور للقائمة الجانبية
       body: Stack(
         children: [
-          SingleChildScrollView(
-            // جعل المحتوى قابلاً للتمرير
-            physics:
-                const BouncingScrollPhysics(), // تأثير الارتداد عند التمرير
-            child: Column(
-              // ترتيب العناصر رأسياً
-              children: [
-                FadeTransition(
-                  opacity: _fadeAnimations[0],
-                  child: _buildHeroHeader(
-                      context,
-                      ref,
-                      account,
-                      role,
-                      themeColor,
-                      provider), // بناء الجزء العلوي (الصورة والاسم)
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20.0), // هوامش داخلية
+          CustomScrollView(
+            // جعل المحتوى قابلاً للتمرير بتأثير الارتداد
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _buildHeroHeader(context, ref, account, role, themeColor, provider), // بناء شريط العنوان الممتد الموحد
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0), // هوامش جانبية
                   child: Column(
                     children: [
                       FadeTransition(
@@ -106,14 +93,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       const SizedBox(height: 30), // مسافة فاصلة
                       FadeTransition(
                         opacity: _fadeAnimations[3],
-                        child: _buildActionsSection(themeColor), // قسم الروابط
+                        child:
+                            _buildActionsSection(themeColor), // قسم الروابط
                       ),
                       const SizedBox(height: 50), // مسافة في النهاية
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           if (_showSuccess) _buildSuccessOverlay(),
         ],
@@ -149,126 +137,262 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       String role,
       Color themeColor,
       AppRiverpod provider) {
-    // بناء الهيدر الفاخر بتدرج لوني
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 40, 20, 40),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          // تدرج لوني يعتمد على لون الدور
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [themeColor, themeColor.withValues(alpha: 0.8)],
-        ),
-        borderRadius: const BorderRadius.only(
-          // حواف دائرية سفلية
-          bottomLeft: Radius.circular(50),
-          bottomRight: Radius.circular(50),
-        ),
+    // 1. Determine dynamic multi-color gradient based on role
+    List<Color> gradientColors = [themeColor, themeColor.withValues(alpha: 0.8)];
+    switch (role) {
+      case 'ممرض':
+        gradientColors = const [Color(0xFF0369A1), Color(0xFF0EA5E9), Color(0xFF06B6D4)];
+        break;
+      case 'متطوع':
+        gradientColors = const [Color(0xFF047857), Color(0xFF10B981), Color(0xFF34D399)];
+        break;
+      case 'عائلة':
+        gradientColors = const [Color(0xFFC2410C), Color(0xFFF97316), Color(0xFFFF9F1C)];
+        break;
+      case 'أخصائي':
+      case 'أخصائي اجتماعي':
+        gradientColors = const [Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFBBF24)];
+        break;
+      case 'مدير':
+      case 'إدارة':
+        gradientColors = const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF475569)];
+        break;
+      case 'مسن':
+      default:
+        gradientColors = const [Color(0xFF4F46E5), Color(0xFF6366F1), Color(0xFF818CF8)];
+        break;
+    }
+
+    // 2. Determine dynamic role-specific subtitle
+    String dynamicSubtitle = '';
+    switch (role) {
+      case 'ممرض':
+        dynamicSubtitle = account?.specialty != null 
+            ? '${account?.specialty} — الوردية ${account?.shift ?? "الصباحية"}' 
+            : 'مشرف تمريض — الوردية الصباحية';
+        break;
+      case 'أخصائي':
+      case 'أخصائي اجتماعي':
+        dynamicSubtitle = account?.specialty != null 
+            ? 'أخصائي ${account?.specialty} — المستوى الذهبي' 
+            : 'أخصائي اجتماعي — المستوى الذهبي';
+        break;
+      case 'مسن':
+        dynamicSubtitle = 'خبير سعادة — الغرفة ${account?.room ?? "104"}';
+        break;
+      case 'مدير':
+      case 'إدارة':
+        dynamicSubtitle = 'مدير المنشأة — ${account?.facilityName ?? "دار الرعاية والريادة"}';
+        break;
+      case 'عائلة':
+        dynamicSubtitle = 'حساب العائلة — قريب المقيم: ${account?.linkedResidentId != null ? "الحاج محمود" : "فاطمة الزهراء"}';
+        break;
+      case 'متطوع':
+      default:
+        dynamicSubtitle = 'سفير السعادة — ${provider.volunteerHours} ساعة تطوع';
+        break;
+    }
+
+    // 3. Determine dynamic badge membership/employee code
+    String dynamicCode = '#N-4892';
+    String codeLabel = 'كود الموظف';
+    switch (role) {
+      case 'ممرض':
+        dynamicCode = '#N-4892';
+        codeLabel = 'كود الموظف';
+        break;
+      case 'أخصائي':
+      case 'أخصائي اجتماعي':
+        dynamicCode = '#S-3819';
+        codeLabel = 'كود الأخصائي';
+        break;
+      case 'مسن':
+        dynamicCode = '#E-2082';
+        codeLabel = 'كود خبير السعادة';
+        break;
+      case 'مدير':
+      case 'إدارة':
+        dynamicCode = '#M-9021';
+        codeLabel = 'كود المدير';
+        break;
+      case 'عائلة':
+        dynamicCode = '#F-5521';
+        codeLabel = 'كود العائلة';
+        break;
+      case 'متطوع':
+      default:
+        dynamicCode = '#V-7712';
+        codeLabel = 'كود المتطوع';
+        break;
+    }
+
+    return SliverAppBar(
+      expandedHeight: 280,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: gradientColors.first,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
-      child: Column(
-        children: [
-          Row(
-            // شريط التحكم العلوي داخل الهيدر
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                // زر العودة
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white),
-              ),
-              IconButton(
-                // زر تسجيل الخروج السريع
-                onPressed: () => _showLogoutDialog(context, ref),
-                icon: const Icon(Icons.logout_rounded, color: Colors.white),
-              ),
-            ],
+      actions: [
+        IconButton(
+          onPressed: () => _showLogoutDialog(context, ref),
+          icon: const Icon(Icons.logout_rounded, color: Colors.white),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: gradientColors,
+            ),
           ),
-          const SizedBox(height: 10),
-          Stack(
-            // عرض الصورة الشخصية مع زر التعديل
+          child: Stack(
             children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                    color: Colors.white, shape: BoxShape.circle),
-                child: account?.imageUrl != null &&
-                        account!.imageUrl!.isNotEmpty
-                    ? (account.imageUrl!.startsWith('http')
-                        ? CircleAvatar(
-                            radius: 55,
-                            backgroundImage: NetworkImage(account.imageUrl!),
-                          )
-                        : CircleAvatar(
-                            radius: 55,
-                            backgroundImage: FileImage(File(account.imageUrl!)),
-                          ))
-                    : CircleAvatar(
-                        radius: 55,
-                        backgroundColor: themeColor.withValues(alpha: 0.2),
-                        child: Text(
-                          (account?.name != null && account!.name.isNotEmpty)
-                              ? account.name.substring(0, 1)
-                              : 'م',
-                          style: TextStyle(
-                              fontSize: 50,
-                              fontWeight: FontWeight.bold,
-                              color: themeColor),
+              // Dynamic Role-based Particles Background Animation
+              RoleParticles(role: role),
+              
+              // Header Content
+              Positioned.fill(
+                child: FadeTransition(
+                  opacity: _fadeAnimations[0],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 35),
+                      
+                      // Styled Centered Avatar with White Outline
+                      Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white, 
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: account?.imageUrl != null && account!.imageUrl!.isNotEmpty
+                                ? (account.imageUrl!.startsWith('http')
+                                    ? CircleAvatar(
+                                        radius: 50,
+                                        backgroundImage: NetworkImage(account.imageUrl!),
+                                      )
+                                    : CircleAvatar(
+                                        radius: 50,
+                                        backgroundImage: FileImage(File(account.imageUrl!)),
+                                      ))
+                                : CircleAvatar(
+                                    radius: 50,
+                                    backgroundColor: themeColor.withValues(alpha: 0.2),
+                                    child: Text(
+                                      (account != null && account.name.isNotEmpty)
+                                          ? account.name.substring(0, 1)
+                                          : 'م',
+                                      style: TextStyle(
+                                          fontSize: 46,
+                                          fontWeight: FontWeight.bold,
+                                          color: themeColor),
+                                    ),
+                                  ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: () => provider.pickProfileImage(),
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: themeColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2.5),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(Icons.edit_rounded,
+                                    color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Name Text
+                      Text(
+                        account?.name ?? 'مستخدم',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
-              ),
-              Positioned(
-                // زر القلم لتعديل الصورة
-                bottom: 5,
-                right: 5,
-                child: InkWell(
-                  onTap: () => provider.pickProfileImage(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                        color: themeColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3)),
-                    child: const Icon(Icons.edit_rounded,
-                        color: Colors.white, size: 20),
+                      
+                      // Role Subtitle
+                      Text(
+                        dynamicSubtitle,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 15,
+                          fontWeight: FontWeight.normal,
+                          shadows: const [
+                            Shadow(
+                              color: Colors.black12,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      
+                      // Employee/Member Code Capsule Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$codeLabel: $dynamicCode',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Text(account?.name ?? 'مستخدم',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900)), // اسم المستخدم
-          if (role == 'مدير' && account?.facilityName != null) ...[
-            const SizedBox(height: 4),
-            Text(account!.facilityName!,
-                style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500)),
-          ],
-          const SizedBox(height: 12),
-          Container(
-            // شارة توضح الدور الوظيفي
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-                role == 'مسن'
-                    ? 'خبير سعادة'
-                    : (role == 'مدير' ? 'مدير المنشأة' : role),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13)),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -355,7 +479,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       ];
     } else {
       stats = [
-        {'label': 'المركز', 'value': 'طبطبة', 'icon': Icons.business_rounded},
+        {'label': 'المركز', 'value': 'ونس', 'icon': Icons.business_rounded},
         {
           'label': 'الحالة',
           'value': 'نشط',
@@ -410,29 +534,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader('المعلومات الأساسية', themeColor,
-            onEdit: role == 'مسن'
-                ? null
-                : () =>
-                    _showEditPersonalDialog(context, ref, account, themeColor)),
+            onEdit: role == 'مسن' ? null : () =>
+                _showEditPersonalDialog(context, ref, account, themeColor)),
         const SizedBox(height: 15),
         _buildInfoTile(Icons.person_outline, 'الاسم الكامل',
             account?.name ?? 'غير متوفر', themeColor,
-            onTap: role == 'مسن'
-                ? null
-                : () =>
-                    _showEditPersonalDialog(context, ref, account, themeColor)),
+            onTap: role == 'مسن' ? null : () =>
+                _showEditPersonalDialog(context, ref, account, themeColor)),
         _buildInfoTile(Icons.email_outlined, 'البريد الإلكتروني',
             account?.email ?? 'غير متوفر', themeColor,
-            onTap: role == 'مسن'
-                ? null
-                : () =>
-                    _showEditPersonalDialog(context, ref, account, themeColor)),
+            onTap: role == 'مسن' ? null : () =>
+                _showEditPersonalDialog(context, ref, account, themeColor)),
         _buildInfoTile(Icons.phone_outlined, 'رقم الهاتف',
             account?.phone ?? 'غير متوفر', themeColor,
-            onTap: role == 'مسن'
-                ? null
-                : () =>
-                    _showEditPersonalDialog(context, ref, account, themeColor)),
+            onTap: role == 'مسن' ? null : () =>
+                _showEditPersonalDialog(context, ref, account, themeColor)),
         const SizedBox(height: 30),
         if (role == 'مدير' || role == 'إدارة') ...[
           _buildSectionHeader('بيانات المنشأة (الدار)', themeColor,
@@ -440,7 +556,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   _showEditFacilityDialog(context, ref, account, themeColor)),
           const SizedBox(height: 15),
           _buildInfoTile(Icons.apartment_rounded, 'اسم المنشأة',
-              account?.facilityName ?? 'طبطبة', themeColor,
+              account?.facilityName ?? 'ونس', themeColor,
               onTap: () =>
                   _showEditFacilityDialog(context, ref, account, themeColor)),
           _buildInfoTile(Icons.location_on_outlined, 'عنوان المنشأة',
@@ -463,30 +579,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               account?.facilityYearOfEst ?? 'غير محددة', themeColor,
               onTap: () =>
                   _showEditFacilityDialog(context, ref, account, themeColor)),
-          _buildInfoTile(
-              Icons.group_add_rounded,
-              'السعة الاستيعابية',
-              account?.facilityCapacity?.isNotEmpty == true
-                  ? '${account!.facilityCapacity} مقيم'
-                  : 'غير محددة',
-              themeColor,
+          _buildInfoTile(Icons.group_add_rounded, 'السعة الاستيعابية',
+              (account != null && account.facilityCapacity != null && account.facilityCapacity!.isNotEmpty) ? '${account.facilityCapacity} مقيم' : 'غير محددة', themeColor,
               onTap: () =>
                   _showEditFacilityDialog(context, ref, account, themeColor)),
-          _buildInfoTile(
-              Icons.map_rounded,
-              'موقع الدار',
-              account?.facilityLocationUrl?.isNotEmpty == true
-                  ? 'اضغط لفتح الموقع'
-                  : 'لم يتم تحديده',
-              themeColor, onTap: () {
-            final url = account?.facilityLocationUrl;
-            if (url != null && url.isNotEmpty) {
-              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-            } else {
-              _showEditFacilityDialog(context, ref, account, themeColor);
-            }
-          }),
-          if (account?.amenities != null && account!.amenities!.isNotEmpty)
+          _buildInfoTile(Icons.map_rounded, 'موقع الدار على الخريطة',
+              (account != null && account.facilityLocationUrl != null && account.facilityLocationUrl!.isNotEmpty) ? 'اضغط لفتح الموقع 📍' : 'لم يتم تحديده', themeColor,
+              onTap: () {
+                if (account != null && account.facilityLocationUrl != null && account.facilityLocationUrl!.isNotEmpty) {
+                  launchUrl(Uri.parse(account.facilityLocationUrl!));
+                } else {
+                  _showEditFacilityDialog(context, ref, account, themeColor);
+                }
+              }),
+          if (account != null && account.amenities != null && account.amenities!.isNotEmpty)
             _buildAmenitiesSection(account.amenities!, themeColor),
         ] else if (role == 'مسن') ...[
           _buildSectionHeader('بيانات الإقامة والرعاية', themeColor),
@@ -504,7 +610,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             _buildListSection(
                 'الأمراض المزمنة', account.chronicDiseases!, Colors.red),
           _buildInfoTile(Icons.business_rounded, 'المنشأة التابع لها',
-              account?.facilityName ?? 'طبطبة', themeColor),
+              account?.facilityName ?? 'ونس', themeColor),
         ] else if (role == 'ممرض' || role == 'أخصائي') ...[
           _buildSectionHeader('البيانات الوظيفية', themeColor),
           const SizedBox(height: 15),
@@ -513,7 +619,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           _buildInfoTile(Icons.access_time_rounded, 'فترة العمل (الوردية)',
               account?.shift ?? 'غير محددة', themeColor),
           _buildInfoTile(Icons.business_rounded, 'جهة العمل',
-              account?.facilityName ?? 'طبطبة', themeColor),
+              account?.facilityName ?? 'ونس', themeColor),
         ] else if (role == 'متطوع') ...[
           _buildSectionHeader('بيانات التطوع', themeColor),
           const SizedBox(height: 15),
@@ -530,7 +636,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           _buildInfoTile(Icons.family_restroom_rounded, 'القريب المتابع',
               'أ. محمود عبد العزيز (والد)', themeColor),
           _buildInfoTile(Icons.contact_phone_outlined, 'طوارئ المنشأة',
-              account?.facilityName ?? 'طبطبة', themeColor),
+              account?.facilityName ?? 'ونس', themeColor),
           _buildInfoTile(Icons.verified_user_outlined, 'حالة التصريح',
               'نشط - دخول كامل', themeColor),
         ],
@@ -813,14 +919,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final addrController = TextEditingController(text: account.facilityAddress);
     final phoneController = TextEditingController(text: account.facilityPhone);
     final emailController = TextEditingController(text: account.facilityEmail);
-    final yearController =
-        TextEditingController(text: account.facilityYearOfEst);
-    final capacityController =
-        TextEditingController(text: account.facilityCapacity);
-    final licenseController =
-        TextEditingController(text: account.licenseNumber);
-    final locationController =
-        TextEditingController(text: account.facilityLocationUrl);
+    final yearController = TextEditingController(text: account.facilityYearOfEst);
+    final capacityController = TextEditingController(text: account.facilityCapacity);
+    final licenseController = TextEditingController(text: account.licenseNumber);
+    final locationController = TextEditingController(text: account.facilityLocationUrl);
 
     showModalBottomSheet(
       context: context,
@@ -868,22 +970,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               _buildDialogField(licenseController, 'رقم الترخيص',
                   Icons.verified_user_outlined, themeColor),
               const SizedBox(height: 15),
-              _buildDialogField(locationController, 'رابط الموقع على الخريطة',
+              _buildDialogField(locationController, 'رابط الموقع على خرائط جوجل',
                   Icons.map_rounded, themeColor),
               const SizedBox(height: 30),
               _buildSaveButton(context, themeColor, () async {
-                await ref.read(appRiverpod).updateFacilityProfileSettings(
-                      account: account,
-                      facilityName: nameController.text,
-                      facilityAddress: addrController.text,
-                      facilityPhone: phoneController.text,
-                      facilityEmail: emailController.text,
-                      licenseNumber: licenseController.text,
-                      facilityYearOfEst: yearController.text,
-                      facilityCapacity: capacityController.text,
-                      facilityLocationUrl: locationController.text,
-                    );
-                if (!context.mounted) return;
+                final updated = account.copyWith(
+                  facilityName: nameController.text,
+                  facilityAddress: addrController.text,
+                  facilityPhone: phoneController.text,
+                  facilityEmail: emailController.text,
+                  facilityYearOfEst: yearController.text,
+                  facilityCapacity: capacityController.text,
+                  licenseNumber: licenseController.text,
+                  facilityLocationUrl: locationController.text,
+                );
+                ref.read(appRiverpod).updateCurrentAccount(updated);
                 Navigator.pop(context);
                 _triggerSuccess();
               }),
@@ -975,6 +1076,102 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class RoleParticles extends StatefulWidget {
+  final String role;
+  const RoleParticles({super.key, required this.role});
+
+  @override
+  State<RoleParticles> createState() => _RoleParticlesState();
+}
+
+class _RoleParticlesState extends State<RoleParticles> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    IconData particleIcon = Icons.add_rounded;
+    Color particleColor = Colors.white;
+
+    switch (widget.role) {
+      case 'مسن':
+        particleIcon = Icons.star_rounded;
+        particleColor = const Color(0xFFFFD700); // ذهبي للمسن
+        break;
+      case 'متطوع':
+        particleIcon = Icons.favorite_rounded;
+        particleColor = const Color(0xFFD1FAE5); // أخضر فاتح للمتطوع
+        break;
+      case 'عائلة':
+        particleIcon = Icons.favorite_rounded;
+        particleColor = const Color(0xFFFFE4E6); // وردي دافئ للعائلة
+        break;
+      case 'أخصائي':
+      case 'أخصائي اجتماعي':
+        particleIcon = Icons.auto_awesome_rounded;
+        particleColor = const Color(0xFFFEF3C7); // أمبر دافئ للأخصائي
+        break;
+      case 'مدير':
+      case 'إدارة':
+        particleIcon = Icons.shield_rounded;
+        particleColor = const Color(0xFFE2E8F0); // سيلفر خفيف للمدير
+        break;
+      case 'ممرض':
+      default:
+        particleIcon = Icons.add_rounded;
+        particleColor = Colors.white;
+        break;
+    }
+
+    return Positioned.fill(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Stack(
+            children: List.generate(8, (index) {
+              final speed = 0.8 + (index * 0.25);
+              final progress = (_controller.value * speed + (index * 0.15)) % 1.0;
+              
+              // توزيع أفقي مختلف لكل جسيم
+              final leftOffset = 15.0 + (index * 48.0) % 360;
+              
+              return Positioned(
+                left: leftOffset,
+                bottom: (progress * 260) - 35, // ترتفع بهدوء وتختفي
+                child: Opacity(
+                  opacity: (1.0 - progress) * 0.22, // تتلاشى تدريجياً
+                  child: Transform.rotate(
+                    angle: progress * 2.0 * 3.1415, // دوران خفيف يعطي إحساساً بالحيوية
+                    child: Icon(
+                      particleIcon,
+                      size: 16.0 + (index * 8) % 24, // أحجام عشوائية متناسقة
+                      color: particleColor,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
       ),
     );
   }

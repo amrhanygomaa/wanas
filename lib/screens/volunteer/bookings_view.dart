@@ -50,19 +50,9 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
   }
 
   void _updateCountdown() {
-    final confirmed = ref
-        .read(appRiverpod)
-        .volunteerBookings
-        .where((b) => b.status == 'confirmed')
-        .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    if (confirmed.isEmpty) {
-      setState(() => _countdownText = '');
-      return;
-    }
-
+    // Mock target: 26 hours and 14 minutes from now
     final now = DateTime.now();
-    final target = confirmed.first.startTime;
+    final target = now.add(const Duration(hours: 26, minutes: 14));
     final diff = target.difference(now);
 
     if (diff.isNegative) {
@@ -76,26 +66,17 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-    final confirmedBookings = provider.volunteerBookings
-        .where((b) => b.status == 'confirmed')
-        .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    final completedBookings = provider.volunteerBookings
-        .where((b) => b.status == 'done')
-        .toList()
-      ..sort((a, b) => b.startTime.compareTo(a.startTime));
 
     return VolunteerAnimatedBackground(
       child: Column(
         children: [
           _buildSummaryStrip(provider),
-          _buildTabFilter(provider),
+          _buildTabFilter(),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -108,25 +89,23 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                     _buildSectionLabel(
                         'الجلسة القادمة', const Color(0xFF10b981), 0),
                     const SizedBox(height: 12),
-                    if (confirmedBookings.isNotEmpty)
-                      _buildNextSessionCard(confirmedBookings.first)
-                    else
-                      _buildEmptyMessage('لا توجد حجوزات قادمة من AWS'),
+                    _buildNextSessionCard(provider.volunteerBookings
+                        .firstWhere((b) => b.status == 'confirmed')),
                     const SizedBox(height: 24),
                     _buildSectionLabel(
                         'حجوزاتي القادمة', const Color(0xFF6366f1), 1),
                     const SizedBox(height: 12),
-                    ...confirmedBookings
+                    ...provider.volunteerBookings
+                        .where((b) => b.status == 'confirmed')
                         .skip(1)
-                        .map((b) => _buildBookingCard(b)),
+                        .map((b) => _buildBookingCard(b))
+                        ,
                     const SizedBox(height: 24),
                     _buildSectionLabel(
                         'آخر جلسة مكتملة', const Color(0xFF6366f1), 2),
                     const SizedBox(height: 12),
-                    if (completedBookings.isNotEmpty)
-                      _buildCompletedSessionCard(completedBookings.first)
-                    else
-                      _buildEmptyMessage('لا توجد جلسات مكتملة من AWS'),
+                    _buildCompletedSessionCard(provider.volunteerBookings
+                        .firstWhere((b) => b.status == 'done')),
                     const SizedBox(height: 24),
                     _buildMonthlyStats(provider),
                     const SizedBox(height: 40),
@@ -166,27 +145,6 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
     );
   }
 
-  Widget _buildEmptyMessage(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFe2e8f0)),
-      ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontFamily: 'Cairo',
-          color: Color(0xFF64748B),
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
   Widget _buildSummaryCell(String val, String lbl, Color color) {
     return Expanded(
       child: Container(
@@ -207,18 +165,8 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
     );
   }
 
-  Widget _buildTabFilter(AppRiverpod provider) {
-    final upcoming =
-        provider.volunteerBookings.where((b) => b.status == 'confirmed').length;
-    final completed =
-        provider.volunteerBookings.where((b) => b.status == 'done').length;
-    final cancelled =
-        provider.volunteerBookings.where((b) => b.status == 'cancelled').length;
-    final tabs = [
-      'القادمة ($upcoming)',
-      'المكتملة ($completed)',
-      'الملغاة ($cancelled)'
-    ];
+  Widget _buildTabFilter() {
+    final tabs = ['القادمة (٢)', 'المكتملة (١٢)', 'الملغاة (١)'];
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -272,9 +220,9 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('قيّم الجلسة — ${booking.title}',
+                const Text('قيّم جلسة الأمس — الحاج محمود',
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF0f172a))),
@@ -474,8 +422,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                   ),
                   Text('+${booking.points} نقطة عند الإتمام',
                       style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 11)),
+                          color: Colors.white.withValues(alpha: 0.9), fontSize: 11)),
                 ],
               ),
             ],
@@ -541,9 +488,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                                 color: Color(0xFF0f172a))),
                         Text(booking.timeInfo,
                             style: const TextStyle(
-                                color: Color(0xFF475569),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500)),
+                                color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
@@ -555,9 +500,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                      color: Color(0xFF64748b),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500)),
+                                      color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w500)),
                             ),
                           ],
                         ),

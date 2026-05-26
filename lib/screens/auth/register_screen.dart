@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
-import '../../services/auth_service.dart';
-import '../../services/api_client.dart';
+import '../../providers/app_riverpod.dart';
 import 'admin_register_screen.dart';
+
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -17,7 +17,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _facilityIdController = TextEditingController();
   String _selectedRole = 'أسرة';
   late AnimationController _fadeController;
 
@@ -35,7 +34,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _facilityIdController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -136,12 +134,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     icon: Icons.lock_outline_rounded,
                     isPassword: true,
                   ),
-                  const SizedBox(height: 16),
-                  _buildInput(
-                    controller: _facilityIdController,
-                    label: 'رمز المنشأة (Facility ID)',
-                    icon: Icons.business_outlined,
-                  ),
                   const SizedBox(height: 32),
 
                   const Text(
@@ -179,64 +171,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     width: double.infinity,
                     height: 58,
                     child: ElevatedButton(
-                      onPressed: () async {
+                      onPressed: () {
                         if (_nameController.text.isEmpty ||
-                            _emailController.text.isEmpty ||
-                            _passwordController.text.isEmpty ||
-                            _facilityIdController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('يرجى إكمال كل الحقول بما فيها رمز المنشأة',
-                                  style: TextStyle(fontFamily: 'Cairo')),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
+                            _emailController.text.isEmpty) {
                           return;
                         }
-                        // محاولة تسجيل عبر AWS Cognito (الحقيقي)
-                        try {
-                          final cognitoRole =
-                              _selectedRole == 'متطوع' ? 'Volunteer' : 'Family';
-                          await AuthService.instance.register(
-                            email: _emailController.text,
-                            password: _passwordController.text,
-                            name: _nameController.text,
-                            role: cognitoRole,
-                            facilityId: _facilityIdController.text.trim(),
-                          );
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                '✓ تم إنشاء الحساب في AWS Cognito · يمكنك الدخول الآن',
-                                style: TextStyle(fontFamily: 'Cairo'),
-                              ),
-                              backgroundColor: Color(0xFF10b981),
-                            ),
-                          );
-                          return;
-                        } on ApiException catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'فشل التسجيل عبر Cognito: ${e.message}',
-                                style: const TextStyle(fontFamily: 'Cairo'),
-                              ),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('فشل: $e',
-                                  style: const TextStyle(fontFamily: 'Cairo')),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        }
+                        ref.read(appRiverpod).selfRegister(
+                              name: _nameController.text,
+                              email: _emailController.text,
+                              password: _passwordController.text,
+                              role: _selectedRole,
+                            );
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'تم إنشاء الحساب بنجاح! يمكنك الدخول الآن'),
+                            backgroundColor: Color(0xFF10b981),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6C63FF),

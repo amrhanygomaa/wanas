@@ -28,23 +28,26 @@ dependencies:
   lottie: ^3.1.0
   flutter_tts: ^4.2.0
   speech_to_text: ^7.3.0
+  audioplayers: ^6.4.0
   file_picker: 8.1.7
-
-  # ── Backend Integration ─────────────────────────────────────────────
-  http: ^1.2.0
-
-  # ── Audio Playback (للرسائل الصوتية من العائلة) ─────────────────────
-  audioplayers: ^6.1.0
-
-  # ── Firebase Push Notifications ─────────────────────────────────────
   firebase_core: ^3.6.0
   firebase_messaging: ^15.1.3
-  socket_io_client: ^3.1.4
+  socket_io_client: ^2.0.3+1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_native_splash: ^2.4.0
+
+flutter_native_splash:
+  color: "#FAF7F2" # خلفية كريمي مطابقة للسبلاش
+  image: assets/icons/wanas_logo.png # مسار لوجو ونس الشفاف
+  fullscreen: true
+  android_12:
+    color: "#FAF7F2"
+    image: assets/icons/wanas_logo.png
+
 
 flutter:
   uses-material-design: true

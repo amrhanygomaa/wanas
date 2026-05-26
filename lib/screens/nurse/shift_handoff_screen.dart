@@ -278,16 +278,12 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
 
   void _handleFinalHandoff() {
     final provider = ref.read(appRiverpod);
-    final critical = provider.residentFiles
-        .where((f) => f.status == 'critical')
-        .map((f) => f.name)
-        .toList();
     provider.addHandoff(ShiftHandoff(
-      nurseName: provider.currentAccount?.name ?? 'الممرض',
+      nurseName: 'أ. منى',
       shiftType: 'الوردية الصباحية',
       notes: 'تم تسليم الوردية بنجاح إلى ${_incomingNurseName.text}',
       timestamp: DateTime.now(),
-      criticalCases: critical,
+      criticalCases: ['الحاج محمود (ضغط مرتفع)'],
     ));
 
     showDialog(

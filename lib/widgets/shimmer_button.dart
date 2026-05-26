@@ -53,8 +53,8 @@ class _ShimmerButtonState extends State<ShimmerButton>
             borderRadius: BorderRadius.circular(13),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(
-                  alpha: 0.3 + (_glowController.value * 0.25),
+                color: AppColors.primary.withValues(alpha: 
+                  0.3 + (_glowController.value * 0.25),
                 ),
                 blurRadius: 20 + (_glowController.value * 8),
                 offset: const Offset(0, 4),

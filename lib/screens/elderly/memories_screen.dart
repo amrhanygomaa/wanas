@@ -1,14 +1,11 @@
-// ignore_for_file: unused_element
 import 'dart:math';
-import 'dart:io'; // للتعامل مع ملفات الصور المختارة من الاستوديو
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
-import '../../models/app_models.dart';
-import 'package:photo_manager/photo_manager.dart';
-import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'voice_messages_playback_screen.dart';
 import 'album_details_screen.dart';
+
 
 class MemoriesScreen extends ConsumerStatefulWidget {
   const MemoriesScreen({super.key});
@@ -27,16 +24,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
   late AnimationController _noteController;
   late AnimationController _shimmerController;
 
-  int selectedCategory = 0;
-  final categories = [
-    'الكل',
-    '🏠 المسكن',
-    '👨‍👩‍👧 أسرة',
-    '🌊 رحلات',
-    '🎬 فيديو',
-    '🎉 مناسبات',
-    '🖼️ الاستوديو'
-  ];
+  // الألبومات أصبحت ديناميكية
 
   @override
   void initState() {
@@ -95,17 +83,10 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
               child: Column(
                 children: [
-                  _buildCategoryTabs(),
                   const SizedBox(height: 12),
-                  _buildAlbumsRow(provider),
+                  _buildAlbumsGrid(provider),
                   const SizedBox(height: 12),
-                  _buildFeaturedCard(),
-                  const SizedBox(height: 12),
-                  _buildVoiceMessage(provider),
-                  const SizedBox(height: 12),
-                  _buildPhotoGrid(provider),
-                  const SizedBox(height: 12),
-                  _buildFamilyNote(),
+                  _buildFamilyNote(provider),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -153,12 +134,13 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                       padding:
                           EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(right: 28, top: 4, bottom: 6),
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(right: 28, top: 4, bottom: 6),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FittedBox(
+                          const FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text('ذكرياتي الحلوة',
                                 style: TextStyle(
@@ -166,7 +148,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold)),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text('من الأسرة بكل الحب 💜',
                               style: TextStyle(
                                   color: Colors.white,
@@ -223,16 +205,14 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
   Widget _buildHeroChip(String value, String label, int index) {
     Color chipColor;
     Color borderColor;
-
+    
     switch (index) {
       case 0: // صورة
-        chipColor =
-            const Color(0xFFF472B6).withValues(alpha: 0.15); // وردي خفيف
+        chipColor = const Color(0xFFF472B6).withValues(alpha: 0.15); // وردي خفيف
         borderColor = const Color(0xFFF472B6).withValues(alpha: 0.3);
         break;
       case 1: // فيديو
-        chipColor =
-            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
+        chipColor = const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
         borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
         break;
       case 2: // رسالة
@@ -283,7 +263,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
@@ -294,232 +274,10 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 
-  Widget _buildCategoryTabs() {
-    bool hc = ref.watch(appRiverpod).isHighContrast;
-    return SizedBox(
-      height: 48,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final isActive = selectedCategory == index;
-          return GestureDetector(
-            onTap: () {
-              setState(() => selectedCategory = index);
-              if (categories[index] == '🖼️ الاستوديو') {
-                ref.read(appRiverpod).fetchGalleryImages();
-              }
-            },
-            child: Container(
-              margin: const EdgeInsets.only(left: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: isActive
-                    ? const LinearGradient(
-                        colors: [Color(0xFF6C63FF), Color(0xFFA78BFA)])
-                    : null,
-                color: isActive
-                    ? null
-                    : (hc ? const Color(0xFF1E1E1E) : Colors.white),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                    color:
-                        hc ? const Color(0xFF333333) : const Color(0xFFede9fe),
-                    width: 1.5),
-              ),
-              child: Center(
-                child: Text(
-                  categories[index],
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isActive
-                        ? Colors.white
-                        : (hc
-                            ? const Color(0xFF9FA8DA)
-                            : const Color(0xFF7c3aed)),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildAlbumsRow(AppRiverpod provider) {
-    final bool hc = provider.isHighContrast;
-    final albums = provider.allAlbums;
-    if (albums.isEmpty) return const SizedBox.shrink();
-
-    return SizedBox(
-      height: 118,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: albums.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          if (index == albums.length) {
-            return _buildCreateAlbumTile(provider, hc);
-          }
-          final albumName = albums[index];
-          final count = provider.getMemoriesByCategory(albumName).length;
-          final cover = provider.albumCovers[albumName];
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AlbumDetailsScreen(albumName: albumName),
-                ),
-              );
-            },
-            child: Container(
-              width: 132,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: hc ? const Color(0xFF1E1E1E) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: hc ? const Color(0xFF333333) : const Color(0xFFEDE9FE),
-                ),
-                image: cover == null || cover.isEmpty
-                    ? null
-                    : DecorationImage(
-                        image: cover.startsWith('http')
-                            ? NetworkImage(cover)
-                            : FileImage(File(cover)) as ImageProvider,
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withValues(alpha: 0.28),
-                          BlendMode.darken,
-                        ),
-                      ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.photo_album_rounded,
-                      color: Color(0xFF6C63FF), size: 24),
-                  const Spacer(),
-                  Text(
-                    albumName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: cover == null
-                          ? (hc ? Colors.white : const Color(0xFF1E293B))
-                          : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    '$count عنصر',
-                    style: TextStyle(
-                      color: cover == null
-                          ? (hc ? Colors.white70 : const Color(0xFF64748B))
-                          : Colors.white70,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildCreateAlbumTile(AppRiverpod provider, bool hc) {
-    return GestureDetector(
-      onTap: () => _showCreateAlbumDialog(provider, hc),
-      child: Container(
-        width: 132,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: hc ? const Color(0xFF1E1E1E) : const Color(0xFFF5F3FF),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: hc ? const Color(0xFF333333) : const Color(0xFFC4B5FD),
-          ),
-        ),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_photo_alternate_rounded,
-                color: Color(0xFF6C63FF), size: 30),
-            SizedBox(height: 8),
-            Text(
-              'ألبوم جديد',
-              style: TextStyle(
-                color: Color(0xFF6C63FF),
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCreateAlbumDialog(AppRiverpod provider, bool hc) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text(
-          'ألبوم جديد',
-          style: TextStyle(color: hc ? Colors.white : const Color(0xFF1E293B)),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textAlign: TextAlign.right,
-          decoration: const InputDecoration(hintText: 'اسم الألبوم'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              provider.createAlbum(controller.text);
-              Navigator.pop(context);
-            },
-            child: const Text('إنشاء'),
-          ),
-        ],
-      ),
-    );
-  }
+  // تم إزالة أزرار التصنيفات (Categories Tabs)
 
   Widget _buildFeaturedCard() {
-    final provider = ref.watch(appRiverpod);
-    final bool hc = provider.isHighContrast;
-
-    final MemoryMoment? featuredMoment =
-        provider.memoryMoments.isNotEmpty ? provider.memoryMoments.first : null;
-    final MemoryItem? featuredItem =
-        featuredMoment == null && provider.memoriesList.isNotEmpty
-            ? provider.memoriesList.first
-            : null;
-
-    if (featuredMoment == null && featuredItem == null) {
-      return const SizedBox.shrink();
-    }
-
-    final String title = featuredMoment?.activityTitle ?? featuredItem!.title;
-    final String subtitle = featuredMoment != null
-        ? 'من ${featuredMoment.residentName} · ${featuredMoment.date}'
-        : '${featuredItem!.category} · ${featuredItem.date}';
-
+    bool hc = ref.watch(appRiverpod).isHighContrast;
     return AnimatedBuilder(
       animation: Listenable.merge([_floatController, _glowController]),
       builder: (context, child) {
@@ -606,7 +364,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(title,
+                              Text('عيد ميلاد خالد ٢٠٢٤',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
@@ -617,7 +375,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                           ? Colors.white
                                           : const Color(0xFF0f172a))),
                               const SizedBox(height: 6),
-                              Text(subtitle,
+                              Text('أرسلته سارة · ٥ مارس ٢٠٢٤',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
@@ -780,313 +538,695 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 
-  Widget _buildPhotoGrid(AppRiverpod provider) {
-    final activeCategory = categories[selectedCategory];
-    List<dynamic> items = provider.getMemoriesByCategory(activeCategory);
-
-    if (activeCategory == '🖼️ الاستوديو') {
-      items = provider.deviceGalleryImages;
-    }
+  Widget _buildAlbumsGrid(AppRiverpod provider) {
+    bool hc = provider.isHighContrast;
+    final albums = provider.allAlbums;
 
     return Column(
       children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text('صندوق الذكريات',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0f172a))),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: TextButton.icon(
-                onPressed: () => provider.pickMemoryImage(),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                ),
-                icon: const Icon(Icons.add_photo_alternate_outlined,
-                    color: Color(0xFF6C63FF), size: 20),
-                label: const Text('إضافة صور',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Color(0xFF6C63FF),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: hc ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: hc ? Colors.black.withValues(alpha: 0.3) : const Color(0xFF6C63FF).withValues(alpha: 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
+            ],
+            border: Border.all(
+              color: hc ? const Color(0xFF333333) : Colors.white,
+              width: 2,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6C63FF), Color(0xFFA78BFA)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.photo_album_rounded, color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ألبومات الصور',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.2,
+                              color: hc ? Colors.white : const Color(0xFF0F172A))),
+                      const SizedBox(height: 4),
+                      Text('مجلدات ذكرياتك ✨',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: hc ? Colors.white70 : const Color(0xFF64748B))),
+                    ],
+                  ),
+                ],
+              ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _showCreateAlbumDialog(context, provider),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF472B6), Color(0xFFEC4899)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEC4899).withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.create_new_folder_rounded, color: Colors.white, size: 20),
+                        SizedBox(width: 6),
+                        Text('ألبوم',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.start,
-          children: [
-            ...items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final mem = entry.value;
-
-              String type = 'image';
-              String? url;
-              String? label;
-              String? assetPath;
-              AssetEntity? asset;
-
-              if (mem is MemoryItem) {
-                type = mem.type;
-                label = mem.title;
-                assetPath = mem.assetPath;
-              } else if (mem is MemoryMoment) {
-                type = 'image';
-                url = mem.imageUrl;
-                label = mem.activityTitle;
-              } else if (mem is String) {
-                type = 'image';
-                url = mem;
-              } else if (mem is AssetEntity) {
-                type = 'image';
-                asset = mem;
-              }
-
-              return SizedBox(
-                width: (MediaQuery.of(context).size.width - 44) / 3,
-                height: (MediaQuery.of(context).size.width - 44) / 3,
-                child: _buildGridCell(provider, index, type, url, label, asset,
-                    assetPath: assetPath),
-              );
-            }),
-          ],
+        const SizedBox(height: 20),
+        GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.9, 
+          ),
+          itemCount: albums.length,
+          itemBuilder: (context, index) {
+            final albumName = albums[index];
+            final itemsCount = provider.getMemoriesByCategory(albumName).length;
+            
+            return _buildAlbumCell(context, provider, index, albumName, itemsCount, hc);
+          },
         ),
       ],
     );
   }
 
-  Widget _buildGridCell(AppRiverpod provider, int index, String type,
-      String? url, String? label, AssetEntity? asset,
-      {String? assetPath}) {
-    bool hc = provider.isHighContrast;
+  Widget _buildAlbumCell(BuildContext context, AppRiverpod provider, int index, String albumName, int itemsCount, bool hc) {
     final gradients = [
-      const [Color(0xFFddd6fe), Color(0xFFc4b5fd)],
-      const [Color(0xFFfce7f3), Color(0xFFf9a8d4)],
-      const [Color(0xFFdbeafe), Color(0xFF93c5fd)],
-      const [Color(0xFFd1fae5), Color(0xFF6ee7b7)],
-      const [Color(0xFFfef3c7), Color(0xFFfcd34d)],
+      const [Color(0xFF8B5CF6), Color(0xFFC4B5FD)], 
+      const [Color(0xFFEC4899), Color(0xFFF9A8D4)], 
+      const [Color(0xFF3B82F6), Color(0xFF93C5FD)], 
+      const [Color(0xFF10B981), Color(0xFF6EE7B7)], 
+      const [Color(0xFFF59E0B), Color(0xFFFCD34D)], 
+      const [Color(0xFFF43F5E), Color(0xFFFDA4AF)], 
     ];
     final gradient = gradients[index % gradients.length];
+    
+    final coverPath = provider.albumCovers[albumName];
+    final hasCover = coverPath != null && coverPath.isNotEmpty;
 
-    final String? networkUrl = url ??
-        ((assetPath != null && assetPath.startsWith('http'))
-            ? assetPath
-            : null);
-    final String? bundledAsset =
-        (assetPath != null && assetPath.startsWith('assets/'))
-            ? assetPath
-            : null;
-    final String? localFilePath = (assetPath != null &&
-            assetPath.isNotEmpty &&
-            !assetPath.startsWith('http') &&
-            !assetPath.startsWith('assets/'))
-        ? assetPath
-        : null;
-    final bool hasImageSource = asset != null ||
-        networkUrl != null ||
-        bundledAsset != null ||
-        localFilePath != null;
-
-    Widget placeholder() => Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: gradient),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white.withValues(alpha: 0.7),
-              size: 22,
-            ),
-          ),
+    return GestureDetector(
+      onLongPress: () => _showAlbumOptionsSheet(context, provider, albumName, hc),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AlbumDetailsScreen(albumName: albumName)),
         );
-
-    Widget buildImageLayer() {
-      if (asset != null) {
-        return AssetEntityImage(
-          asset,
-          isOriginal: false,
-          thumbnailSize: const ThumbnailSize.square(200),
-          fit: BoxFit.cover,
-        );
-      }
-      if (networkUrl != null) {
-        return Image.network(
-          networkUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => placeholder(),
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return Container(
-              color: gradient.first.withValues(alpha: 0.3),
-            );
-          },
-        );
-      }
-      if (bundledAsset != null) {
-        return Image.asset(
-          bundledAsset,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => placeholder(),
-        );
-      }
-      if (localFilePath != null) {
-        final f = File(localFilePath);
-        if (!f.existsSync()) return placeholder();
-        return Image.file(
-          f,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => placeholder(),
-        );
-      }
-      return Container(
+      },
+      child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: gradient),
+          borderRadius: BorderRadius.circular(20),
+          gradient: hasCover ? null : LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          image: hasCover
+              ? (coverPath.startsWith('http')
+                  ? DecorationImage(image: NetworkImage(coverPath), fit: BoxFit.cover)
+                  : (coverPath.startsWith('assets/')
+                      ? DecorationImage(image: AssetImage(coverPath), fit: BoxFit.cover)
+                      : DecorationImage(image: FileImage(File(coverPath)), fit: BoxFit.cover)))
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: (hasCover ? Colors.black : gradient[0]).withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        child: Center(
-          child: Icon(Icons.image,
-              color: Colors.white.withValues(alpha: 0.6), size: 20),
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: hc ? const Color(0xFF333333) : const Color(0xFFede9fe),
-            width: 1.5),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          children: [
-            Positioned.fill(child: buildImageLayer()),
-            Container(
-                decoration: BoxDecoration(
-                    color: Colors.black
-                        .withValues(alpha: hasImageSource ? 0.2 : 0.08),
-                    borderRadius: BorderRadius.circular(14))),
-            if (type == 'video')
-              Center(
-                child: Container(
-                  width: 28,
-                  height: 28,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              if (hasCover)
+                Container(
                   decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle),
-                  child: const Icon(Icons.play_arrow,
-                      color: Color(0xFFec4899), size: 14),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.8),
+                      ],
+                      stops: const [0.5, 0.7, 1.0],
+                    ),
+                  ),
+                ),
+              if (!hasCover)
+                Positioned(
+                  right: -20,
+                  top: -20,
+                  child: Icon(Icons.folder_rounded, size: 120, color: Colors.white.withValues(alpha: 0.2)),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.photo_library_rounded, color: Colors.white, size: 24),
+                    ),
+                    const Spacer(),
+                    Text(
+                      albumName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$itemsCount صورة/فيديو',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            if (label != null && label.isNotEmpty)
-              Positioned(
-                bottom: 4,
-                right: 4,
-                left: 4,
-                child: Text(label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAlbumOptionsSheet(BuildContext context, AppRiverpod provider, String albumName, bool hc) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
               ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Text(
+                albumName,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: hc ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+            ),
+            const Divider(height: 16),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.drive_file_rename_outline_rounded, color: Color(0xFF6C63FF)),
+              ),
+              title: Text('تعديل اسم الألبوم',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: hc ? Colors.white : Colors.black)),
+              subtitle: Text('تغيير اسم الألبوم الحالي',
+                  style: TextStyle(color: hc ? Colors.white54 : Colors.grey, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showRenameAlbumDialog(context, provider, albumName, hc);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.delete_rounded, color: Colors.red),
+              ),
+              title: const Text('حذف الألبوم',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+              subtitle: const Text('سيتم حذف الألبوم وكل الصور بداخله',
+                  style: TextStyle(color: Colors.red, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showDeleteAlbumConfirm(context, provider, albumName, hc);
+              },
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFamilyNote() {
-    final provider = ref.watch(appRiverpod);
-    final bool hc = provider.isHighContrast;
-
-    final MemoryItem note = provider.memoriesList.firstWhere(
-      (m) => m.type == 'text' && (m.content?.isNotEmpty ?? false),
-      orElse: () => MemoryItem(
-        id: '',
-        category: '',
-        title: '',
-        date: '',
-        type: 'text',
-        assetPath: '',
-        content: '',
+  void _showRenameAlbumDialog(BuildContext context, AppRiverpod provider, String albumName, bool hc) {
+    final controller = TextEditingController(text: albumName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('تعديل اسم الألبوم',
+            style: TextStyle(color: hc ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: hc ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            hintText: 'الاسم الجديد',
+            hintStyle: TextStyle(color: hc ? Colors.white54 : Colors.grey),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty && newName != albumName) {
+                provider.renameAlbum(albumName, newName);
+              }
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('حفظ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
-    if (note.id.isEmpty) return const SizedBox.shrink();
+  }
+
+  void _showDeleteAlbumConfirm(BuildContext context, AppRiverpod provider, String albumName, bool hc) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            const SizedBox(width: 10),
+            Text('حذف الألبوم؟',
+                style: TextStyle(color: hc ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: TextStyle(fontSize: 16, color: hc ? Colors.white70 : Colors.black87, height: 1.5),
+            children: [
+              const TextSpan(text: 'هل أنت متأكد من حذف ألبوم '),
+              TextSpan(
+                text: '"$albumName"',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+              const TextSpan(text: '؟\nسيتم حذف الألبوم وكل الصور بداخله نهائياً.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              provider.deleteAlbum(albumName);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('حذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateAlbumDialog(BuildContext context, AppRiverpod provider) {
+    final TextEditingController controller = TextEditingController();
+    bool hc = provider.isHighContrast;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('إنشاء ألبوم جديد', style: TextStyle(color: hc ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: hc ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            hintText: 'اسم الألبوم (مثال: رحلة الصيف)',
+            hintStyle: TextStyle(color: hc ? Colors.white54 : Colors.grey),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                provider.createAlbum(controller.text.trim());
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('إنشاء', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFamilyNote(AppRiverpod provider) {
+    final hc = provider.isHighContrast;
+    
+    // Find the latest text or voice message sent from the family dashboard
+    final familyMessages = provider.memoriesList
+        .where((m) => m.category == 'أسرة' && (m.type == 'text' || m.type == 'voice'))
+        .toList();
+        
+    final hasCustomMessage = familyMessages.isNotEmpty;
+    final latestMsg = hasCustomMessage ? familyMessages.first : null;
+    
+    final messageText = latestMsg != null
+        ? (latestMsg.type == 'voice' 
+            ? '🎤 أرسلت لك العائلة رسالة صوتية تشجيعية، يمكنك الاستماع إليها من شاشة الاتصالات أو الرسائل!' 
+            : '"${latestMsg.content}"')
+        : '"بنحبك يا بابا ونشتاق إليك كتير — الجمعة الجاية إن شاء الله هنيجي 🌸"';
+        
+    final signatureText = latestMsg != null
+        ? 'من: العائلة ❤️'
+        : 'من: أم أحمد وسارة وأحمد';
+        
+    final dateText = latestMsg != null
+        ? latestMsg.date
+        : 'اليوم ٨:٠٠ ص';
 
     return AnimatedBuilder(
-      animation: _noteController,
+      animation: Listenable.merge([_noteController, _floatController]),
       builder: (context, child) {
         final opacity = _noteController.value;
-        final offset = (1 - _noteController.value) * 10;
+        final entryOffset = (1 - _noteController.value) * 12.0;
+        final floatOffset = _noteController.isCompleted
+            ? (Curves.easeInOut.transform(_floatController.value) * 6.0 - 3.0)
+            : 0.0;
         return Transform.translate(
-          offset: Offset(0, offset),
+          offset: Offset(0, entryOffset + floatOffset),
           child: Opacity(opacity: opacity, child: child),
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(13),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         decoration: BoxDecoration(
-          color: hc ? const Color(0xFF1E1E1E) : const Color(0xFFfffbeb),
-          borderRadius: BorderRadius.circular(20),
+          color: hc ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-              color: hc ? const Color(0xFFd97706) : const Color(0xFFfde68a),
-              width: 1.5),
-          boxShadow: [
-            BoxShadow(
-                color:
-                    const Color(0xFFd97706).withValues(alpha: hc ? 0.2 : 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
-          ],
+            color: hc 
+                ? const Color(0xFFfbbf24) 
+                : const Color(0xFFFFF7ED), // Subtle warm borders
+            width: hc ? 2.0 : 1.5,
+          ),
+          boxShadow: hc 
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFfbbf24).withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : [
+                  // Luxury Neumorphic dual shadows for absolute 3D realism
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFFEA580C).withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('📝', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 12),
-                Text(note.title.isEmpty ? 'رسالة من الأسرة' : note.title,
-                    style: TextStyle(
-                        fontSize: 18,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Premium 3D Orange-Pink Gradient side tab
+              Container(
+                width: 6,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF97316).withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              
+              // Core content column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Header Row with Expanded title to prevent overflow (without icon)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            latestMsg != null && latestMsg.type == 'voice' 
+                                ? 'رسالة صوتية من الأسرة' 
+                                : 'رسالة مكتوبة من الأسرة',
+                            style: TextStyle(
+                              fontSize: 16.5, // Slightly smaller and elegant
+                              fontWeight: FontWeight.w800, // Balanced bold
+                              fontFamily: 'Cairo',
+                              color: hc
+                                  ? const Color(0xFFfbbf24)
+                                  : const Color(0xFF4F46E5), // Premium Indigo
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        
+                        // Category Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: hc 
+                                ? const Color(0xFF2D2D2D) 
+                                : const Color(0xFFF5F3FF), // Coordinated soft purple tint
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: hc ? Colors.transparent : const Color(0xFFDDD6FE),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            'العائلة',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Cairo',
+                              color: hc
+                                  ? Colors.white70
+                                  : const Color(0xFF7C3AED), // Muted Violet
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    
+                    // Message quote text - Highly clean, readable slate-indigo color with modern spacing
+                    Text(
+                      messageText,
+                      style: TextStyle(
+                        fontSize: 19, // Spacious, highly readable for elderly eyes
+                        fontFamily: 'Cairo',
+                        height: 1.6,
                         fontWeight: FontWeight.bold,
-                        color: hc
-                            ? const Color(0xFFfbbf24)
-                            : const Color(0xFF92400e))),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '"${note.content ?? ''}"',
-              style: TextStyle(
-                  fontSize: 18,
-                  color: hc ? Colors.white : const Color(0xFF78350f),
-                  height: 1.7,
-                  fontWeight: FontWeight.bold),
-              textAlign: TextAlign.right,
-            ),
-            const SizedBox(height: 8),
-            Text(note.date,
-                style: TextStyle(
-                    fontSize: 14,
-                    color: hc ? Colors.white54 : const Color(0xFFb45309),
-                    fontWeight: FontWeight.bold)),
-          ],
+                        letterSpacing: 0.1,
+                        color: hc ? Colors.white : const Color(0xFF1E293B), // Clean, high-contrast Slate-Indigo
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    
+                    // Thin refined divider in light purple/grey
+                    Container(
+                      height: 1,
+                      color: hc 
+                          ? Colors.white.withValues(alpha: 0.1) 
+                          : const Color(0xFFF3F4F6),
+                    ),
+                    const SizedBox(height: 10),
+                    
+                    // Bottom signature & timestamp row - Wrap prevents horizontal overflow
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.favorite_rounded,
+                              color: Color(0xFFEC4899), // Cheerful Rose/Pink heart
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              signatureText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Cairo',
+                                color: hc
+                                    ? Colors.white70
+                                    : const Color(0xFF4F46E5), // Coordinated Indigo
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.access_time_rounded,
+                              color: hc ? Colors.white54 : const Color(0xFF8B5CF6), // Violet clock
+                              size: 15,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              dateText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Cairo',
+                                color: hc
+                                    ? Colors.white54
+                                    : const Color(0xFF8B5CF6), // Violet timestamp
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+

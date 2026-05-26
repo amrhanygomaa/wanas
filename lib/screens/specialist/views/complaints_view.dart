@@ -1,11 +1,9 @@
-// ignore_for_file: unused_element
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
 import '../../../models/app_models.dart';
-import '../../../widgets/live_complaints_banner.dart';
 
 /* 
  * واجهة تتبع وإدارة الشكاوى: 
@@ -48,7 +46,6 @@ class SpecialistComplaintsView extends ConsumerWidget {
         child: Column(
           children: [
             _buildSearchRow(context, provider),
-            const LiveComplaintsBanner(),
             _buildFilterRow(provider),
             Padding(
               padding: const EdgeInsets.all(14),
@@ -339,9 +336,7 @@ class SpecialistComplaintsView extends ConsumerWidget {
                                 '${complaint.residentName} — غرفة ${complaint.room} · ${complaint.date}',
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF334155),
-                                    fontWeight: FontWeight.w600)),
+                                    fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -416,152 +411,144 @@ class SpecialistComplaintsView extends ConsumerWidget {
                               controller: scrollController,
                               padding: const EdgeInsets.all(24),
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _buildStatusBadge(
-                                        complaint.status, complaint.priority),
-                                    IconButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      icon: const Icon(Icons.close_rounded,
-                                          color: Color(0xFF64748b)),
-                                    ),
-                                  ],
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildStatusBadge(
+                                    complaint.status, complaint.priority),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.close_rounded,
+                                      color: Color(0xFF64748b)),
                                 ),
-                                const SizedBox(height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(complaint.title,
-                                              style: const TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF0f172a))),
-                                          Text(
-                                              '${complaint.residentName} · غرفة ${complaint.room}',
-                                              style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Color(0xFFea580c))),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 20),
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        color: _getIconBg(complaint.category),
-                                        borderRadius: BorderRadius.circular(18),
-                                      ),
-                                      child: Center(
-                                        child: Text(complaint.icon,
-                                            style:
-                                                const TextStyle(fontSize: 28)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 32),
-                                _buildDetailSectionTitle('تاريخ الشكوى'),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'تم تقديم الشكوى بتاريخ ${complaint.date} بخصوص ${complaint.title}. الحالة الحالية هي "${_getStatusLabel(complaint.status)}".',
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF334155),
-                                      height: 1.6),
-                                ),
-                                const SizedBox(height: 32),
-                                _buildDetailSectionTitle('سجل المتابعة'),
-                                const SizedBox(height: 16),
-                                ...complaint.timeline
-                                    .map((s) => _buildTimelineItem(s)),
-                                const SizedBox(height: 40),
-                                if (complaint.status != 'done')
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Wrap(
-                                      spacing: 12,
-                                      runSpacing: 12,
-                                      alignment: WrapAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  const Color(0xFF10b981),
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          16)),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 16),
-                                            ),
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              _showResolutionDialog(
-                                                  context, ref, complaint);
-                                            },
-                                            child: const FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text('إغلاق وحل الشكوى ✓',
-                                                  style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold)),
-                                            ),
-                                          ),
-                                        ),
-                                        if (!isAdmin)
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: OutlinedButton(
-                                              style: OutlinedButton.styleFrom(
-                                                side: const BorderSide(
-                                                    color: Color(0xFFea580c)),
-                                                shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            16)),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 16),
-                                              ),
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(const SnackBar(
-                                                        content: Text(
-                                                            'تم تصعيد الشكوى للإدارة')));
-                                              },
-                                              child: const FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text('تصعيد للإدارة ↑',
-                                                    style: TextStyle(
-                                                        color:
-                                                            Color(0xFFea580c),
-                                                        fontWeight:
-                                                            FontWeight.bold)),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
                               ],
                             ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(complaint.title,
+                                          style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0f172a))),
+                                      Text(
+                                          '${complaint.residentName} · غرفة ${complaint.room}',
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFFea580c))),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: _getIconBg(complaint.category),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: Center(
+                                    child: Text(complaint.icon,
+                                        style: const TextStyle(fontSize: 28)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 32),
+                            _buildDetailSectionTitle('تاريخ الشكوى'),
+                            const SizedBox(height: 12),
+                            Text(
+                              'تم تقديم الشكوى بتاريخ ${complaint.date} بخصوص ${complaint.title}. الحالة الحالية هي "${_getStatusLabel(complaint.status)}".',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF334155),
+                                  height: 1.6),
+                            ),
+                            const SizedBox(height: 32),
+                            _buildDetailSectionTitle('سجل المتابعة'),
+                            const SizedBox(height: 16),
+                            ...complaint.timeline
+                                .map((s) => _buildTimelineItem(s)),
+                            const SizedBox(height: 40),
+                            if (complaint.status != 'done')
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  alignment: WrapAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF10b981),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16)),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
+                                        ),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          _showResolutionDialog(
+                                              context, ref, complaint);
+                                        },
+                                        child: const FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text('إغلاق وحل الشكوى ✓',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                    ),
+                                    if (!isAdmin)
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton(
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(
+                                                color: Color(0xFFea580c)),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16)),
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 16),
+                                          ),
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(const SnackBar(
+                                                    content: Text(
+                                                        'تم تصعيد الشكوى للإدارة')));
+                                          },
+                                          child: const FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text('تصعيد للإدارة ↑',
+                                                style: TextStyle(
+                                                    color: Color(0xFFea580c),
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
                     ],
                   ),
                 ),
@@ -631,10 +618,7 @@ class SpecialistComplaintsView extends ConsumerWidget {
           ),
           const Spacer(),
           Text(step.time,
-              style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF334155),
-                  fontWeight: FontWeight.w600)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -694,10 +678,8 @@ class SpecialistComplaintsView extends ConsumerWidget {
               const SizedBox(height: 2),
               Text(step.time,
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF475569),
-                      fontWeight: FontWeight.w600)),
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
             ],
           ),
@@ -1231,34 +1213,27 @@ class _ComplaintsCardDustParticle {
   Offset position;
   double speed;
   double radius;
-  _ComplaintsCardDustParticle(
-      {required this.position, required this.speed, required this.radius});
+  _ComplaintsCardDustParticle({required this.position, required this.speed, required this.radius});
 }
 
 class ComplaintsCardDustAnimation extends StatefulWidget {
   const ComplaintsCardDustAnimation({super.key});
 
   @override
-  State<ComplaintsCardDustAnimation> createState() =>
-      _ComplaintsCardDustAnimationState();
+  State<ComplaintsCardDustAnimation> createState() => _ComplaintsCardDustAnimationState();
 }
 
-class _ComplaintsCardDustAnimationState
-    extends State<ComplaintsCardDustAnimation>
-    with SingleTickerProviderStateMixin {
+class _ComplaintsCardDustAnimationState extends State<ComplaintsCardDustAnimation> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<_ComplaintsCardDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 15))
-          ..repeat();
-
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
+    
     final random = Random();
-    _dust = List.generate(100, (index) {
-      // زيادة العدد بناء على طلب المستخدم
+    _dust = List.generate(100, (index) { // زيادة العدد بناء على طلب المستخدم
       return _ComplaintsCardDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.05 + 0.02,
@@ -1280,8 +1255,7 @@ class _ComplaintsCardDustAnimationState
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: _ComplaintsCardDustPainter(
-                dust: _dust, animationValue: _controller.value),
+            painter: ComplaintsCardDustPainter(dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -1289,12 +1263,11 @@ class _ComplaintsCardDustAnimationState
   }
 }
 
-class _ComplaintsCardDustPainter extends CustomPainter {
+class ComplaintsCardDustPainter extends CustomPainter {
   final List<_ComplaintsCardDustParticle> dust;
   final double animationValue;
 
-  _ComplaintsCardDustPainter(
-      {required this.dust, required this.animationValue});
+  ComplaintsCardDustPainter({required this.dust, required this.animationValue});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1304,13 +1277,11 @@ class _ComplaintsCardDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-
-      double dy = (p.position.dy * size.height) -
-          (animationValue * p.speed * size.height);
+      
+      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx =
-          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 
@@ -1322,7 +1293,7 @@ class _ComplaintsCardDustPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ComplaintsCardDustPainter oldDelegate) {
+  bool shouldRepaint(covariant ComplaintsCardDustPainter oldDelegate) {
     return true;
   }
 }

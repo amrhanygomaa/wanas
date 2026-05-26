@@ -27,8 +27,8 @@ class PasswordStrength extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isFilled
                       ? (isYellow
-                          ? AppColors.strengthYellow
-                          : AppColors.primary)
+                            ? AppColors.strengthYellow
+                            : AppColors.primary)
                       : AppColors.bgInput,
                   borderRadius: BorderRadius.circular(2),
                 ),

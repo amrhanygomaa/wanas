@@ -31,6 +31,13 @@ class _NurseResidentDetailScreenState
   final TextEditingController _noteContentController =
       TextEditingController(); // متحكم محتوى الملاحظة الجديدة
 
+  // بيانات تجريبية للأدوية (للعرض فقط في العرض التوضيحي)
+  final List<String> _meds = [
+    'ميتفورمين ٥٠٠ ملغ',
+    'أسبرين حماية',
+    'فيتامين د٣'
+  ];
+
   @override
   void initState() {
     // دالة التهيئة الأولية
@@ -77,9 +84,9 @@ class _NurseResidentDetailScreenState
         ),
         actions: [
           IconButton(
-            // تصدير الملف الطبي PDF
+            // زر محاكاة طباعة الملف الطبي
             icon: const Icon(Icons.print_rounded, color: Color(0xFF0369A1)),
-            onPressed: _exportMedicalFile,
+            onPressed: _simulatePrint,
           ),
         ],
       ),
@@ -496,7 +503,7 @@ class _NurseResidentDetailScreenState
                         residentName: widget.residentName,
                         title: _noteTitleController.text,
                         content: _noteContentController.text,
-                        author: ref.read(appRiverpod).currentAccount?.name ?? 'الممرض',
+                        author: 'أ. منى (مشرف)',
                         timestamp: DateTime.now(),
                       );
                       ref
@@ -552,7 +559,6 @@ class _NurseResidentDetailScreenState
       },
     );
     Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
-      if (!mounted) return;
       Navigator.pop(context); // إغلاق حوار النجاح
     });
   }
@@ -658,11 +664,11 @@ class _NurseResidentDetailScreenState
     );
   }
 
-  Future<void> _exportMedicalFile() async {
+  void _simulatePrint() {
+    // محاكاة عملية الطباعة وتحويل الملف لـ PDF
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
+      builder: (context) => const Center(
         child: Card(
           child: Padding(
             padding: EdgeInsets.all(32),
@@ -671,7 +677,7 @@ class _NurseResidentDetailScreenState
               children: [
                 CircularProgressIndicator(color: Color(0xFF0369A1)),
                 SizedBox(height: 24),
-                Text('جاري تجهيز ملف PDF...',
+                Text('جاري تحويل الملف إلى PDF...',
                     style: TextStyle(
                         fontWeight: FontWeight.bold, fontFamily: 'Cairo')),
               ],
@@ -680,25 +686,12 @@ class _NurseResidentDetailScreenState
         ),
       ),
     );
-
-    try {
-      final filename =
-          await ref.read(appRiverpod).exportReport('pdf');
-      if (!mounted) return;
-      Navigator.pop(context);
+    Future.delayed(const Duration(seconds: 2), () {
+      // تأخير زمني لمحاكاة المعالجة
+      Navigator.pop(context); // إغلاق الحوار
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم تجهيز $filename ✅')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('فشل تجهيز الملف: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
+          const SnackBar(content: Text('تم تحميل الملف الطبي الكامل بنجاح ✅')));
+    });
   }
 }
 

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_riverpod.dart';
 import 'taptaba_drawer.dart'; // استيراد القائمة الجانبية
 import 'taptaba_bell.dart'; // استيراد أيقونة الإشعارات
-import 'unread_messages_icon.dart'; // أيقونة عداد الرسائل غير المقروءة
 
 class TaptabaScaffold extends ConsumerStatefulWidget {
   // فئة الهيكل الموحد للتطبيق (Scaffold)
@@ -15,7 +14,6 @@ class TaptabaScaffold extends ConsumerStatefulWidget {
   final Widget? bottomNavigationBar; // شريط التنقل السفلي
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
-  final Widget? fullScreenOverlay;
   final String? overrideRole; // تحديد دور المستخدم لتخصيص القائمة
   final bool extendBodyBehindAppBar; // تمديد المحتوى خلف شريط العنوان
   final bool transparentAppBar; // جعل شريط العنوان شفافاً
@@ -36,7 +34,6 @@ class TaptabaScaffold extends ConsumerStatefulWidget {
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
-    this.fullScreenOverlay,
     this.overrideRole,
     this.extendBodyBehindAppBar = false,
     this.transparentAppBar = false,
@@ -83,7 +80,7 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
       floating: widget.hideAppBarOnScroll,
       snap: widget.hideAppBarOnScroll,
       pinned: !widget.hideAppBarOnScroll,
-      toolbarHeight: widget.appBarHeight ?? 56.0,
+      toolbarHeight: widget.appBarHeight ?? 56.0, // العودة للارتفاع الافتراضي (56 بكسل) دون تكبيره
       backgroundColor:
           widget.transparentAppBar ? Colors.transparent : Colors.white,
       elevation: 0,
@@ -105,7 +102,7 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
           widget.transparentAppBar ? Colors.transparent : Colors.white,
       elevation: 0,
       centerTitle: true,
-      toolbarHeight: widget.appBarHeight ?? 56.0,
+      toolbarHeight: widget.appBarHeight ?? 56.0, // العودة للارتفاع الافتراضي (56 بكسل) دون تكبيره
       iconTheme: const IconThemeData(color: Color(0xFF64748b)),
       leading: IconButton(
         icon: const Icon(Icons.menu_rounded, color: Color(0xFF64748b)),
@@ -117,30 +114,35 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
   }
 
   Widget _buildTitle() {
-    final normalized = widget.title.replaceAll('ـ', '').trim();
-    final isBrandTitle = normalized == 'ونس' || normalized == 'طبطبة';
-    if (isBrandTitle) {
-      final activeColor = widget.titleColor ??
-          ((Theme.of(context).brightness == Brightness.dark ||
-                  ref.watch(appRiverpod).isDarkMode)
-              ? const Color(0xFFFAF7F2)
-              : const Color(0xFF6C63FF));
+    final isWanasTitle = widget.title.trim() == 'ونس' || widget.title.trim() == 'طبطبة';
+    
+    if (isWanasTitle) {
+      final isDark = Theme.of(context).brightness == Brightness.dark || 
+                     ref.watch(appRiverpod).isDarkMode;
+      
+      // تحديد اللون النشط للصفحة لصبغ الشعار به ديناميكياً ليتناسق تماماً مع نمط وألوان الصفحة
+      final activeColor = widget.titleColor ?? 
+          (isDark ? const Color(0xFFFAF7F2) : const Color(0xFF6C63FF));
+
       return Transform.scale(
-        scale: 1.25,
+        scale: 1.45, // تكبير الشعار بصرياً بنسبة 145% ليكون ضخماً وواضحاً جداً دون تكبير مقاس شريط التنقل نفسه
         child: Image.asset(
           'assets/icons/wanas_logo_nav.png',
-          height: 40,
+          height: 42, // الحجم الفعلي المحجوز في التخطيط ليتناسب مع الـ 56 بكسل الافتراضية
           fit: BoxFit.contain,
+          // صبغ الشعار ديناميكياً بلون النمط النشط للصفحة الحالية
           color: activeColor,
           colorBlendMode: BlendMode.srcIn,
           errorBuilder: (context, error, stackTrace) {
+            // نص احتياطي لتجنب أي انهيار في حال تعذر تحميل الصورة
             return Text(
               'ونس',
               style: TextStyle(
                 color: activeColor,
-                fontFamily: 'Cairo',
                 fontWeight: FontWeight.w900,
                 fontSize: 24,
+                fontFamily: 'Cairo',
+                letterSpacing: 1.2,
               ),
             );
           },
@@ -148,12 +150,15 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
       );
     }
 
+    // للشاشات الفرعية الأخرى، نعرض اسم الشاشة كنص عادي وأنيق
     return Text(
       widget.title,
       style: TextStyle(
-        color: widget.titleColor ?? const Color(0xFF6C63FF),
+        color: widget.titleColor ?? (Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1E293B)),
         fontWeight: FontWeight.w900,
         fontSize: 22,
+        fontFamily: 'Cairo',
+        letterSpacing: 1.0,
       ),
     );
   }
@@ -169,7 +174,6 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
                 ref.read(appRiverpod).setElderlyTabIndex(4);
               },
             ),
-          const UnreadMessagesIcon(),
           const TaptabaBell(),
           const SizedBox(width: 8),
         ];
@@ -178,47 +182,40 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
   @override
   Widget build(BuildContext context) {
     // دالة بناء الواجهة
-    return Stack(
-      children: [
-        Scaffold(
-          // المكون الأساسي للهيكل في فلاتر
-          key: _scaffoldKey, // ربط المفتاح
-          extendBodyBehindAppBar:
-              widget.extendBodyBehindAppBar, // ضبط تمديد المحتوى
-          backgroundColor:
-              Theme.of(context).scaffoldBackgroundColor, // لون خلفية التطبيق
-          drawer: TaptabaDrawer(
-              overrideRole: widget.overrideRole), // القائمة الجانبية الموحدة
-          body: widget.hideAppBar
-              ? widget.body
-              : (widget.useNestedScrollView
-                  ? NestedScrollView(
-                      headerSliverBuilder:
-                          (BuildContext context, bool innerBoxIsScrolled) {
-                        return <Widget>[
-                          _buildSliverAppBar(innerBoxIsScrolled),
-                          if (widget.sliverHeader != null)
-                            SliverToBoxAdapter(child: widget.sliverHeader!),
-                        ];
-                      },
-                      body: widget.body,
-                    )
-                  : Column(
-                      children: [
-                        _buildFixedAppBar(),
-                        Expanded(child: widget.body),
-                      ],
-                    )),
-          bottomNavigationBar:
-              widget.bottomNavigationBar, // شريط التنقل السفلي إن وجد
-          floatingActionButton:
-              widget.floatingActionButton, // الزر العائم إن وجد
-          floatingActionButtonLocation:
-              widget.floatingActionButtonLocation, // موقع الزر العائم
-        ),
-        if (widget.fullScreenOverlay != null)
-          Positioned.fill(child: widget.fullScreenOverlay!),
-      ],
+    return Scaffold(
+      // المكون الأساسي للهيكل في فلاتر
+      key: _scaffoldKey, // ربط المفتاح
+      extendBodyBehindAppBar:
+          widget.extendBodyBehindAppBar, // ضبط تمديد المحتوى
+      backgroundColor:
+          Theme.of(context).scaffoldBackgroundColor, // لون خلفية التطبيق
+      drawer: TaptabaDrawer(
+          overrideRole: widget.overrideRole), // القائمة الجانبية الموحدة
+      body: widget.hideAppBar
+          ? widget.body
+          : (widget.useNestedScrollView
+              ? NestedScrollView(
+                  headerSliverBuilder:
+                      (BuildContext context, bool innerBoxIsScrolled) {
+                    return <Widget>[
+                      _buildSliverAppBar(innerBoxIsScrolled),
+                      if (widget.sliverHeader != null)
+                        SliverToBoxAdapter(child: widget.sliverHeader!),
+                    ];
+                  },
+                  body: widget.body,
+                )
+              : Column(
+                  children: [
+                    _buildFixedAppBar(),
+                    Expanded(child: widget.body),
+                  ],
+                )),
+      bottomNavigationBar:
+          widget.bottomNavigationBar, // شريط التنقل السفلي إن وجد
+      floatingActionButton: widget.floatingActionButton, // الزر العائم إن وجد
+      floatingActionButtonLocation:
+          widget.floatingActionButtonLocation, // موقع الزر العائم
     );
   }
 }

@@ -80,23 +80,23 @@ class FamilyMember {
 // نموذج يمثل رسالة صوتية مرسلة من العائلة للمسن
 class VoiceMessage {
   String id;
-  String senderId; // معرف مرسل الرسالة
-  String title; // عنوان الرسالة أو موضوعها
-  String timeDescription; // وقت الإرسال (مثلاً: منذ ساعتين)
-  String? audioUrl; // رابط تشغيل الصوت من S3 عند توفره
-  int durationSeconds; // مدة التسجيل بالثواني
-  bool isPlaying; // هل الرسالة قيد التشغيل حالياً؟
-  bool isUnread; // هل الرسالة جديدة ولم تسمع بعد؟
+  String senderId;
+  String title;
+  String timeDescription;
+  bool isPlaying;
+  bool isUnread;
+  String? audioUrl;
+  int? durationSeconds;
 
   VoiceMessage({
     required this.id,
     required this.senderId,
     required this.title,
     required this.timeDescription,
-    this.audioUrl,
-    this.durationSeconds = 0,
     this.isPlaying = false,
     this.isUnread = true,
+    this.audioUrl,
+    this.durationSeconds,
   });
 }
 
@@ -130,7 +130,7 @@ class Activity {
   String badges;
   int pointsReward;
   String dayTag; // 'أمس', 'اليوم', 'غداً', 'الأسبوع'
-
+  
   // الحقول الجديدة لربط واجهة الأخصائي مع المسن
   String? supervisor;
   String? target;
@@ -457,20 +457,6 @@ class AssessmentQuestion {
     this.userAnswer,
     this.userScale,
   });
-
-  factory AssessmentQuestion.fromJson(Map<String, dynamic> j) {
-    final rawOptions = j['options'];
-    List<String>? opts;
-    if (rawOptions is List) {
-      opts = rawOptions.map((e) => e.toString()).toList();
-    }
-    return AssessmentQuestion(
-      id: j['id']?.toString() ?? '',
-      text: j['text']?.toString() ?? '',
-      type: j['type']?.toString() ?? 'choice',
-      options: opts,
-    );
-  }
 }
 
 class AssessmentHistoricalEntry {
@@ -1106,7 +1092,7 @@ class AppAccount {
   final String? facilityName;
   final String? facilityAddress;
   final List<String>? amenities;
-
+  
   // حقول إضافية للفئات المختلفة
   final String? room; // للمسن
   final String? specialty; // للممرض/الأخصائي
@@ -1121,9 +1107,9 @@ class AppAccount {
   final String? facilityPhone; // للدار
   final String? facilityEmail; // للدار
   final String? licenseNumber; // للدار
-  final String? facilityYearOfEst; // سنة إنشاء الدار
+  final String? facilityYearOfEst; // سنة الإنشاء
   final String? facilityCapacity; // السعة الاستيعابية
-  final String? facilityLocationUrl; // رابط موقع الدار على الخريطة
+  final String? facilityLocationUrl; // رابط الخريطة
 
   AppAccount({
     required this.name,
@@ -1320,8 +1306,7 @@ class Resident {
       nationalId: nationalId ?? this.nationalId,
       imageUrl: imageUrl ?? this.imageUrl,
       emergencyContactName: emergencyContactName ?? this.emergencyContactName,
-      emergencyContactPhone:
-          emergencyContactPhone ?? this.emergencyContactPhone,
+      emergencyContactPhone: emergencyContactPhone ?? this.emergencyContactPhone,
       emergencyRelation: emergencyRelation ?? this.emergencyRelation,
       bloodType: bloodType ?? this.bloodType,
       allergies: allergies ?? this.allergies,
@@ -1398,7 +1383,7 @@ class SentReport {
   final String meta;
   final String status;
   final String date;
-
+  
   SentReport({
     required this.id,
     required this.icon,
@@ -1417,7 +1402,7 @@ class Review {
   final double rating; // 1 to 5
   final String comment;
   final String date;
-
+  
   Review({
     required this.id,
     required this.fromRole,

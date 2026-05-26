@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/app_riverpod.dart';
 
-class ResidentIdScreen extends ConsumerStatefulWidget {
+class ResidentIdScreen extends StatefulWidget {
   const ResidentIdScreen({super.key});
 
   @override
-  ConsumerState<ResidentIdScreen> createState() => _ResidentIdScreenState();
+  State<ResidentIdScreen> createState() => _ResidentIdScreenState();
 }
 
-class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
+class _ResidentIdScreenState extends State<ResidentIdScreen>
     with TickerProviderStateMixin {
   late AnimationController _floatController;
   late AnimationController _rotationController;
@@ -34,12 +32,6 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
 
   @override
   Widget build(BuildContext context) {
-    final provider = ref.watch(appRiverpod);
-    final resident =
-        provider.residentFiles.isEmpty ? null : provider.residentFiles.first;
-    final residentName = resident?.name ?? 'لا يوجد مقيم مرتبط';
-    final room = resident?.room ?? '-';
-    final qrData = resident?.id ?? 'no-linked-resident';
     return Scaffold(
       backgroundColor: const Color(0xFF1e1b4b), // Dark elegant background
       appBar: AppBar(
@@ -61,7 +53,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
           child: Column(
             children: [
-              _buildDigitalCard(residentName, room, qrData),
+              _buildDigitalCard(),
               const SizedBox(height: 48),
               _buildInstructions(),
             ],
@@ -71,7 +63,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
     );
   }
 
-  Widget _buildDigitalCard(String residentName, String room, String qrData) {
+  Widget _buildDigitalCard() {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -92,16 +84,15 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
             padding: const EdgeInsets.all(32),
             child: Column(
               children: [
-                _buildQRCode(qrData),
+                _buildQRCodeMock(),
                 const SizedBox(height: 32),
-                Text(residentName,
-                    style: const TextStyle(
+                const Text('الحاج محمود الجوهري',
+                    style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1e1b4b))),
-                Text('الغرفة: $room',
-                    style: const TextStyle(
-                        color: Color(0xFF64748b), fontSize: 13)),
+                const Text('الغرفة: ١٠١ — الجناح الشرقي',
+                    style: TextStyle(color: Color(0xFF64748b), fontSize: 13)),
                 const SizedBox(height: 24),
                 const Divider(color: Color(0xFFf1f5f9)),
                 const SizedBox(height: 16),
@@ -130,8 +121,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
       height: 100,
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient:
-            LinearGradient(colors: [Color(0xFFea580c), Color(0xFFf97316)]),
+        gradient: LinearGradient(colors: [Color(0xFFea580c), Color(0xFFf97316)]),
       ),
       child: Stack(
         children: [
@@ -145,7 +135,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('طبطبـة',
+                    Text('ونس',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -241,8 +231,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
     );
   }
 
-  Widget _buildQRCode(String data) {
-    final encoded = Uri.encodeComponent(data);
+  Widget _buildQRCodeMock() {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -250,7 +239,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFf1f5f9), width: 2)),
       child: Image.network(
-          'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$encoded',
+          'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MahmoudAlGohary_Room101',
           width: 160,
           height: 160),
     );
@@ -292,7 +281,8 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
         Text(
             'امسح الرمز عند مدخل الدار لتأكيد الهوية وتسهيل عملية الدخول المباشر للغرفة.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.5)),
+            style:
+                TextStyle(color: Colors.white60, fontSize: 12, height: 1.5)),
       ],
     );
   }

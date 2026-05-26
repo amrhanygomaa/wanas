@@ -25,15 +25,13 @@ class _DraggableSOSState extends ConsumerState<DraggableSOS> {
     return AnimatedPositioned(
       duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
       right: -_dragPosition, // المقبض ملتصق باليمين
-      bottom:
-          size.height * 0.15, // موقعه في الثلث السفلي لتسهيل الوصول بالإبهام
+      bottom: size.height * 0.15, // موقعه في الثلث السفلي لتسهيل الوصول بالإبهام
       child: GestureDetector(
         onHorizontalDragUpdate: (details) {
           setState(() {
             _isDragging = true;
             // السحب لليسار يزيد القيمة (نحن نطرحها من right، فكلما زادت تحرك لليسار)
-            _dragPosition =
-                (_dragPosition - details.delta.dx).clamp(0.0, size.width * 0.8);
+            _dragPosition = (_dragPosition - details.delta.dx).clamp(0.0, size.width * 0.8);
           });
         },
         onHorizontalDragEnd: (details) {
@@ -92,8 +90,7 @@ class _DraggableSOSState extends ConsumerState<DraggableSOS> {
                     padding: const EdgeInsets.only(right: 20),
                     child: const Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded,
-                            color: Colors.white, size: 24),
+                        Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
                         SizedBox(width: 8),
                         Text(
                           'اسحب للطوارئ',

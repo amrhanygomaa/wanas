@@ -67,8 +67,11 @@ android {
 
     buildTypes {
         release {
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                // Keep local APKs installable when no private release keystore is configured.
+                signingConfigs.getByName("debug")
             }
         }
     }

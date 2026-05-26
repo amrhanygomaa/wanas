@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,7 +86,7 @@ class _AdminResidentDetailScreenState
     );
 
     return TaptabaScaffold(
-      title: 'طبطبة',
+      title: 'ونس',
       titleColor: const Color(0xFF0F172A),
       overrideRole: 'مدير',
       body: Column(
@@ -199,15 +198,11 @@ class _AdminResidentDetailScreenState
                       return CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.white12,
-                        backgroundImage: (imageUrl != null &&
-                                imageUrl.isNotEmpty)
-                            ? (imageUrl.startsWith('http')
-                                ? NetworkImage(imageUrl)
-                                : FileImage(File(imageUrl)) as ImageProvider)
+                        backgroundImage: (imageUrl != null && imageUrl.isNotEmpty)
+                            ? FileImage(File(imageUrl))
                             : null,
                         child: (imageUrl == null || imageUrl.isEmpty)
-                            ? const Icon(Icons.person,
-                                color: Colors.white, size: 45)
+                            ? const Icon(Icons.person, color: Colors.white, size: 45)
                             : null,
                       );
                     },
@@ -227,8 +222,8 @@ class _AdminResidentDetailScreenState
                       decoration: BoxDecoration(
                         color: const Color(0xFF0ea5e9),
                         shape: BoxShape.circle,
-                        border: Border.all(
-                            color: const Color(0xFF1e293b), width: 2),
+                        border:
+                            Border.all(color: const Color(0xFF1e293b), width: 2),
                       ),
                       child: const Icon(
                         Icons.camera_alt_rounded,
@@ -710,7 +705,6 @@ class _AdminResidentDetailScreenState
       onTap: () {
         setState(() => _isUploading = true);
         Future.delayed(const Duration(seconds: 2), () {
-          if (!mounted) return;
           setState(() => _isUploading = false);
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('تم رفع المستند بنجاح')));

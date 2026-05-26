@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/volunteer_documents_service.dart';
 import 'widgets/add_skill_dialog.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/volunteer_background.dart';
@@ -32,52 +30,46 @@ class VolunteerProfileView extends ConsumerWidget {
 
     return VolunteerAnimatedBackground(
       child: Padding(
-        padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16), // إضافة مسافة من فوق وحشو جانبي لمنع الالتصاق بالحواف
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 16), // إضافة مسافة من فوق وحشو جانبي لمنع الالتصاق بالحواف
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionLabel('ملفي الشخصي', const Color(0xFF065f46), 0),
-            const SizedBox(height: 12),
-            _buildProfileCard(context, ref),
-            const SizedBox(height: 24),
-            _buildSectionLabel('فرص تطوعية جديدة', const Color(0xFF059669), 1,
-                action: GestureDetector(
-                  onTap: onSeeAllOpportunities,
-                  child: const Text('عرض الكل',
-                      style: TextStyle(
-                          color: Color(0xFF059669),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold)),
-                )),
-            const SizedBox(height: 12),
-            ...provider.volunteerOpportunities
-                .map((o) => _buildOpportunityCard(context, o)),
-            const SizedBox(height: 24),
-            _buildSectionLabel('حجوزاتي القادمة', const Color(0xFF059669), 2),
-            const SizedBox(height: 12),
-            ...provider.volunteerBookings
-                .map((b) => _buildBookingCard(context, b)),
-            const SizedBox(height: 24),
-            _buildSectionLabel('سجل الساعات', const Color(0xFF059669), 3),
-            const SizedBox(height: 12),
-            _buildHoursLog(context, provider),
-            const SizedBox(height: 24),
-            _buildSectionLabel(
-                'شهاداتي ومكافآتي 🏅', const Color(0xFFf59e0b), 4),
-            const SizedBox(height: 12),
-            _buildCertificatesCarousel(provider),
-            const SizedBox(height: 24),
-            _buildSectionLabel(
-                'التقييم المتبادل ⭐', const Color(0xFF6366f1), 5),
-            const SizedBox(height: 12),
-            _buildRatingSection(provider),
-            const SizedBox(height: 40),
-          ],
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+        _buildSectionLabel('ملفي الشخصي', const Color(0xFF065f46), 0),
+        const SizedBox(height: 12),
+        _buildProfileCard(context, ref),
+        const SizedBox(height: 24),
+        _buildSectionLabel('فرص تطوعية جديدة', const Color(0xFF059669), 1,
+            action: GestureDetector(
+              onTap: onSeeAllOpportunities,
+              child: const Text('عرض الكل',
+                  style: TextStyle(
+                      color: Color(0xFF059669),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold)),
+            )),
+        const SizedBox(height: 12),
+        ...provider.volunteerOpportunities
+            .map((o) => _buildOpportunityCard(context, o)),
+        const SizedBox(height: 24),
+        _buildSectionLabel('حجوزاتي القادمة', const Color(0xFF059669), 2),
+        const SizedBox(height: 12),
+        ...provider.volunteerBookings.map((b) => _buildBookingCard(context, b)),
+        const SizedBox(height: 24),
+        _buildSectionLabel('سجل الساعات', const Color(0xFF059669), 3),
+        const SizedBox(height: 12),
+        _buildHoursLog(context, provider),
+        const SizedBox(height: 24),
+        _buildSectionLabel('شهاداتي وإنجازاتي', const Color(0xFFf59e0b), 4),
+        const SizedBox(height: 12),
+        _buildCertificatesCarousel(provider),
+        const SizedBox(height: 24),
+        _buildSectionLabel('التقييم والآراء', const Color(0xFF6366f1), 5),
+        const SizedBox(height: 12),
+        _buildRatingSection(),
+        const SizedBox(height: 40),
+            ],
+          ),
         ),
-      ),
     );
   }
 
@@ -171,10 +163,8 @@ class VolunteerProfileView extends ConsumerWidget {
                       ),
                       Text('${profile.location} · مسجل منذ مارس ٢٠٢٤',
                           textAlign: TextAlign.right,
-                          style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF475569),
-                              fontWeight: FontWeight.w500)),
+                          style:
+                              const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w500)),
                       const SizedBox(height: 8),
                       Wrap(
                         alignment: WrapAlignment.start,
@@ -204,7 +194,7 @@ class VolunteerProfileView extends ConsumerWidget {
                           color: Color(0xFF059669)),
                     ),
                     IconButton(
-                      onPressed: () => _sharePublicProfile(context),
+                      onPressed: () => _simulateShare(context, profile),
                       icon: const Icon(Icons.share_rounded,
                           color: Color(0xFF059669), size: 20),
                     ),
@@ -216,10 +206,7 @@ class VolunteerProfileView extends ConsumerWidget {
             Text(profile.bio,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF334155),
-                    height: 1.5,
-                    fontWeight: FontWeight.w500)),
+                    fontSize: 12, color: Color(0xFF334155), height: 1.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
@@ -289,27 +276,16 @@ class VolunteerProfileView extends ConsumerWidget {
     );
   }
 
-  Future<void> _sharePublicProfile(BuildContext context) async {
-    try {
-      final url =
-          await VolunteerDocumentsService.instance.createPublicProfileLink();
-      await Clipboard.setData(ClipboardData(text: url));
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('تم نسخ رابط ملفك الشخصي! 🔗',
-              style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: const Color(0xFF0369A1),
-          action: SnackBarAction(
-              label: 'ممتاز', textColor: Colors.white, onPressed: () {}),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر إنشاء رابط المشاركة: $e')),
-      );
-    }
+  void _simulateShare(BuildContext context, VolunteerProfile profile) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('تم نسخ رابط ملفك الشخصي للمشاركة! 🔗',
+            style: TextStyle(fontFamily: 'Cairo')),
+        backgroundColor: const Color(0xFF0369A1),
+        action: SnackBarAction(
+            label: 'ممتاز', textColor: Colors.white, onPressed: () {}),
+      ),
+    );
   }
 
   Widget _buildSkillTag(String label, {bool isAction = false, WidgetRef? ref}) {
@@ -421,9 +397,7 @@ class VolunteerProfileView extends ConsumerWidget {
                         Text(opp.org,
                             textAlign: TextAlign.right,
                             style: const TextStyle(
-                                color: Color(0xFF475569),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500)),
+                                color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         Wrap(
                           alignment: WrapAlignment.start,
@@ -445,9 +419,7 @@ class VolunteerProfileView extends ConsumerWidget {
                         Text('⏱ ${opp.hours} ساعة · يضيف لرصيدك',
                             textAlign: TextAlign.right,
                             style: const TextStyle(
-                                color: Color(0xFF475569),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500)),
+                                color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
@@ -549,10 +521,7 @@ class VolunteerProfileView extends ConsumerWidget {
                           fontSize: 12, fontWeight: FontWeight.bold)),
                   Text(booking.timeInfo,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
-                          color: Color(0xFF475569),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500)),
+                      style: const TextStyle(color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -640,14 +609,15 @@ class VolunteerProfileView extends ConsumerWidget {
                 style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9), fontSize: 10)),
             const SizedBox(height: 12),
-            if (provider.volunteerHours > 0)
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildLogChip('${provider.volunteerHours} ساعة مكتملة'),
-                ],
-              ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _buildLogChip('قراءة: ١٥ س'),
+                _buildLogChip('دعم نفسي: ١٢ س'),
+                _buildLogChip('ترفيه: ١١ س'),
+              ],
+            ),
           ],
         ),
       ),
@@ -709,10 +679,9 @@ class VolunteerProfileView extends ConsumerWidget {
     );
   }
 
-  Widget _buildRatingSection(AppRiverpod provider) {
-    final pending =
-        provider.volunteerReviews.where((r) => r.isPending).toList();
-    final next = pending.isNotEmpty ? pending.first : null;
+
+
+  Widget _buildRatingSection() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -734,32 +703,22 @@ class VolunteerProfileView extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        next != null
-                            ? 'قيّم ${next.session} — ${next.toName}'
-                            : 'لا توجد جلسات بانتظار تقييمك',
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        next != null
-                            ? '${next.date} · انتظر تقييمك'
-                            : 'سيظهر التقييم القادم هنا فور تأكيد الحجز',
-                        style:
-                            const TextStyle(fontSize: 10, color: Colors.grey),
-                      ),
+                      const Text('قيّم جلسة القراءة — الحاج محمود',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
+                      const Text('جلسة الأحد ٦ أبريل · انتظر تقييمك',
+                          style: TextStyle(fontSize: 10, color: Colors.grey)),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
-                        children: List.generate(5, (index) {
-                          final score = next?.score ?? 0;
-                          final filled = index < score.floor();
-                          return Text(filled ? '★' : '☆',
-                              style: TextStyle(
-                                  color:
-                                      filled ? Colors.amber : Colors.grey[300],
-                                  fontSize: 16));
-                        }),
+                        children: List.generate(
+                            5,
+                            (index) => Text(index < 4 ? '★' : '☆',
+                                style: TextStyle(
+                                    color: index < 4
+                                        ? Colors.amber
+                                        : Colors.grey[300],
+                                    fontSize: 16))),
                       ),
                     ],
                   ),
@@ -785,20 +744,9 @@ class VolunteerProfileView extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          if (provider.volunteerRatings.isEmpty)
-            const Text('لا توجد تقييمات بعد',
-                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))
-          else
-            ...() {
-              final byCategory = <String, List<double>>{};
-              for (final r in provider.volunteerRatings) {
-                byCategory.putIfAbsent(r.category, () => []).add(r.score);
-              }
-              return byCategory.entries.map((e) {
-                final avg = e.value.reduce((a, b) => a + b) / e.value.length;
-                return _buildRatingRow(e.key, avg);
-              }).toList();
-            }(),
+          _buildRatingRow('التعامل', 5.0),
+          _buildRatingRow('التحضير', 4.0),
+          _buildRatingRow('الالتزام', 5.0),
         ],
       ),
     );
@@ -1245,28 +1193,14 @@ class VolunteerProfileView extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1e293b))),
                     const SizedBox(height: 12),
-                    ...(() {
-                      final done = provider.volunteerBookings
-                          .where((b) => b.status == 'done')
-                          .toList();
-                      if (done.isEmpty) {
-                        return [
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Text(
-                              'لم تُسجَّل جلسات تطوع مكتملة بعد.',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ),
-                        ];
-                      }
-                      return done.map((b) => _buildHistoryLogItem(
-                            b.title,
-                            '${b.day} ${b.month}',
-                            b.timeInfo,
-                          ));
-                    })(),
+                    _buildHistoryLogItem('جلسة قراءة - الحاج محمود',
+                        'الأحد، ٢٠ أبريل', '٣ ساعات'),
+                    _buildHistoryLogItem('مرافقة في الحديقة - الحاجة زينب',
+                        'الخميس، ١٧ أبريل', '٢ ساعة'),
+                    _buildHistoryLogItem('أمسية ترفيهية - قسم (أ)',
+                        'الثلاثاء، ١٥ أبريل', '٤ ساعات'),
+                    _buildHistoryLogItem(
+                        'دعم نفسي - الحاج عمر', 'السبت، ١٢ أبريل', '١.٥ ساعة'),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -1459,7 +1393,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startTimer();
     });
@@ -1469,8 +1403,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
     _timer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.offset + 0.5);
-        if (_scrollController.offset >=
-            _scrollController.position.maxScrollExtent) {
+        if (_scrollController.offset >= _scrollController.position.maxScrollExtent) {
           _scrollController.jumpTo(0);
         }
       }
@@ -1493,7 +1426,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
     ];
 
     return SizedBox(
-      height: 100,
+      height: 110,
       child: ListView.builder(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
@@ -1503,35 +1436,100 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
           return ScaleTransition(
             scale: widget.popController,
             child: Container(
-              width: 90,
-              margin: const EdgeInsets.only(right: 10),
-              padding: const EdgeInsets.all(8),
+              width: 95,
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               decoration: BoxDecoration(
-                color: cert.isLocked
-                    ? Colors.transparent
-                    : const Color(0xFFf0fdf4),
-                borderRadius: BorderRadius.circular(16),
+                gradient: cert.isLocked
+                    ? LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.4),
+                          Colors.grey.shade50.withValues(alpha: 0.2)
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : const LinearGradient(
+                        colors: [Colors.white, Color(0xFFf0fdf4)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFa7f3d0),
-                  style: cert.isLocked ? BorderStyle.none : BorderStyle.solid,
+                  color: cert.isLocked
+                      ? const Color(0xFFcbd5e1).withValues(alpha: 0.4)
+                      : const Color(0xFF34d399).withValues(alpha: 0.6),
+                  width: cert.isLocked ? 1 : 1.5,
                 ),
+                boxShadow: cert.isLocked
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: const Color(0xFF059669).withValues(alpha: 0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
               ),
               child: Opacity(
-                opacity: cert.isLocked ? 0.4 : 1.0,
+                opacity: cert.isLocked ? 0.5 : 1.0,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(cert.icon, style: const TextStyle(fontSize: 24)),
-                    const SizedBox(height: 4),
-                    Text(cert.name,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF065f46))),
-                    Text(cert.isLocked ? cert.progressInfo : cert.date,
-                        style: const TextStyle(
-                            fontSize: 8, color: Color(0xFF94a3b8))),
+                    // Top Accent Symbol/Ornament (Minimalist Gold Star)
+                    Text(
+                      '★',
+                      style: TextStyle(
+                        color: cert.isLocked
+                            ? const Color(0xFF94a3b8).withValues(alpha: 0.5)
+                            : const Color(0xFFfbbf24),
+                        fontSize: 12,
+                      ),
+                    ),
+                    
+                    // Certificate Title
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          cert.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: cert.isLocked
+                                ? const Color(0xFF64748b)
+                                : const Color(0xFF065f46),
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Mini Decorative Gold/Green Divider
+                    Container(
+                      width: 16,
+                      height: 1.5,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: cert.isLocked
+                            ? const Color(0xFFcbd5e1)
+                            : const Color(0xFF34d399),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                    
+                    // Certificate Date/Subtitle
+                    Text(
+                      cert.isLocked ? cert.progressInfo : cert.date,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748b),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1542,3 +1540,4 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
     );
   }
 }
+

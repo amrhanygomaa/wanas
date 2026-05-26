@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,7 +81,7 @@ class _VolunteerDashboardScreenState
     final provider = ref.watch(appRiverpod);
 
     return TaptabaScaffold(
-      title: 'طبطبـة',
+      title: 'ونس',
       titleColor: const Color(0xFF059669),
       overrideRole: 'متطوع',
       transparentAppBar: true,
@@ -152,12 +151,8 @@ class _VolunteerDashboardScreenState
     final isRatingTab = _selectedTab == 4;
     final opportunitiesCount = provider.volunteerOpportunities.length;
     final bookingsSummary = '${provider.volunteerBookings.length} حجوزات مقبلة';
-    final certsCount =
-        provider.volunteerCertificates.where((c) => !c.isLocked).length;
-    final avgRating = provider.averageRating;
-    final ratingSummary = avgRating > 0
-        ? '⭐ ${avgRating.toStringAsFixed(1)}'
-        : '⭐ —';
+    const certsCount = '٣';
+    const ratingSummary = '⭐ ٤.٩';
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -224,7 +219,7 @@ class _VolunteerDashboardScreenState
                                   : (_selectedTab == 2
                                       ? bookingsSummary
                                       : (isCertTab
-                                          ? '$certsCount شهادة مكتسبة'
+                                          ? '$certsCount شهادات مكتسبة'
                                           : (isRatingTab
                                               ? ratingSummary
                                               : provider.currentUser.name))),
@@ -277,11 +272,7 @@ class _VolunteerDashboardScreenState
                                 '⭐ ${provider.volunteerBookings.where((b) => b.status == 'done').length} جلسة',
                                 'جلسات مكتملة'),
                             const SizedBox(height: 8),
-                            _buildHeroChip(
-                                avgRating > 0
-                                    ? '⭐ ${avgRating.toStringAsFixed(1)}'
-                                    : '⭐ —',
-                                'تقييم المقيمين'),
+                            _buildHeroChip('⭐⭐⭐⭐⭐', 'تقييم المقيمين'),
                           ],
                         ),
                       ),
@@ -338,16 +329,8 @@ class _VolunteerDashboardScreenState
                       _buildTopChip(
                           'مناسب لمهاراتك ${provider.volunteerOpportunities.where((o) => o.tags.any((t) => provider.volunteerProfile.skills.contains(t))).length}',
                           const Color(0xFF4ade80)),
-                      _buildTopChip(
-                          'هذا الأسبوع ${provider.volunteerBookings.where((b) {
-                            final now = DateTime.now();
-                            final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-                            return b.startTime.isAfter(startOfWeek);
-                          }).length}',
-                          const Color(0xFFfbbf24)),
-                      _buildTopChip(
-                          'محجوزة ${provider.volunteerBookings.where((b) => b.status == 'confirmed').length}',
-                          const Color(0xFF60a5fa)),
+                      _buildTopChip('هذا الأسبوع ٣', const Color(0xFFfbbf24)),
+                      _buildTopChip('محجوزة ٢', const Color(0xFF60a5fa)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -359,8 +342,8 @@ class _VolunteerDashboardScreenState
                           horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.08),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.12)),
+                          border:
+                              Border.all(color: Colors.white.withValues(alpha: 0.12)),
                           borderRadius: BorderRadius.circular(16)),
                       child: Row(
                         children: [
@@ -426,9 +409,7 @@ class _VolunteerDashboardScreenState
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: isActive
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.15),
+                color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -954,7 +935,7 @@ class _VolunteerDustParticle {
   double speed;
   double radius;
   Color color;
-
+  
   _VolunteerDustParticle({
     required this.position,
     required this.speed,
@@ -970,26 +951,22 @@ class VolunteerDustAnimation extends StatefulWidget {
   State<VolunteerDustAnimation> createState() => _VolunteerDustAnimationState();
 }
 
-class _VolunteerDustAnimationState extends State<VolunteerDustAnimation>
-    with SingleTickerProviderStateMixin {
+class _VolunteerDustAnimationState extends State<VolunteerDustAnimation> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<_VolunteerDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 15))
-          ..repeat();
-
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
+    
     final random = Random();
     final colors = [
       const Color(0xFF4ade80).withValues(alpha: 0.6), // أخضر فاتح
       const Color(0xFFfacc15).withValues(alpha: 0.6), // أصفر ذهبي
     ];
-
-    _dust = List.generate(200, (index) {
-      // كثرناها لـ 200 بناء على طلب المستخدم
+    
+    _dust = List.generate(200, (index) { // كثرناها لـ 200 بناء على طلب المستخدم
       return _VolunteerDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.04 + 0.01,
@@ -1012,8 +989,7 @@ class _VolunteerDustAnimationState extends State<VolunteerDustAnimation>
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: _VolunteerDustPainter(
-                dust: _dust, animationValue: _controller.value),
+            painter: VolunteerDustPainter(dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -1021,11 +997,11 @@ class _VolunteerDustAnimationState extends State<VolunteerDustAnimation>
   }
 }
 
-class _VolunteerDustPainter extends CustomPainter {
+class VolunteerDustPainter extends CustomPainter {
   final List<_VolunteerDustParticle> dust;
   final double animationValue;
 
-  _VolunteerDustPainter({required this.dust, required this.animationValue});
+  VolunteerDustPainter({required this.dust, required this.animationValue});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1033,25 +1009,23 @@ class _VolunteerDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-
-      double dy = (p.position.dy * size.height) -
-          (animationValue * p.speed * size.height);
+      
+      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx =
-          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 
       double opacity = (sin(animationValue * 2 * pi * 2 + i) + 1) / 2;
-      paint.color = p.color.withValues(alpha: p.color.a * opacity);
+      paint.color = p.color.withValues(alpha: p.color.opacity * opacity);
 
       canvas.drawCircle(currentPos, p.radius, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _VolunteerDustPainter oldDelegate) {
+  bool shouldRepaint(covariant VolunteerDustPainter oldDelegate) {
     return true;
   }
 }

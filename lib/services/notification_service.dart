@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -165,7 +166,7 @@ class NotificationService {
   void simulateIncomingNotification(String type) {
     showNotification(
       id: DateTime.now().millisecond,
-      title: 'تنبيه جديد من طبطبة ✨',
+      title: 'تنبيه جديد من ونس ✨',
       body: 'لديك إشعار جديد بخصوص: $type',
       payload: type,
     );

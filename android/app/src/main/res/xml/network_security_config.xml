@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-  <!-- السماح بـ HTTP cleartext للتطوير المحلي فقط. الإنتاج يستخدم HTTPS. -->
+  <!-- الإنتاج يستخدم HTTPS فقط (api.helpers-tech.com). HTTP cleartext مسموح فقط لـ emulator/localhost للتطوير. -->
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
   <domain-config cleartextTrafficPermitted="true">
     <domain includeSubdomains="true">10.0.2.2</domain>
     <domain includeSubdomains="true">localhost</domain>

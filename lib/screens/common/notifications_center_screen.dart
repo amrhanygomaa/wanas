@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../widgets/live_notifications_banner.dart';
 
 class NotificationsCenterScreen extends ConsumerWidget {
   const NotificationsCenterScreen({super.key});
@@ -41,24 +40,15 @@ class NotificationsCenterScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // الإشعارات الحقيقية من AWS RDS + زر POST + زر PATCH
-          const LiveNotificationsBanner(),
-          Expanded(
-            child: notifs.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: notifs.length,
-                    itemBuilder: (context, index) {
-                      return _buildNotificationCard(
-                          context, provider, notifs[index]);
-                    },
-                  ),
-          ),
-        ],
-      ),
+      body: notifs.isEmpty
+          ? _buildEmptyState()
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: notifs.length,
+              itemBuilder: (context, index) {
+                return _buildNotificationCard(context, provider, notifs[index]);
+              },
+            ),
     );
   }
 
@@ -149,78 +139,78 @@ class NotificationsCenterScreen extends ConsumerWidget {
         onTap: () => provider.markNotificationAsRead(notif.id),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: notif.isRead ? Colors.white : const Color(0xFFf0f9ff),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: notif.isRead
-                  ? const Color(0xFFe2e8f0)
-                  : const Color(0xFFbae6fd),
-              width: 1,
-            ),
-            boxShadow: [
-              if (!notif.isRead)
-                BoxShadow(
-                  color: const Color(0xFF0369a1).withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-            ],
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: notif.isRead ? Colors.white : const Color(0xFFf0f9ff),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: notif.isRead
+                ? const Color(0xFFe2e8f0)
+                : const Color(0xFFbae6fd),
+            width: 1,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: iconBg,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(iconData, size: 20, color: iconColor),
+          boxShadow: [
+            if (!notif.isRead)
+              BoxShadow(
+                color: const Color(0xFF0369a1).withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  if (!notif.isRead)
-                    Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0ea5e9),
-                        shape: BoxShape.circle,
-                      ),
+                  child: Icon(iconData, size: 20, color: iconColor),
+                ),
+                if (!notif.isRead)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0ea5e9),
+                      shape: BoxShape.circle,
                     ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(notif.title,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0f172a))),
+                  const SizedBox(height: 4),
+                  Text(notif.body,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748b),
+                          height: 1.4)),
+                  const SizedBox(height: 8),
+                  Text(notif.time,
+                      style: const TextStyle(
+                          fontSize: 9, color: Color(0xFF94a3b8))),
                 ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(notif.title,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0f172a))),
-                    const SizedBox(height: 4),
-                    Text(notif.body,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF64748b),
-                            height: 1.4)),
-                    const SizedBox(height: 8),
-                    Text(notif.time,
-                        style: const TextStyle(
-                            fontSize: 9, color: Color(0xFF94a3b8))),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    ),
     );
   }
 }

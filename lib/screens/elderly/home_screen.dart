@@ -2,7 +2,7 @@ import 'dart:async'; // مكتبة المؤقتات والعمليات غير ا
 import 'dart:math'; // مكتبة العمليات الرياضية
 import 'package:flutter/material.dart'; // مكتبة فلاتر الأساسية للواجهات
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // مكتبة إدارة الحالة
-// مكتبة فتح الروابط
+import 'package:url_launcher/url_launcher.dart'; // مكتبة فتح الروابط
 import '../../providers/app_riverpod.dart'; // مزود الحالة الرئيسي للتطبيق
 import '../../models/app_models.dart'; // نماذج البيانات (Medication, User, etc.)
 import 'package:lottie/lottie.dart';
@@ -233,8 +233,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   children: [
                     // نص الترحيب الصباحي باسم المستخدم
                     Padding(
-                      padding:
-                          const EdgeInsets.only(right: 28, top: 15, bottom: 8),
+                      padding: const EdgeInsets.only(
+                          right: 20, left: 20, top: 15, bottom: 8),
                       child: FittedBox(
                         alignment: Alignment.centerRight,
                         fit: BoxFit.scaleDown,
@@ -286,8 +286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-            color: const Color(0xFF6C63FF).withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
               color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
@@ -378,16 +377,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildChip(String value, String label, int index) {
     Color chipColor;
     Color borderColor;
-
+    
     switch (index) {
       case 1: // أدوية
-        chipColor =
-            const Color(0xFF6C63FF).withValues(alpha: 0.15); // بنفسجي أساسي
+        chipColor = const Color(0xFF6C63FF).withValues(alpha: 0.15); // بنفسجي أساسي
         borderColor = const Color(0xFF6C63FF).withValues(alpha: 0.3);
         break;
       case 2: // نقاطي
-        chipColor =
-            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
+        chipColor = const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
         borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
         break;
       case 3: // نشاطات
@@ -444,7 +441,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(label,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
@@ -459,6 +456,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildMedicineCard(AppRiverpod provider) {
     final nextMed = provider.nextMedication;
     final remainingSeconds = provider.remainingSecondsToNextMed;
+    bool hc = provider.isHighContrast;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_bgController, _glowController]),
@@ -540,7 +538,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           const SizedBox(height: 4),
                           Text(
                             nextMed != null ? 'بعد الغداء' : 'ممتاز!',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold),
@@ -553,7 +551,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       onTap: () {
                         if (nextMed != null) {
                           provider.elderlyConfirmMedication(nextMed.id);
-
+                          
                           // Show central animation
                           setState(() {
                             _successMessage = 'تم أخذ الدواء بنجاح';
@@ -660,7 +658,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () {
         provider.elderlyConfirmMedication(nextMed.id);
-
+        
         // Show central animation
         setState(() {
           _successMessage = 'تم أخذ الدواء بنجاح';
@@ -675,9 +673,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-              width: 1.5),
+          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF6366F1).withValues(alpha: 0.25),
@@ -712,14 +708,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         color: hc ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
-            color: hc
-                ? const Color(0xFF6C63FF).withValues(alpha: 0.4)
-                : const Color(0xFF6C63FF).withValues(alpha: 0.3),
+            color: hc ? const Color(0xFF6C63FF).withValues(alpha: 0.4) : const Color(0xFF6C63FF).withValues(alpha: 0.3),
             width: 1.5),
         boxShadow: [
           BoxShadow(
-              color:
-                  const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
+              color: const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -734,7 +727,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 Icon(Icons.phone_enabled_rounded,
                     color: Color(0xFF6C63FF), size: 28),
                 SizedBox(width: 8),
-                Text('تواصل مع أحبائك 💜',
+                const Text('تواصل مع أحبائك 💜',
                     style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -853,9 +846,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 24),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
+          border: Border.all(color: color.withOpacity(0.3), width: 2),
           boxShadow: [
             BoxShadow(
                 color: color.withValues(alpha: 0.15),
@@ -895,8 +888,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 width: 1.5),
             boxShadow: [
               BoxShadow(
-                  color:
-                      const Color(0xFF6C63FF).withValues(alpha: hc ? 0.2 : 0.1),
+                  color: const Color(0xFF6C63FF).withValues(alpha: hc ? 0.2 : 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4))
             ],
@@ -1245,11 +1237,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           selectedType,
                           'مسن');
                       Navigator.pop(context);
-
+                      
                       // Show central animation
                       setState(() {
-                        _successMessage =
-                            'تم استلام طلبك وسيتوجه فريقنا لخدمتك فوراً';
+                        _successMessage = 'تم استلام طلبك وسيتوجه فريقنا لخدمتك فوراً';
                         _showSuccessAnimation = true;
                       });
 
@@ -1412,11 +1403,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 'v_123', selectedRating,
                                 comment: commentController.text);
                             Navigator.pop(context);
-
+                            
                             // Show central animation
                             setState(() {
-                              _successMessage =
-                                  'شكراً لتقييمك! نحن سعداء بخدمتك';
+                              _successMessage = 'شكراً لتقييمك! نحن سعداء بخدمتك';
                               _showSuccessAnimation = true;
                             });
 
@@ -1491,8 +1481,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           borderRadius: BorderRadius.circular(26),
           boxShadow: [
             BoxShadow(
-                color:
-                    const Color(0xFF3B82F6).withValues(alpha: hc ? 0.2 : 0.08),
+                color: const Color(0xFF3B82F6).withValues(alpha: hc ? 0.2 : 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 4))
           ],
@@ -1565,20 +1554,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(height: 24),
             Row(
               children: [
-                Expanded(
-                    child: _elderlyReviewButton('الأخصائي', () {
+                Expanded(child: _elderlyReviewButton('الأخصائي', () {
                   Navigator.pop(context);
                   _showElderlyReviewDialog('specialist');
                 })),
                 const SizedBox(width: 8),
-                Expanded(
-                    child: _elderlyReviewButton('الممرض', () {
+                Expanded(child: _elderlyReviewButton('الممرض', () {
                   Navigator.pop(context);
                   _showElderlyReviewDialog('nurse');
                 })),
                 const SizedBox(width: 8),
-                Expanded(
-                    child: _elderlyReviewButton('الدار', () {
+                Expanded(child: _elderlyReviewButton('الدار', () {
                   Navigator.pop(context);
                   _showElderlyReviewDialog('home');
                 })),
@@ -1600,24 +1586,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 0,
       ),
-      child: Text(label,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
   void _showElderlyReviewDialog(String toRole) {
     int selectedRating = 0;
     final commentController = TextEditingController();
-
+    
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(
-              'تقييم ${toRole == 'specialist' ? 'الأخصائي' : toRole == 'nurse' ? 'الممرض' : 'الدار'}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'Cairo')),
+          title: Text('تقييم ${toRole == 'specialist' ? 'الأخصائي' : toRole == 'nurse' ? 'الممرض' : 'الدار'}', textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Cairo')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1655,35 +1636,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ],
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
             ElevatedButton(
-              onPressed: selectedRating == 0
-                  ? null
-                  : () {
-                      final provider = ref.read(appRiverpod);
-                      provider.addReview(Review(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        fromRole: 'elderly',
-                        fromName: provider.currentUser.name,
-                        toRole: toRole,
-                        rating: selectedRating.toDouble(),
-                        comment: commentController.text,
-                        date: DateTime.now().toString(),
-                      ));
-                      Navigator.pop(context);
+              onPressed: selectedRating == 0 ? null : () {
+                final provider = ref.read(appRiverpod);
+                provider.addReview(Review(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  fromRole: 'elderly',
+                  fromName: provider.currentUser.name,
+                  toRole: toRole,
+                  rating: selectedRating.toDouble(),
+                  comment: commentController.text,
+                  date: DateTime.now().toString(),
+                ));
+                Navigator.pop(context);
+                
+                // Show central animation
+                setState(() {
+                  _successMessage = 'شكراً لتقييمك! نحن سعداء بخدمتك';
+                  _showSuccessAnimation = true;
+                });
 
-                      // Show central animation
-                      setState(() {
-                        _successMessage = 'شكراً لتقييمك! نحن سعداء بخدمتك';
-                        _showSuccessAnimation = true;
-                      });
-
-                      // Automatically hides based on onLoaded in _buildCentralSuccessAnimation
-                    },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E)),
+                // Automatically hides based on onLoaded in _buildCentralSuccessAnimation
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
               child: const Text('إرسال', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -1708,7 +1684,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 painter: TopWavePainter(_bgController.value),
               ),
             ),
-
+            
             // Waves in the middle
             Positioned(
               top: 300,
@@ -1719,7 +1695,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 painter: LineWavePainter(_bgController.value),
               ),
             ),
-
+            
             Positioned(
               top: 600,
               left: 0,
@@ -1740,103 +1716,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 painter: WavePainter(_bgController.value),
               ),
             ),
-
+            
             // Musical Notes
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 200,
-                left: 50,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 400,
-                left: 300,
-                emoji: '🎶'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 600,
-                left: 100,
-                emoji: '🎼'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 150,
-                left: 250,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 700,
-                left: 200,
-                emoji: '🎶'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 300,
-                left: 150,
-                emoji: '🎼'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 500,
-                left: 20,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 800,
-                left: 250,
-                emoji: '🎶'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 100,
-                left: 180,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 650,
-                left: 280,
-                emoji: '🎼'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 250,
-                left: 280,
-                emoji: '🎶'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 450,
-                left: 120,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 550,
-                left: 220,
-                emoji: '🎼'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 350,
-                left: 50,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 750,
-                left: 150,
-                emoji: '🎶'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 50,
-                left: 100,
-                emoji: '🎵'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 70,
-                left: 320,
-                emoji: '🎶'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 120,
-                left: 40,
-                emoji: '🎼'),
-            FloatingNote(
-                animationValue: _bgController.value,
-                top: 180,
-                left: 130,
-                emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 200, left: 50, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 400, left: 300, emoji: '🎶'),
+            FloatingNote(animationValue: _bgController.value, top: 600, left: 100, emoji: '🎼'),
+            FloatingNote(animationValue: _bgController.value, top: 150, left: 250, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 700, left: 200, emoji: '🎶'),
+            FloatingNote(animationValue: _bgController.value, top: 300, left: 150, emoji: '🎼'),
+            FloatingNote(animationValue: _bgController.value, top: 500, left: 20, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 800, left: 250, emoji: '🎶'),
+            FloatingNote(animationValue: _bgController.value, top: 100, left: 180, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 650, left: 280, emoji: '🎼'),
+            FloatingNote(animationValue: _bgController.value, top: 250, left: 280, emoji: '🎶'),
+            FloatingNote(animationValue: _bgController.value, top: 450, left: 120, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 550, left: 220, emoji: '🎼'),
+            FloatingNote(animationValue: _bgController.value, top: 350, left: 50, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 750, left: 150, emoji: '🎶'),
+            FloatingNote(animationValue: _bgController.value, top: 50, left: 100, emoji: '🎵'),
+            FloatingNote(animationValue: _bgController.value, top: 70, left: 320, emoji: '🎶'),
+            FloatingNote(animationValue: _bgController.value, top: 120, left: 40, emoji: '🎼'),
+            FloatingNote(animationValue: _bgController.value, top: 180, left: 130, emoji: '🎵'),
           ],
         );
       },
@@ -1856,21 +1756,20 @@ class WavePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, size.height * 0.45);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path.lineTo(
         i,
-        size.height * 0.45 +
-            sin((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 25,
+        size.height * 0.45 + sin((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 25,
       );
     }
-
+    
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();
 
     canvas.drawPath(path, paint);
-
+    
     // Draw another wave
     final paint2 = Paint()
       ..color = const Color(0xFFF472B6).withValues(alpha: 0.1)
@@ -1878,15 +1777,14 @@ class WavePainter extends CustomPainter {
 
     final path2 = Path();
     path2.moveTo(0, size.height * 0.55);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path2.lineTo(
         i,
-        size.height * 0.55 +
-            cos((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 20,
+        size.height * 0.55 + cos((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 20,
       );
     }
-
+    
     path2.lineTo(size.width, size.height);
     path2.lineTo(0, size.height);
     path2.close();
@@ -1900,21 +1798,20 @@ class WavePainter extends CustomPainter {
 
     final path3 = Path();
     path3.moveTo(0, size.height * 0.65);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path3.lineTo(
         i,
-        size.height * 0.65 +
-            sin((i / size.width * 3 * pi) + (animationValue * 2 * pi)) * 12,
+        size.height * 0.65 + sin((i / size.width * 3 * pi) + (animationValue * 2 * pi)) * 12,
       );
     }
-
+    
     path3.lineTo(size.width, size.height);
     path3.lineTo(0, size.height);
     path3.close();
 
     canvas.drawPath(path3, paint3);
-
+    
     path2.lineTo(size.width, size.height);
     path2.lineTo(0, size.height);
     path2.close();
@@ -1933,7 +1830,6 @@ class FloatingNote extends StatelessWidget {
   final String emoji;
 
   const FloatingNote({
-    super.key,
     required this.animationValue,
     required this.top,
     required this.left,
@@ -1968,21 +1864,20 @@ class TopWavePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, size.height * 0.5);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path.lineTo(
         i,
-        size.height * 0.5 +
-            sin((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 15,
+        size.height * 0.5 + sin((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 15,
       );
     }
-
+    
     path.lineTo(size.width, 0);
     path.lineTo(0, 0);
     path.close();
 
     canvas.drawPath(path, paint);
-
+    
     // Draw another wave
     final paint2 = Paint()
       ..color = const Color(0xFFF472B6).withValues(alpha: 0.08)
@@ -1990,15 +1885,14 @@ class TopWavePainter extends CustomPainter {
 
     final path2 = Path();
     path2.moveTo(0, size.height * 0.4);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path2.lineTo(
         i,
-        size.height * 0.4 +
-            cos((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 12,
+        size.height * 0.4 + cos((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 12,
       );
     }
-
+    
     path2.lineTo(size.width, 0);
     path2.lineTo(0, 0);
     path2.close();
@@ -2023,17 +1917,16 @@ class LineWavePainter extends CustomPainter {
 
     final path = Path();
     path.moveTo(0, size.height * 0.5);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path.lineTo(
         i,
-        size.height * 0.5 +
-            sin((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 20,
+        size.height * 0.5 + sin((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 20,
       );
     }
 
     canvas.drawPath(path, paint);
-
+    
     final paint2 = Paint()
       ..color = const Color(0xFFF472B6).withValues(alpha: 0.1)
       ..style = PaintingStyle.stroke
@@ -2041,12 +1934,11 @@ class LineWavePainter extends CustomPainter {
 
     final path2 = Path();
     path2.moveTo(0, size.height * 0.6);
-
+    
     for (double i = 0; i <= size.width; i++) {
       path2.lineTo(
         i,
-        size.height * 0.6 +
-            cos((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 15,
+        size.height * 0.6 + cos((i / size.width * 2 * pi) + (animationValue * 2 * pi)) * 15,
       );
     }
 

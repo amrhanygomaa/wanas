@@ -38,17 +38,6 @@ class _VoiceMessagesPlaybackScreenState
     final provider = ref.watch(appRiverpod);
     final messages = provider.voiceMessages; // جلب الرسائل الصوتية من المزود
 
-    final banner = provider.voiceMessageBanner;
-    if (banner != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(banner), behavior: SnackBarBehavior.floating),
-        );
-        provider.clearVoiceMessageBanner();
-      });
-    }
-
     return Scaffold(
       backgroundColor:
           const Color(0xFF0f172a), // خلفية ليلية أنيقة لتقليل إجهاد العين

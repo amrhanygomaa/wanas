@@ -1,12 +1,10 @@
-// ignore_for_file: unused_element
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
 import '../../../models/app_models.dart';
 import '../admin_resident_detail_screen.dart';
-import '../../../widgets/live_cloud_residents_banner.dart';
-import '../../../widgets/sheets/create_resident_sheet.dart';
 
 class ResidentsManagementView extends ConsumerStatefulWidget {
   final List<Animation<double>> fadeAnimations;
@@ -46,8 +44,7 @@ class _ResidentsManagementViewState
         Column(
           children: [
             _buildSearchBar(),
-            const LiveCloudResidentsBanner(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             if (filteredResidents.isEmpty)
               _buildEmptyState()
             else
@@ -70,40 +67,17 @@ class _ResidentsManagementViewState
         Positioned(
           bottom: 24,
           right: 24,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              FloatingActionButton.extended(
-                heroTag: 'add_aws',
-                onPressed: () => CreateResidentSheet.show(context,
-                    onCreated: () => setState(() {})),
-                backgroundColor: const Color(0xFFFF9900),
-                icon:
-                    const Icon(Icons.cloud_upload_rounded, color: Colors.white),
-                label: const Text('إضافة مقيم (AWS)',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Cairo')),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-              ),
-              const SizedBox(height: 10),
-              FloatingActionButton.extended(
-                heroTag: 'add_advanced',
-                onPressed: () => _showResidentForm(context, ref),
-                backgroundColor: const Color(0xFF0f172a),
-                icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-                label: const Text('إضافة مقيم متقدمة',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Cairo')),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-              ),
-            ],
+          child: FloatingActionButton.extended(
+            onPressed: () => _showResidentForm(context, ref),
+            backgroundColor: const Color(0xFF0f172a),
+            icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+            label: const Text('إضافة مقيم',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Cairo')),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
         ),
       ],
@@ -238,10 +212,7 @@ class _ResidentsManagementViewState
                                     shape: BoxShape.circle,
                                     image: (img != null && img.isNotEmpty)
                                         ? DecorationImage(
-                                            image: img.startsWith('http')
-                                                ? NetworkImage(img)
-                                                : FileImage(File(img))
-                                                    as ImageProvider,
+                                            image: FileImage(File(img)),
                                             fit: BoxFit.cover)
                                         : null,
                                     border: Border.all(
@@ -276,8 +247,7 @@ class _ResidentsManagementViewState
                                 decoration: BoxDecoration(
                                   color: statusColor,
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: Colors.white, width: 1.5),
+                                  border: Border.all(color: Colors.white, width: 1.5),
                                 ),
                                 child: const Icon(
                                   Icons.edit_rounded,
@@ -375,6 +345,7 @@ class _ResidentsManagementViewState
     final phoneController = TextEditingController(text: resident?.phone ?? '');
     final ageController =
         TextEditingController(text: resident?.age?.toString() ?? '');
+    final passwordController = TextEditingController();
     String selectedStatus = resident?.status ?? 'updated';
 
     // Medical State
@@ -552,9 +523,7 @@ class _ResidentsManagementViewState
                               : 'م',
                           categories:
                               isEdit ? resident.categories : ['resident'],
-                          familyMembers: isEdit
-                              ? resident.familyMembers
-                              : <FamilyMember>[],
+                          familyMembers: isEdit ? resident.familyMembers : <FamilyMember>[],
                           age: int.tryParse(ageController.text) ?? 70,
                           phone: phoneController.text,
                         );

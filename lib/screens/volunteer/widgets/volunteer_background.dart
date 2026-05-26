@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
@@ -23,23 +24,18 @@ class VolunteerMovingOrbsBackground extends StatefulWidget {
   const VolunteerMovingOrbsBackground({super.key});
 
   @override
-  State<VolunteerMovingOrbsBackground> createState() =>
-      _VolunteerMovingOrbsBackgroundState();
+  State<VolunteerMovingOrbsBackground> createState() => _VolunteerMovingOrbsBackgroundState();
 }
 
-class _VolunteerMovingOrbsBackgroundState
-    extends State<VolunteerMovingOrbsBackground>
-    with SingleTickerProviderStateMixin {
+class _VolunteerMovingOrbsBackgroundState extends State<VolunteerMovingOrbsBackground> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<MovingOrb> _orbs;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 20))
-          ..repeat();
-
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
+    
     _orbs = [
       MovingOrb(
         position: const Offset(0.2, 0.3),
@@ -78,8 +74,7 @@ class _VolunteerMovingOrbsBackgroundState
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter:
-                OrbsPainter(orbs: _orbs, animationValue: _controller.value),
+            painter: OrbsPainter(orbs: _orbs, animationValue: _controller.value),
           );
         },
       ),
@@ -99,9 +94,8 @@ class OrbsPainter extends CustomPainter {
 
     for (var i = 0; i < orbs.length; i++) {
       final orb = orbs[i];
-
-      double currentAngle =
-          orb.angle + (animationValue * 2 * pi * orb.speed * 10);
+      
+      double currentAngle = orb.angle + (animationValue * 2 * pi * orb.speed * 10);
       double dx = orb.position.dx * size.width + cos(currentAngle) * 50;
       double dy = orb.position.dy * size.height + sin(currentAngle) * 50;
 
@@ -125,7 +119,7 @@ class DustParticle {
   double speed;
   double radius;
   Color color;
-
+  
   DustParticle({
     required this.position,
     required this.speed,
@@ -139,29 +133,24 @@ class VolunteerParticleBackground extends StatefulWidget {
   const VolunteerParticleBackground({super.key, this.count = 500});
 
   @override
-  State<VolunteerParticleBackground> createState() =>
-      _VolunteerParticleBackgroundState();
+  State<VolunteerParticleBackground> createState() => _VolunteerParticleBackgroundState();
 }
 
-class _VolunteerParticleBackgroundState
-    extends State<VolunteerParticleBackground>
-    with SingleTickerProviderStateMixin {
+class _VolunteerParticleBackgroundState extends State<VolunteerParticleBackground> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<DustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 15))
-          ..repeat();
-
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
+    
     final random = Random();
     final colors = [
       const Color(0xFF4ade80).withValues(alpha: 0.4),
       const Color(0xFFfacc15).withValues(alpha: 0.4),
     ];
-
+    
     _dust = List.generate(widget.count, (index) {
       return DustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
@@ -185,8 +174,7 @@ class _VolunteerParticleBackgroundState
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter:
-                DustPainter(dust: _dust, animationValue: _controller.value),
+            painter: DustPainter(dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -206,18 +194,16 @@ class DustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-
-      double dy = (p.position.dy * size.height) -
-          (animationValue * p.speed * size.height);
+      
+      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx =
-          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 
       double opacity = (sin(animationValue * 2 * pi * 2 + i) + 1) / 2;
-      paint.color = p.color.withValues(alpha: p.color.a * opacity);
+      paint.color = p.color.withValues(alpha: p.color.opacity * opacity);
 
       canvas.drawCircle(currentPos, p.radius, paint);
     }

@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -165,14 +164,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   }
 
   Widget _buildTabSelector() {
-    final provider = ref.read(appRiverpod);
-    final pendingCount = provider.volunteerReviews.where((r) => r.isPending).length;
-    final myRatingsCount = provider.volunteerRatings.length;
-    final tabs = [
-      'أقيّم ($pendingCount)',
-      'تقييماتي ($myRatingsCount)',
-      'ملخص أدائي',
-    ];
+    final tabs = ['أقيّم (١)', 'تقييماتي (١٢)', 'ملخص أدائي'];
     return Container(
       height: 45,
       decoration: const BoxDecoration(
@@ -516,26 +508,24 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   }
 
   Widget _buildDetailedBreakdown(AppRiverpod provider) {
-    final byCategory = <String, List<double>>{};
-    for (final r in provider.volunteerRatings) {
-      for (final entry in r.criteriaScores.entries) {
-        byCategory.putIfAbsent(entry.key, () => []).add(entry.value);
-      }
-    }
-
-    if (byCategory.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFa7f3d0), width: 1.5)),
-        child: const Center(
-          child: Text('لا توجد تفاصيل تقييم بعد',
-              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-        ),
-      );
-    }
+    final criteria = [
+      {
+        'label': 'التعامل والاحترام',
+        'score': 5.0,
+        'color': const Color(0xFF10b981)
+      },
+      {
+        'label': 'الالتزام بالمواعيد',
+        'score': 5.0,
+        'color': const Color(0xFF10b981)
+      },
+      {'label': 'جودة التحضير', 'score': 4.0, 'color': const Color(0xFF10b981)},
+      {
+        'label': 'الإبداع في الجلسة',
+        'score': 4.7,
+        'color': const Color(0xFF10b981)
+      },
+    ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -544,10 +534,10 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFa7f3d0), width: 1.5)),
       child: Column(
-        children: byCategory.entries.map((e) {
-          final avg = e.value.reduce((a, b) => a + b) / e.value.length;
-          return _buildBreakdownRow(e.key, avg, const Color(0xFF10b981));
-        }).toList(),
+        children: criteria
+            .map((c) => _buildBreakdownRow(c['label'] as String,
+                c['score'] as double, c['color'] as Color))
+            .toList(),
       ),
     );
   }
@@ -638,9 +628,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
                             fontSize: 13, fontWeight: FontWeight.bold)),
                     Text(rating.date,
                         style: const TextStyle(
-                            color: Color(0xFF64748b),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500)),
+                            color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w500)),
                   ],
                 ),
                 const Spacer(),
@@ -665,10 +653,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
               child: Text(rating.comment,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                      color: Color(0xFF334155),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      height: 1.6)),
+                      color: Color(0xFF334155), fontSize: 12, fontWeight: FontWeight.w500, height: 1.6)),
             ),
             if (rating.chips.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -724,44 +709,39 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
                     isShimmer: true),
                 _buildStatTextRow('يحتاج تحسين', provider.skillNeedsImprovement,
                     valColor: const Color(0xFF10b981)),
-                _buildStatTextRow(
-                    'معلّقة للإرسال',
-                    '${_pendingRatings.length} تقييم',
+                _buildStatTextRow('معلّقة للإرسال', '١ تقييم',
                     valColor: Colors.red),
               ],
             ),
           ),
           const SizedBox(width: 20),
-          _buildPerformanceRing(provider),
+          _buildPerformanceRing(),
         ],
       ),
     );
   }
 
-  Widget _buildPerformanceRing(AppRiverpod provider) {
-    final avg = provider.averageRating;
-    final value = avg > 0 ? (avg / 5.0).clamp(0.0, 1.0) : 0.0;
-    final pct = (value * 100).round();
-    return SizedBox(
+  Widget _buildPerformanceRing() {
+    return const SizedBox(
       width: 65,
       height: 65,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CircularProgressIndicator(
-              value: value,
+              value: 0.85,
               strokeWidth: 6,
-              backgroundColor: const Color(0xFFd1fae5),
-              color: const Color(0xFF10b981)),
+              backgroundColor: Color(0xFFd1fae5),
+              color: Color(0xFF10b981)),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$pct٪',
-                  style: const TextStyle(
+              Text('٨٥٪',
+                  style: TextStyle(
                       color: Color(0xFF065f46),
                       fontSize: 14,
                       fontWeight: FontWeight.bold)),
-              const Text('أداء',
+              Text('أداء',
                   style: TextStyle(color: Color(0xFF64748b), fontSize: 8)),
             ],
           ),
@@ -825,14 +805,14 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 13, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
           Container(
               width: 8,
               height: 8,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );

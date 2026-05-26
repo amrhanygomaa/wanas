@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'dart:math' as math;
 
 class WanasSplashScreen extends StatefulWidget {
   const WanasSplashScreen({super.key});
@@ -22,9 +23,17 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
   Future<void> _checkLogoAsset() async {
     try {
       await rootBundle.load('assets/icons/wanas_logo.png');
-      if (mounted) setState(() => _useLogoAsset = true);
+      if (mounted) {
+        setState(() {
+          _useLogoAsset = true;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _useLogoAsset = false);
+      if (mounted) {
+        setState(() {
+          _useLogoAsset = false;
+        });
+      }
     }
   }
 
@@ -33,10 +42,13 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
     super.initState();
     _checkLogoAsset();
 
+    // 1. متحكم أنيميشن ظهور العناصر (ظهور تدريجي وتكبير)
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
+
+    // 2. متحكم أنيميشن نبض الخلفية الذهبية الفخمة
     _glowController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -48,28 +60,36 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
         curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
       ),
     );
+
     _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
         curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
+
     _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
         curve: const Interval(0.3, 0.7, curve: Curves.easeIn),
       ),
     );
+
     _sloganOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
         curve: const Interval(0.5, 0.9, curve: Curves.easeIn),
       ),
     );
+
     _glowPulse = Tween<double>(begin: 0.85, end: 1.15).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _glowController,
+        curve: Curves.easeInOut,
+      ),
     );
 
+    // تشغيل الأنيميشن عند فتح الشاشة
     _fadeController.forward();
   }
 
@@ -87,15 +107,16 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
     return Scaffold(
       body: Stack(
         children: [
+          // ── 1. الخلفية الفخمة المتدرجة (Cream/Beige Gradient) ──
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFFAF7F2),
-                  Color(0xFFF3EFE9),
-                  Color(0xFFE9E4DC),
+                  Color(0xFFFAF7F2), // درجة كريمي فاتحة ونقية
+                  Color(0xFFF3EFE9), // درجة كريمي دافئة
+                  Color(0xFFE9E4DC), // درجة أغمق قليلاً للعمق البصري
                 ],
               ),
             ),
@@ -105,35 +126,35 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
               width: double.infinity,
               height: double.infinity,
               errorBuilder: (context, error, stackTrace) {
+                // إذا لم تكن الصورة المخصصة متوفرة بعد كملف، يتم عرض الحلقات والوهج الذهبي الحيوي برمجياً
                 return AnimatedBuilder(
                   animation: _glowPulse,
                   builder: (context, child) {
                     return Stack(
                       children: [
+                        // الوهج العلوي الأيمن
                         Positioned(
                           top: -120 * _glowPulse.value,
                           right: -100 * _glowPulse.value,
                           child: _buildGlowRing(
                             width: 320 * _glowPulse.value,
                             height: 320 * _glowPulse.value,
-                            glowColor: const Color(0xFFE8DFCD)
-                                .withValues(alpha: 0.45),
-                            borderColor: const Color(0xFFDFD4BE)
-                                .withValues(alpha: 0.2),
+                            glowColor: const Color(0xFFE8DFCD).withOpacity(0.45),
+                            borderColor: const Color(0xFFDFD4BE).withOpacity(0.2),
                           ),
                         ),
+                        // الوهج السفلي الأيسر الممتد
                         Positioned(
                           bottom: -150 * _glowPulse.value,
                           left: -120 * _glowPulse.value,
                           child: _buildGlowRing(
                             width: 420 * _glowPulse.value,
                             height: 420 * _glowPulse.value,
-                            glowColor: const Color(0xFFE5DBC5)
-                                .withValues(alpha: 0.4),
-                            borderColor: const Color(0xFFDBD0B4)
-                                .withValues(alpha: 0.18),
+                            glowColor: const Color(0xFFE5DBC5).withOpacity(0.4),
+                            borderColor: const Color(0xFFDBD0B4).withOpacity(0.18),
                           ),
                         ),
+                        // هالة وهج مركزية ناعمة خلف اللوجو مباشرة لزيادة الفخامة
                         Center(
                           child: Container(
                             width: 250 * _glowPulse.value,
@@ -142,10 +163,8 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  const Color(0xFFEFE9DC)
-                                      .withValues(alpha: 0.55),
-                                  const Color(0xFFFAF7F2)
-                                      .withValues(alpha: 0.0),
+                                  const Color(0xFFEFE9DC).withOpacity(0.55),
+                                  const Color(0xFFFAF7F2).withOpacity(0.0),
                                 ],
                               ),
                             ),
@@ -158,6 +177,8 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
               },
             ),
           ),
+
+          // ── 3. محتوى الشاشة الأساسي (المحاذاة والترتيب) ──
           SafeArea(
             child: SizedBox(
               width: double.infinity,
@@ -166,10 +187,13 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 40), // مسافة علوية متزنة
+
+                  // القسم الأوسط: الشعار + الاسم + الوصف العربي
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // أ) الشعار الفخم (الأصل التعبيري للوجو أو الرسم التلقائي)
                       AnimatedBuilder(
                         animation: _fadeController,
                         builder: (context, child) {
@@ -180,7 +204,7 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                               child: _useLogoAsset
                                   ? Image.asset(
                                       'assets/icons/wanas_logo.png',
-                                      width: size.width * 0.72,
+                                      width: size.width * 2.5, // تكبير الشعار أكثر وأكثر لتكبير الاسم والرمز للدرجة القصوى المطلوبة
                                       fit: BoxFit.contain,
                                     )
                                   : _buildLogoWidget(),
@@ -188,6 +212,8 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                           );
                         },
                       ),
+
+                      // ب) اسم التطبيق "وَنَسٌ" بالخط العربي المدمج (يظهر فقط في حال تفعيل الرسم التلقائي لمنع التكرار البصري)
                       if (!_useLogoAsset) ...[
                         const SizedBox(height: 32),
                         FadeTransition(
@@ -198,7 +224,7 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                               fontFamily: 'Cairo',
                               fontSize: 48,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF8F7C56),
+                              color: Color(0xFF8F7C56), // لون ذهبي برونزي فخم جداً
                               letterSpacing: 1.0,
                               shadows: [
                                 Shadow(
@@ -211,23 +237,32 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      FadeTransition(
-                        opacity: _sloganOpacity,
-                        child: const Text(
-                          'وَنَسٌ… حَيْثُ يَطْمَئِنُّ القَلْب',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF8F7C56),
-                            letterSpacing: 0.2,
-                            shadows: [
-                              Shadow(
-                                color: Color(0x1A8F7C56),
-                                offset: Offset(0, 2),
-                                blurRadius: 6,
+                      const SizedBox(height: 0),
+
+                      // ج) العبارة التعبيرية الجديدة "ونس… حيث يطمئن القلب" (مرفوعة للأعلى لتنسجم مع الشعار)
+                      Transform.translate(
+                        offset: const Offset(0, -100), // رفع النص للأعلى بمقدار 100 بكسل ليقترب من الشعار ويلغي الفراغ الشفاف
+                        child: FadeTransition(
+                          opacity: _sloganOpacity,
+                          child: const Column(
+                            children: [
+                              Text(
+                                'وَنَسٌ… حَيْثُ يَطْمَئِنُّ القَلْب',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 23, // تكبير حجم الخط لمزيد من الفخامة والوضوح
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF8F7C56), // لون ذهبي برونزي فخم جداً
+                                  letterSpacing: 0.2,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0x1A8F7C56),
+                                      offset: Offset(0, 2),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -235,30 +270,34 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                       ),
                     ],
                   ),
+
+                  // القسم السفلي: مؤشر التحميل الأنيق + الحقوق
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // لودر دائري ذهبي ناعم متناسق تماماً مع التصميم
                       SizedBox(
                         width: 32,
                         height: 32,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.2,
                           valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFFB09D76),
+                            Color(0xFFB09D76), // درجة ذهبية للمؤشر
                           ),
-                          backgroundColor:
-                              const Color(0xFF8F7C56).withValues(alpha: 0.1),
+                          backgroundColor: const Color(0xFF8F7C56).withOpacity(0.1),
                         ),
                       ),
                       const SizedBox(height: 48),
-                      const Text(
+
+                      // تذييل الصفحة الأنيق: Wanas 2026
+                      Text(
                         'Wanas 2026',
                         style: TextStyle(
                           fontFamily: 'Cairo',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF8F7C56),
-                          letterSpacing: 2.0,
+                          fontSize: 16, // تكبير حجم الخط ليكون واضحاً
+                          fontWeight: FontWeight.w700, // خط سميك وجريء
+                          color: const Color(0xFF8F7C56), // لون ذهبي برونزي كامل بدون شفافية لزيادة الوضوح
+                          letterSpacing: 2.0, // تباعد حروف فخم
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -273,6 +312,7 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
     );
   }
 
+  // بناء هالة الوهج الدائرية المحاطة بإطار ناعم ومموّه
   Widget _buildGlowRing({
     required double width,
     required double height,
@@ -288,7 +328,7 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
         gradient: RadialGradient(
           colors: [
             glowColor,
-            glowColor.withValues(alpha: 0.1),
+            glowColor.withOpacity(0.1),
             Colors.transparent,
           ],
           stops: const [0.0, 0.7, 1.0],
@@ -297,16 +337,17 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
     );
   }
 
+  // بناء الشعار مع ميزة التحقق من توفر الملف أو الرسم التلقائي
   Widget _buildLogoWidget() {
     return Container(
       width: 110,
       height: 110,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.4),
+        color: Colors.white.withOpacity(0.4),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8F7C56).withValues(alpha: 0.06),
+            color: const Color(0xFF8F7C56).withOpacity(0.06),
             blurRadius: 24,
             spreadRadius: 4,
           ),
@@ -317,6 +358,7 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
         'assets/icons/wanas_logo.png',
         width: 85,
         height: 85,
+        // إذا لم يكن اللوجو المرفوع متوفراً بعد كملف، فسيتم رسم الشعار الذهبي الفاخر تلقائياً بالنظام الفيكتور المدمج
         errorBuilder: (context, error, stackTrace) {
           return CustomPaint(
             size: const Size(80, 50),
@@ -328,18 +370,20 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
   }
 }
 
+// ── رسام مخصص لرسم شعار اللانهاية الذهبي الفاخر المدمج (High-Fidelity Wanas Logo Painter) ──
 class WanasInfinityLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-
+    
+    // التدرج اللوني الذهبي المعدني الرائع المتطابق مع تدرج الشعار
     final paint = Paint()
       ..shader = const LinearGradient(
         colors: [
-          Color(0xFF8F7C56),
-          Color(0xFFC7B38C),
-          Color(0xFFAD9970),
-          Color(0xFF8F7C56),
+          Color(0xFF8F7C56), // برونزي غامق
+          Color(0xFFC7B38C), // ذهبي ناصع دافئ
+          Color(0xFFAD9970), // ذهبي معتدل
+          Color(0xFF8F7C56), // برونزي غامق للنهاية
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -352,16 +396,38 @@ class WanasInfinityLogoPainter extends CustomPainter {
     double w = size.width;
     double h = size.height;
 
+    // رسم مسار اللانهاية (Infinity) بانحناءات بيزير التكعيبية الأنيقة والمنسابة
     path.moveTo(w * 0.5, h * 0.5);
-    path.cubicTo(w * 0.32, h * 0.15, w * 0.05, h * 0.15, w * 0.08, h * 0.5);
-    path.cubicTo(w * 0.1, h * 0.85, w * 0.32, h * 0.85, w * 0.5, h * 0.5);
-    path.cubicTo(w * 0.68, h * 0.15, w * 0.95, h * 0.15, w * 0.92, h * 0.5);
-    path.cubicTo(w * 0.9, h * 0.85, w * 0.68, h * 0.85, w * 0.5, h * 0.5);
+    
+    // الحلقة اليسرى للشعار
+    path.cubicTo(
+      w * 0.32, h * 0.15,
+      w * 0.05, h * 0.15,
+      w * 0.08, h * 0.5,
+    );
+    path.cubicTo(
+      w * 0.1, h * 0.85,
+      w * 0.32, h * 0.85,
+      w * 0.5, h * 0.5,
+    );
+
+    // الحلقة اليمنى للشعار (تقاطع انسيابي)
+    path.cubicTo(
+      w * 0.68, h * 0.15,
+      w * 0.95, h * 0.15,
+      w * 0.92, h * 0.5,
+    );
+    path.cubicTo(
+      w * 0.9, h * 0.85,
+      w * 0.68, h * 0.85,
+      w * 0.5, h * 0.5,
+    );
 
     canvas.drawPath(path, paint);
 
+    // رسم هالة لمعان ذهبية خفيفة في منتصف التقاطع لزيادة اللمسة الاحترافية
     final glowPaint = Paint()
-      ..color = const Color(0xFFFAF4E7).withValues(alpha: 0.8)
+      ..color = const Color(0xFFFAF4E7).withOpacity(0.8)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(w * 0.5, h * 0.5), 3.0, glowPaint);
   }
