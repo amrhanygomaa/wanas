@@ -140,8 +140,8 @@ class _FamilyActivitiesScreenState extends ConsumerState<FamilyActivitiesScreen>
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-    final residentName = provider.currentAccount?.linkedResidentId == 'res1'
-        ? 'الحاج محمود'
+    final residentName = provider.residentFiles.isNotEmpty
+        ? provider.residentFiles.first.name
         : 'المقيم العزيز';
 
     final todayActivities = provider.activities
@@ -196,7 +196,8 @@ class _FamilyActivitiesScreenState extends ConsumerState<FamilyActivitiesScreen>
                                   curve: Curves.easeOutBack),
                             ),
                           ),
-                          child: _buildActivityCard(context, act, provider, residentName),
+                          child: _buildActivityCard(
+                              context, act, provider, residentName),
                         ),
                       );
                     },
@@ -214,12 +215,14 @@ class _FamilyActivitiesScreenState extends ConsumerState<FamilyActivitiesScreen>
           Positioned(
             top: -100,
             left: -50,
-            child: _buildOrb(260, const Color(0xFFffedd5).withValues(alpha: 0.5)),
+            child:
+                _buildOrb(260, const Color(0xFFffedd5).withValues(alpha: 0.5)),
           ),
           Positioned(
             bottom: -80,
             right: -60,
-            child: _buildOrb(220, const Color(0xFFffe4e6).withValues(alpha: 0.4)),
+            child:
+                _buildOrb(220, const Color(0xFFffe4e6).withValues(alpha: 0.4)),
           ),
         ],
       ),
@@ -272,11 +275,11 @@ class _FamilyActivitiesScreenState extends ConsumerState<FamilyActivitiesScreen>
     );
   }
 
-  Widget _buildActivityCard(
-      BuildContext context, Activity act, AppRiverpod provider, String residentName) {
+  Widget _buildActivityCard(BuildContext context, Activity act,
+      AppRiverpod provider, String residentName) {
     final isJoined = provider.isFamilyParticipating(act.id);
     final note = provider.getFamilyActivityNote(act.id);
-    
+
     if (!_controllers.containsKey(act.id)) {
       _controllers[act.id] = TextEditingController(text: note);
     }
@@ -288,9 +291,7 @@ class _FamilyActivitiesScreenState extends ConsumerState<FamilyActivitiesScreen>
         color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isJoined
-              ? const Color(0xFFa7f3d0)
-              : const Color(0xFFf1f5f9),
+          color: isJoined ? const Color(0xFFa7f3d0) : const Color(0xFFf1f5f9),
           width: isJoined ? 2.0 : 1.5,
         ),
         boxShadow: [
@@ -581,9 +582,8 @@ class _FamilyActivitiesScreenState extends ConsumerState<FamilyActivitiesScreen>
                   backgroundColor: isJoined
                       ? const Color(0xFFd1fae5)
                       : const Color(0xFFea580c),
-                  foregroundColor: isJoined
-                      ? const Color(0xFF065f46)
-                      : Colors.white,
+                  foregroundColor:
+                      isJoined ? const Color(0xFF065f46) : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: isJoined

@@ -437,17 +437,27 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20))),
         onPressed: canConfirm
-            ? () {
+            ? () async {
                 final provider = ref.read(appRiverpod);
-                provider.addFamilyVisit(FamilyVisit(
+                await provider.addFamilyVisit(FamilyVisit(
                   id: 'v${DateTime.now().millisecondsSinceEpoch}',
-                  visitorName: 'سارة',
+                  visitorName: provider.currentAccount?.name ?? 'فرد أسرة',
                   date: '$_selectedDay $_monthName',
                   time: _selectedSlot!,
                   type: _selectedType == 0 ? 'physical' : 'video',
                   status: 'pending',
                 ));
-                _showSuccessSheet();
+                if (!mounted) return;
+                if (provider.backendSyncError != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(provider.backendSyncError!),
+                      backgroundColor: const Color(0xFFef4444),
+                    ),
+                  );
+                } else {
+                  _showSuccessSheet();
+                }
               }
             : null,
         child: const Text('تأكيد الموعد',

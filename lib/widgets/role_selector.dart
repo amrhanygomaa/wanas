@@ -179,22 +179,28 @@ class _RoleSelectorState extends State<RoleSelector>
   Widget _buildWhiteIcon(String role) {
     switch (role) {
       case 'مسن':
-        return AppIcons.user(size: 14, color: Colors.white.withValues(alpha: 0.9));
+        return AppIcons.user(
+            size: 14, color: Colors.white.withValues(alpha: 0.9));
       case 'ممرض':
-        return AppIcons.nurse(size: 14, color: Colors.white.withValues(alpha: 0.9));
+        return AppIcons.nurse(
+            size: 14, color: Colors.white.withValues(alpha: 0.9));
       case 'أسرة':
-        return AppIcons.family(size: 14, color: Colors.white.withValues(alpha: 0.9));
+        return AppIcons.family(
+            size: 14, color: Colors.white.withValues(alpha: 0.9));
       case 'متطوع':
         return AppIcons.volunteer(
           size: 14,
           color: Colors.white.withValues(alpha: 0.9),
         );
       case 'أخصائي اجتماعي':
-        return AppIcons.user(size: 14, color: Colors.white.withValues(alpha: 0.9));
+        return AppIcons.user(
+            size: 14, color: Colors.white.withValues(alpha: 0.9));
       case 'إدارة':
-        return AppIcons.user(size: 14, color: Colors.white.withValues(alpha: 0.9));
+        return AppIcons.user(
+            size: 14, color: Colors.white.withValues(alpha: 0.9));
       default:
-        return AppIcons.user(size: 14, color: Colors.white.withValues(alpha: 0.9));
+        return AppIcons.user(
+            size: 14, color: Colors.white.withValues(alpha: 0.9));
     }
   }
 }

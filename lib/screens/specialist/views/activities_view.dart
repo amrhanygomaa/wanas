@@ -22,66 +22,30 @@ class SpecialistActivitiesView extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<SpecialistActivitiesView> createState() => _SpecialistActivitiesViewState();
+  ConsumerState<SpecialistActivitiesView> createState() =>
+      _SpecialistActivitiesViewState();
 }
 
-class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesView> {
-  // بيانات تجريبية للأنشطة مع التفاصيل الجديدة (تم نقلها هنا لتكون قابلة للتعديل)
-  final List<Map<String, dynamic>> activities = [
-    {
-      'title': 'رحلة لحديقة الأزهر',
-      'type': 'رحلة',
-      'date': 'اليوم، 10:00 ص',
-      'status': 'قادم',
-      'icon': '🌳',
-      'color': const Color(0xFF10b981),
-      'bg': const Color(0xFFd1fae5),
-      'target': 'لكل المقيمين',
-      'location': 'حديقة الأزهر',
-      'supervisor': 'أ. سارة المنسق',
-      'image': 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=200',
-    },
-    {
-      'title': 'جلسة رسم وأشغال يدوية',
-      'type': 'نشاط',
-      'date': 'غداً، 11:30 ص',
-      'status': 'مجدول',
-      'icon': '🎨',
-      'color': const Color(0xFF3b82f6),
-      'bg': const Color(0xFFdbeafe),
-      'target': 'قسم الرعاية الخاصة',
-      'location': 'قاعة الأنشطة',
-      'supervisor': 'أ. محمد علي',
-    },
-    {
-      'title': 'مسابقة حفظ القرآن الكريم',
-      'type': 'نشاط',
-      'date': '٢٥ مايو، ٠٤:٠٠ م',
-      'status': 'مجدول',
-      'icon': '📖',
-      'color': const Color(0xFFf59e0b),
-      'bg': const Color(0xFFfef3c7),
-      'target': 'الراغبين فقط',
-      'location': 'المسجد',
-      'supervisor': 'الشيخ أحمد',
-    },
-    {
-      'title': 'زيارة لمعرض الكتاب',
-      'type': 'رحلة',
-      'date': 'أمس، ٠٩:٠٠ ص',
-      'status': 'مكتمل',
-      'icon': '📚',
-      'color': const Color(0xFF64748b),
-      'bg': const Color(0xFFf1f5f9),
-      'target': 'المجموعة الثقافية',
-      'location': 'معرض الكتاب',
-      'supervisor': 'أ. نورهان سعيد',
-    },
-  ];
-
+class _SpecialistActivitiesViewState
+    extends ConsumerState<SpecialistActivitiesView> {
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
+    final List<Map<String, dynamic>> activityRows = provider.activities
+        .map<Map<String, dynamic>>((activity) => {
+              'id': activity.id,
+              'title': activity.name,
+              'type': activity.badges,
+              'date': activity.time,
+              'status': activity.status,
+              'icon': activity.emoji,
+              'color': const Color(0xFF3b82f6),
+              'bg': const Color(0xFFdbeafe),
+              'target': 'من AWS',
+              'location': activity.location,
+              'supervisor': provider.currentAccount?.name ?? 'فريق الرعاية',
+            })
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -104,50 +68,63 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF1e293b))),
                     Text('تنظيم وإدارة الأنشطة الترفيهية',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF64748b))),
+                        style:
+                            TextStyle(fontSize: 14, color: Color(0xFF64748b))),
                   ],
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _showAddActivityModal(context),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('إضافة نشاط', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text('إضافة نشاط',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFea580c),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // قائمة الأنشطة
           Expanded(
             child: ListView.builder(
-              itemCount: activities.length,
+              itemCount: activityRows.length,
               itemBuilder: (context, index) {
-                final act = activities[index];
+                final act = activityRows[index];
                 return FadeTransition(
                   opacity: widget.fadeAnimations[1],
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12), // تقليل المسافة الخارجية قليلاً
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // تقليل الحشو الداخلي بشكل كبير لحل الأوفرفلو
+                    margin: const EdgeInsets.only(
+                        bottom: 12), // تقليل المسافة الخارجية قليلاً
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical:
+                            8), // تقليل الحشو الداخلي بشكل كبير لحل الأوفرفلو
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16), // تقليل الانحناء قليلاً
-                      border: Border.all(color: const Color(0xFFe2e8f0), width: 1),
+                      borderRadius:
+                          BorderRadius.circular(16), // تقليل الانحناء قليلاً
+                      border:
+                          Border.all(color: const Color(0xFFe2e8f0), width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: (act['color'] as Color).withValues(alpha: 0.03),
+                          color:
+                              (act['color'] as Color).withValues(alpha: 0.03),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center, // جعلها في المنتصف لتوزيع المساحة
+                      crossAxisAlignment: CrossAxisAlignment
+                          .center, // جعلها في المنتصف لتوزيع المساحة
                       children: [
                         // الأيقونة أو الصورة
                         Container(
@@ -165,7 +142,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           ),
                           child: act['image'] == null
                               ? Center(
-                                  child: Text(act['icon'] as String, style: const TextStyle(fontSize: 22)),
+                                  child: Text(act['icon'] as String,
+                                      style: const TextStyle(fontSize: 22)),
                                 )
                               : null,
                         ),
@@ -177,13 +155,15 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(act['title'] as String,
-                                  maxLines: 1, // منع السطر الثاني لعدم حدوث أوفرفلو
+                                  maxLines:
+                                      1, // منع السطر الثاني لعدم حدوث أوفرفلو
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                       fontSize: 15, // تقليل حجم الخط قليلاً
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF0f172a))),
-                              const SizedBox(height: 3), // تقليل المسافات البينية
+                              const SizedBox(
+                                  height: 3), // تقليل المسافات البينية
                               // السطر الأول: التاريخ والنوع
                               Wrap(
                                 spacing: 8,
@@ -193,18 +173,29 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.access_time_filled_rounded, size: 12, color: Colors.grey[700]),
+                                      Icon(Icons.access_time_filled_rounded,
+                                          size: 12, color: Colors.grey[700]),
                                       const SizedBox(width: 2),
-                                      Text(act['date'] as String, style: TextStyle(fontSize: 11, color: const Color(0xFF334155), fontWeight: FontWeight.w600)),
+                                      Text(act['date'] as String,
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Color(0xFF334155),
+                                              fontWeight: FontWeight.w600)),
                                     ],
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: (act['color'] as Color).withValues(alpha: 0.1),
+                                      color: (act['color'] as Color)
+                                          .withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
-                                    child: Text(act['type'] as String, style: TextStyle(fontSize: 10, color: act['color'] as Color, fontWeight: FontWeight.bold)),
+                                    child: Text(act['type'] as String,
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: act['color'] as Color,
+                                            fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               ),
@@ -218,17 +209,27 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.location_on_rounded, size: 12, color: Colors.grey[700]),
+                                      Icon(Icons.location_on_rounded,
+                                          size: 12, color: Colors.grey[700]),
                                       const SizedBox(width: 2),
-                                      Text(act['location'] as String, style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w500)),
+                                      Text(act['location'] as String,
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Color(0xFF334155),
+                                              fontWeight: FontWeight.w500)),
                                     ],
                                   ),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.people_alt_rounded, size: 12, color: Colors.grey[700]),
+                                      Icon(Icons.people_alt_rounded,
+                                          size: 12, color: Colors.grey[700]),
                                       const SizedBox(width: 2),
-                                      Text(act['target'] as String, style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w500)),
+                                      Text(act['target'] as String,
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Color(0xFF334155),
+                                              fontWeight: FontWeight.w500)),
                                     ],
                                   ),
                                 ],
@@ -237,9 +238,14 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                               // السطر الثالث: المشرف
                               Row(
                                 children: [
-                                  Icon(Icons.person_rounded, size: 12, color: Colors.grey[700]),
+                                  Icon(Icons.person_rounded,
+                                      size: 12, color: Colors.grey[700]),
                                   const SizedBox(width: 2),
-                                  Text('المشرف: ${act['supervisor']}', style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w500)),
+                                  Text('المشرف: ${act['supervisor']}',
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF334155),
+                                          fontWeight: FontWeight.w500)),
                                 ],
                               ),
                             ],
@@ -252,14 +258,18 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           children: [
                             // الحالة
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: act['bg'] as Color,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 act['status'] as String,
-                                style: TextStyle(fontSize: 10, color: act['color'] as Color, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: act['color'] as Color,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                             // زر التعديل والحذف
@@ -267,35 +277,46 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                               color: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                side: const BorderSide(color: Color(0xFFe2e8f0), width: 1.5),
+                                side: const BorderSide(
+                                    color: Color(0xFFe2e8f0), width: 1.5),
                               ),
-                              icon: Icon(Icons.more_vert_rounded, color: Colors.grey[600], size: 18),
+                              icon: Icon(Icons.more_vert_rounded,
+                                  color: Colors.grey[600], size: 18),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              onSelected: (value) {
+                              onSelected: (value) async {
                                 if (value == 'edit') {
-                                  _showAddActivityModal(context, editActivity: act, index: index);
+                                  _showAddActivityModal(context,
+                                      editActivity: act, index: index);
                                 } else if (value == 'delete') {
-                                  setState(() {
-                                    activities.removeAt(index);
-                                  });
+                                  await ref
+                                      .read(appRiverpod)
+                                      .deleteActivitySession(
+                                          act['id'] as String);
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('تم حذف النشاط بنجاح!', style: TextStyle(fontFamily: 'Cairo')),
+                                      content: Text('تم حذف النشاط بنجاح!',
+                                          style:
+                                              TextStyle(fontFamily: 'Cairo')),
                                       backgroundColor: Color(0xFFea580c),
                                       duration: Duration(seconds: 2),
                                     ),
                                   );
                                 }
                               },
-                              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                              itemBuilder: (BuildContext context) =>
+                                  <PopupMenuEntry<String>>[
                                 const PopupMenuItem<String>(
                                   value: 'edit',
                                   child: Row(
                                     children: [
-                                      Icon(Icons.edit_rounded, color: Color(0xFFea580c), size: 18),
+                                      Icon(Icons.edit_rounded,
+                                          color: Color(0xFFea580c), size: 18),
                                       SizedBox(width: 8),
-                                      Text('تعديل', style: TextStyle(fontFamily: 'Cairo')),
+                                      Text('تعديل',
+                                          style:
+                                              TextStyle(fontFamily: 'Cairo')),
                                     ],
                                   ),
                                 ),
@@ -303,9 +324,13 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                   value: 'delete',
                                   child: Row(
                                     children: [
-                                      Icon(Icons.delete_rounded, color: Colors.red, size: 18),
+                                      Icon(Icons.delete_rounded,
+                                          color: Colors.red, size: 18),
                                       SizedBox(width: 8),
-                                      Text('حذف', style: TextStyle(fontFamily: 'Cairo', color: Colors.red)),
+                                      Text('حذف',
+                                          style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              color: Colors.red)),
                                     ],
                                   ),
                                 ),
@@ -325,13 +350,19 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
     );
   }
 
-  void _showAddActivityModal(BuildContext context, {Map<String, dynamic>? editActivity, int? index}) {
-    final titleController = TextEditingController(text: editActivity != null ? editActivity['title'] as String : '');
-    final locationController = TextEditingController(text: editActivity != null ? editActivity['location'] as String : '');
-    final supervisorController = TextEditingController(text: editActivity != null ? editActivity['supervisor'] as String : '');
-    final dateController = TextEditingController(text: editActivity != null ? editActivity['date'] as String : '');
-    String selectedType = editActivity != null ? editActivity['type'] as String : 'نشاط';
-    
+  void _showAddActivityModal(BuildContext context,
+      {Map<String, dynamic>? editActivity, int? index}) {
+    final titleController = TextEditingController(
+        text: editActivity != null ? editActivity['title'] as String : '');
+    final locationController = TextEditingController(
+        text: editActivity != null ? editActivity['location'] as String : '');
+    final supervisorController = TextEditingController(
+        text: editActivity != null ? editActivity['supervisor'] as String : '');
+    final dateController = TextEditingController(
+        text: editActivity != null ? editActivity['date'] as String : '');
+    String selectedType =
+        editActivity != null ? editActivity['type'] as String : 'نشاط';
+
     final List<Map<String, String>> hobbies = [
       {'name': 'لكل المقيمين', 'icon': '👥'},
       {'name': 'شطرنج', 'icon': '♟️'},
@@ -374,7 +405,7 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
     if (initialIndex > 5) {
       isHobbiesExpanded = true;
     }
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -399,20 +430,27 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(editActivity != null ? 'تعديل النشاط' : 'إضافة نشاط جديد',
+                          Text(
+                              editActivity != null
+                                  ? 'تعديل النشاط'
+                                  : 'إضافة نشاط جديد',
                               style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF0f172a))),
                           IconButton(
                             onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748b)),
+                            icon: const Icon(Icons.close_rounded,
+                                color: Color(0xFF64748b)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
-                      const Text('عنوان النشاط أو الرحلة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('عنوان النشاط أو الرحلة',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 8),
                       TextField(
                         controller: titleController,
@@ -420,13 +458,22 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           hintText: 'مثال: رحلة إلى حديقة الحيوان',
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
-                      const Text('النوع', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('النوع',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -444,7 +491,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                   AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16, horizontal: 12),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
@@ -457,7 +505,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                       boxShadow: selectedType == 'نشاط'
                                           ? [
                                               BoxShadow(
-                                                color: const Color(0xFFea580c).withValues(alpha: 0.12),
+                                                color: const Color(0xFFea580c)
+                                                    .withValues(alpha: 0.12),
                                                 offset: const Offset(0, 6),
                                                 blurRadius: 12,
                                                 spreadRadius: 1,
@@ -465,7 +514,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                             ]
                                           : [
                                               BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.04),
+                                                color: Colors.black
+                                                    .withValues(alpha: 0.04),
                                                 offset: const Offset(0, 4),
                                                 blurRadius: 8,
                                               ),
@@ -536,7 +586,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                   AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16, horizontal: 12),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
@@ -549,7 +600,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                       boxShadow: selectedType == 'رحلة'
                                           ? [
                                               BoxShadow(
-                                                color: const Color(0xFFea580c).withValues(alpha: 0.12),
+                                                color: const Color(0xFFea580c)
+                                                    .withValues(alpha: 0.12),
                                                 offset: const Offset(0, 6),
                                                 blurRadius: 12,
                                                 spreadRadius: 1,
@@ -557,7 +609,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                             ]
                                           : [
                                               BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.04),
+                                                color: Colors.black
+                                                    .withValues(alpha: 0.04),
                                                 offset: const Offset(0, 4),
                                                 blurRadius: 8,
                                               ),
@@ -616,8 +669,11 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                         ],
                       ),
                       const SizedBox(height: 20),
-                      
-                      const Text('المكان', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('المكان',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 8),
                       TextField(
                         controller: locationController,
@@ -625,18 +681,28 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           hintText: 'مثال: قاعة الأنشطة الكبرى',
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
-                      const Text('الفئة المستهدفة (النشاط أو الهواية)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('الفئة المستهدفة (النشاط أو الهواية)',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 12),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           childAspectRatio: 2.5,
                           crossAxisSpacing: 12,
@@ -656,18 +722,22 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               curve: Curves.easeInOut,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: isSelected ? const Color(0xFFea580c) : const Color(0xFFe2e8f0),
+                                  color: isSelected
+                                      ? const Color(0xFFea580c)
+                                      : const Color(0xFFe2e8f0),
                                   width: isSelected ? 2 : 1.5,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: const Color(0xFFea580c).withValues(alpha: 0.18),
+                                          color: const Color(0xFFea580c)
+                                              .withValues(alpha: 0.18),
                                           offset: const Offset(0, 6),
                                           blurRadius: 10,
                                           spreadRadius: 0.5,
@@ -680,7 +750,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                       ]
                                     : [
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.06),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.06),
                                           offset: const Offset(0, 4),
                                           blurRadius: 8,
                                         ),
@@ -696,7 +767,9 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                   Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: isSelected ? const Color(0xFFfff7ed) : const Color(0xFFf8fafc),
+                                      color: isSelected
+                                          ? const Color(0xFFfff7ed)
+                                          : const Color(0xFFf8fafc),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Text(
@@ -711,8 +784,12 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                       style: TextStyle(
                                         fontFamily: 'Cairo',
                                         fontSize: 12.5,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                        color: isSelected ? const Color(0xFFea580c) : const Color(0xFF334155),
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w600,
+                                        color: isSelected
+                                            ? const Color(0xFFea580c)
+                                            : const Color(0xFF334155),
                                       ),
                                     ),
                                   ),
@@ -737,12 +814,16 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                             });
                           },
                           icon: Icon(
-                            isHobbiesExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                            isHobbiesExpanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
                             color: const Color(0xFFea580c),
                             size: 18,
                           ),
                           label: Text(
-                            isHobbiesExpanded ? 'عرض أقل' : 'المزيد من الهوايات والأنشطة',
+                            isHobbiesExpanded
+                                ? 'عرض أقل'
+                                : 'المزيد من الهوايات والأنشطة',
                             style: const TextStyle(
                               fontFamily: 'Cairo',
                               color: Color(0xFFea580c),
@@ -751,42 +832,58 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             backgroundColor: const Color(0xFFfff7ed),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: const BorderSide(color: Color(0xFFffedd5), width: 1),
+                              side: const BorderSide(
+                                  color: Color(0xFFffedd5), width: 1),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
-                      const Text('المشرف المسؤول', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('المشرف المسؤول',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 8),
                       TextField(
                         controller: supervisorController,
                         decoration: InputDecoration(
-                          hintText: 'مثال: أ. سارة المنسق',
+                          hintText: 'اسم المشرف من بيانات AWS',
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
-                      const Text('صورة النشاط (اختياري)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('صورة النشاط (اختياري)',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 8),
                       InkWell(
                         onTap: () async {
                           final ImagePicker picker = ImagePicker();
-                          final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                          final XFile? image = await picker.pickImage(
+                              source: ImageSource.gallery);
                           if (image != null) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('تم اختيار الصورة بنجاح!', style: TextStyle(fontFamily: 'Cairo')),
+                                  content: Text('تم اختيار الصورة بنجاح!',
+                                      style: TextStyle(fontFamily: 'Cairo')),
                                   backgroundColor: Color(0xFF10b981),
                                   duration: Duration(seconds: 2),
                                 ),
@@ -804,16 +901,23 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.image_search_rounded, color: Color(0xFFea580c), size: 20),
+                              Icon(Icons.image_search_rounded,
+                                  color: Color(0xFFea580c), size: 20),
                               SizedBox(width: 8),
-                              Text('اختر صورة للنشاط', style: TextStyle(color: Color(0xFFea580c), fontWeight: FontWeight.bold)),
+                              Text('اختر صورة للنشاط',
+                                  style: TextStyle(
+                                      color: Color(0xFFea580c),
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
-                      const Text('التاريخ والوقت', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                      const Text('التاريخ والوقت',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155))),
                       const SizedBox(height: 8),
                       TextField(
                         controller: dateController,
@@ -851,7 +955,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                         onPrimary: Colors.white,
                                         onSurface: Color(0xFF0f172a),
                                       ),
-                                      timePickerTheme: const TimePickerThemeData(
+                                      timePickerTheme:
+                                          const TimePickerThemeData(
                                         backgroundColor: Colors.white,
                                         dialHandColor: Color(0xFFea580c),
                                         dialBackgroundColor: Color(0xFFfff7ed),
@@ -860,7 +965,8 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                         hourMinuteTextColor: Color(0xFFea580c),
                                         dayPeriodColor: Color(0xFFfff7ed),
                                         dayPeriodTextColor: Color(0xFFea580c),
-                                        dayPeriodBorderSide: BorderSide(color: Color(0xFFea580c)),
+                                        dayPeriodBorderSide: BorderSide(
+                                            color: Color(0xFFea580c)),
                                       ),
                                     ),
                                     child: child!,
@@ -868,7 +974,9 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                                 },
                               );
                               if (pickedTime != null) {
-                                final formattedDate = "${pickedDate.year}/${pickedDate.month}/${pickedDate.day} - ${pickedTime.format(context)}";
+                                if (!context.mounted) return;
+                                final formattedDate =
+                                    "${pickedDate.year}/${pickedDate.month}/${pickedDate.day} - ${pickedTime.format(context)}";
                                 setStateModal(() {
                                   dateController.text = formattedDate;
                                 });
@@ -880,57 +988,59 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           hintText: 'اختر التاريخ والوقت',
                           filled: true,
                           fillColor: Colors.white,
-                          suffixIcon: const Icon(Icons.calendar_today_rounded, color: Color(0xFFea580c)),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+                          suffixIcon: const Icon(Icons.calendar_today_rounded,
+                              color: Color(0xFFea580c)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFe2e8f0))),
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
                       SizedBox(
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {
-                            final newActivity = {
-                              'title': titleController.text,
-                              'type': selectedType,
-                              'date': dateController.text.isNotEmpty ? dateController.text : 'غير محدد',
-                              'status': 'قادم',
-                              'icon': selectedType == 'رحلة' ? '🌳' : '🎨',
-                              'color': selectedType == 'رحلة' ? const Color(0xFF10b981) : const Color(0xFF3b82f6),
-                              'bg': selectedType == 'رحلة' ? const Color(0xFFd1fae5) : const Color(0xFFdbeafe),
-                              'target': selectedTarget,
-                              'location': locationController.text,
-                              'supervisor': supervisorController.text,
-                            };
-                            
-                            setState(() {
-                              if (editActivity != null && index != null) {
-                                activities[index] = newActivity;
-                              } else {
-                                activities.insert(0, newActivity);
-                                
-                                // إضافة النشاط للمسن أيضاً عبر الـ Provider ليظهر عنده
-                                ref.read(appRiverpod).addActivity(Activity(
-                                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                  name: titleController.text,
-                                  emoji: selectedType == 'رحلة' ? '🌳' : '🎨',
-                                  location: locationController.text,
-                                  time: dateController.text.isNotEmpty ? dateController.text : '١٠:٠٠ ص',
-                                  status: 'coming',
-                                  badges: selectedType == 'رحلة' ? 'ترفيه' : 'نشاط',
-                                  pointsReward: 30,
-                                  dayTag: 'اليوم', // جعله يظهر في قائمة اليوم للمسن
-                                ));
-                              }
-                            });
-                            
+                          onPressed: () async {
+                            final activity = Activity(
+                              id: (editActivity?['id'] as String?) ??
+                                  DateTime.now()
+                                      .millisecondsSinceEpoch
+                                      .toString(),
+                              name: titleController.text,
+                              emoji: selectedType == 'رحلة' ? '🌳' : '🎨',
+                              location: locationController.text,
+                              time: dateController.text.isNotEmpty
+                                  ? dateController.text
+                                  : 'غير محدد',
+                              status: 'coming',
+                              badges: selectedType,
+                              pointsReward: 30,
+                              dayTag: 'اليوم',
+                            );
+                            if (editActivity != null) {
+                              await ref
+                                  .read(appRiverpod)
+                                  .updateActivity(activity);
+                            } else {
+                              await ref.read(appRiverpod).addActivity(activity);
+                            }
+                            if (!context.mounted) return;
+
                             Navigator.pop(context);
-                            
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(editActivity != null ? 'تم تحديث النشاط بنجاح!' : 'تم حفظ النشاط بنجاح!', style: const TextStyle(fontFamily: 'Cairo')),
+                                content: Text(
+                                    editActivity != null
+                                        ? 'تم تحديث النشاط بنجاح!'
+                                        : 'تم حفظ النشاط بنجاح!',
+                                    style:
+                                        const TextStyle(fontFamily: 'Cairo')),
                                 backgroundColor: const Color(0xFF10b981),
                                 duration: const Duration(seconds: 2),
                               ),
@@ -938,9 +1048,17 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFea580c),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: Text(editActivity != null ? 'تحديث النشاط' : 'حفظ النشاط', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          child: Text(
+                              editActivity != null
+                                  ? 'تحديث النشاط'
+                                  : 'حفظ النشاط',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16)),
                         ),
                       ),
                     ],
@@ -956,32 +1074,38 @@ class _SpecialistActivitiesViewState extends ConsumerState<SpecialistActivitiesV
 }
 
 // كلاسات الأنيميشن الخاصة بغبار النجوم
-class _ActivitiesCardDustParticle {
+class ActivitiesCardDustParticle {
   Offset position;
   double speed;
   double radius;
-  _ActivitiesCardDustParticle({required this.position, required this.speed, required this.radius});
+  ActivitiesCardDustParticle(
+      {required this.position, required this.speed, required this.radius});
 }
 
 class ActivitiesCardDustAnimation extends StatefulWidget {
   const ActivitiesCardDustAnimation({super.key});
 
   @override
-  State<ActivitiesCardDustAnimation> createState() => _ActivitiesCardDustAnimationState();
+  State<ActivitiesCardDustAnimation> createState() =>
+      _ActivitiesCardDustAnimationState();
 }
 
-class _ActivitiesCardDustAnimationState extends State<ActivitiesCardDustAnimation> with SingleTickerProviderStateMixin {
+class _ActivitiesCardDustAnimationState
+    extends State<ActivitiesCardDustAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<_ActivitiesCardDustParticle> _dust;
+  late List<ActivitiesCardDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
-    
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
+
     final random = Random();
     _dust = List.generate(100, (index) {
-      return _ActivitiesCardDustParticle(
+      return ActivitiesCardDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.05 + 0.02,
         radius: random.nextDouble() * 1.5 + 0.5,
@@ -1002,7 +1126,8 @@ class _ActivitiesCardDustAnimationState extends State<ActivitiesCardDustAnimatio
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: ActivitiesCardDustPainter(dust: _dust, animationValue: _controller.value),
+            painter: ActivitiesCardDustPainter(
+                dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -1011,7 +1136,7 @@ class _ActivitiesCardDustAnimationState extends State<ActivitiesCardDustAnimatio
 }
 
 class ActivitiesCardDustPainter extends CustomPainter {
-  final List<_ActivitiesCardDustParticle> dust;
+  final List<ActivitiesCardDustParticle> dust;
   final double animationValue;
 
   ActivitiesCardDustPainter({required this.dust, required this.animationValue});
@@ -1024,12 +1149,14 @@ class ActivitiesCardDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-      
+
       // حركة للأعلى
-      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
+      double dy = (p.position.dy * size.height) -
+          (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx =
+          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 

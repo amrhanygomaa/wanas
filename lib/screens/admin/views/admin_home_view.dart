@@ -56,7 +56,8 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
 
           const SizedBox(height: 25),
           // قسم مميزات المنشأة المستعرضة
-          if (provider.currentAccount?.amenities != null && provider.currentAccount!.amenities!.isNotEmpty)
+          if (provider.currentAccount?.amenities != null &&
+              provider.currentAccount!.amenities!.isNotEmpty)
             _buildAmenitiesSection(provider.currentAccount!.amenities!),
 
           const SizedBox(height: 32),
@@ -93,9 +94,8 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                 Colors.green,
                 provider)
           else
-            ...adminAlerts
-                .take(5)
-                .map((n) => _buildAlertCard(n, _getAlertColor(n.type), provider)),
+            ...adminAlerts.take(5).map(
+                (n) => _buildAlertCard(n, _getAlertColor(n.type), provider)),
         ],
       ),
     );
@@ -122,7 +122,8 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
           children: [
             Row(
               children: [
-                const Icon(Icons.stars_rounded, color: Color(0xFF6C63FF), size: 24),
+                const Icon(Icons.stars_rounded,
+                    color: Color(0xFF6C63FF), size: 24),
                 const SizedBox(width: 10),
                 _buildSectionTitle('مميزات المنشأة'),
               ],
@@ -131,22 +132,28 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: amenities.map((a) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.1)),
-                ),
-                child: Text(
-                  a,
-                  style: const TextStyle(
-                    color: Color(0xFF6C63FF),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              )).toList(),
+              children: amenities
+                  .map((a) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFF6C63FF).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: const Color(0xFF6C63FF)
+                                  .withValues(alpha: 0.1)),
+                        ),
+                        child: Text(
+                          a,
+                          style: const TextStyle(
+                            color: Color(0xFF6C63FF),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ))
+                  .toList(),
             ),
           ],
         ),
@@ -450,7 +457,9 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                 left: 0,
                                 top: 0,
                                 child: Text(
-                                    '${stat.history.reduce((a, b) => a > b ? a : b).toStringAsFixed(1)}',
+                                    stat.history
+                                        .reduce((a, b) => a > b ? a : b)
+                                        .toStringAsFixed(1),
                                     style: const TextStyle(
                                         color: Color(0xFF1e293b),
                                         fontSize: 11,
@@ -460,7 +469,9 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                 left: 0,
                                 bottom: 25,
                                 child: Text(
-                                    '${stat.history.reduce((a, b) => a < b ? a : b).toStringAsFixed(1)}',
+                                    stat.history
+                                        .reduce((a, b) => a < b ? a : b)
+                                        .toStringAsFixed(1),
                                     style: const TextStyle(
                                         color: Color(0xFF1e293b),
                                         fontSize: 11,
@@ -576,7 +587,9 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                       left: 0,
                                       top: 0,
                                       child: Text(
-                                          '${stat.history.reduce((a, b) => a > b ? a : b).toStringAsFixed(1)}',
+                                          stat.history
+                                              .reduce((a, b) => a > b ? a : b)
+                                              .toStringAsFixed(1),
                                           style: const TextStyle(
                                               color: Color(0xFF1e293b),
                                               fontSize: 11,
@@ -586,7 +599,9 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
                                       left: 0,
                                       bottom: 25,
                                       child: Text(
-                                          '${stat.history.reduce((a, b) => a < b ? a : b).toStringAsFixed(1)}',
+                                          stat.history
+                                              .reduce((a, b) => a < b ? a : b)
+                                              .toStringAsFixed(1),
                                           style: const TextStyle(
                                               color: Color(0xFF1e293b),
                                               fontSize: 11,
@@ -773,6 +788,7 @@ class _AdminHomeViewState extends ConsumerState<AdminHomeView> {
   }
 
   // رسم عمود فردي في الرسم البياني
+  // ignore: unused_element
   Widget _chartBar(double height) {
     return Container(
         width: 8,

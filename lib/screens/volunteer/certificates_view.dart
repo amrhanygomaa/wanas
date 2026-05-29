@@ -53,7 +53,8 @@ class _VolunteerCertificatesViewState
                 const SizedBox(height: 20),
                 _buildActionGrid(activeCert, provider),
                 const SizedBox(height: 24),
-                _buildSectionLabel('شهاداتي الأخرى', const Color(0xFF059669), 0),
+                _buildSectionLabel(
+                    'شهاداتي الأخرى', const Color(0xFF059669), 0),
                 const SizedBox(height: 12),
                 _buildMiniCertsRow(provider.volunteerCertificates),
                 const SizedBox(height: 24),
@@ -69,7 +70,6 @@ class _VolunteerCertificatesViewState
       ),
     );
   }
-
 
   Widget _buildCertificateDocument(
       VolunteerCertificate cert, AppRiverpod provider) {
@@ -136,14 +136,18 @@ class _VolunteerCertificatesViewState
                         const SizedBox(height: 8),
                         const Text(
                           'تمنح هذه الشهادة تقديراً لجهود',
-                          style:
-                              TextStyle(color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                              color: Color(0xFF475569),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'عمر أحمد الشريف',
+                        Text(
+                          provider.volunteerProfile.name.isEmpty
+                              ? 'المتطوع'
+                              : provider.volunteerProfile.name,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Color(0xFF065f46),
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
@@ -362,7 +366,6 @@ class _VolunteerCertificatesViewState
     );
   }
 
-
   Widget _buildActionGrid(VolunteerCertificate cert, AppRiverpod provider) {
     return GridView.count(
       crossAxisCount: 2,
@@ -389,7 +392,9 @@ class _VolunteerCertificatesViewState
           final text =
               'لقد حصلت على شهادة ${cert.name} من برنامج تابتيبا للتطوع! 🏆';
           final url = Uri.parse('whatsapp://send?text=$text');
-          if (await canLaunchUrl(url)) {
+          final canLaunch = await canLaunchUrl(url);
+          if (!mounted) return;
+          if (canLaunch) {
             await launchUrl(url);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -407,7 +412,9 @@ class _VolunteerCertificatesViewState
               'يسعدني مشاركة حصولي على شهادة ${cert.name} من برنامج تابتيبا للتطوع.\nالتاريخ: ${cert.date}';
           final url = Uri.parse(
               'mailto:?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}');
-          if (await canLaunchUrl(url)) {
+          final canLaunch = await canLaunchUrl(url);
+          if (!mounted) return;
+          if (canLaunch) {
             await launchUrl(url);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -571,7 +578,8 @@ class _VolunteerCertificatesViewState
     );
   }
 
-  pw.Widget _buildPdfStatItem(pw.Font boldFont, pw.Font regularFont, String value, String label) {
+  pw.Widget _buildPdfStatItem(
+      pw.Font boldFont, pw.Font regularFont, String value, String label) {
     return pw.Column(
       mainAxisSize: pw.MainAxisSize.min,
       children: [
@@ -602,7 +610,8 @@ class _VolunteerCertificatesViewState
     final pdf = pw.Document();
 
     // Load fonts for Arabic support
-    final regularFontData = await rootBundle.load("assets/fonts/Cairo-Regular.ttf");
+    final regularFontData =
+        await rootBundle.load("assets/fonts/Cairo-Regular.ttf");
     final boldFontData = await rootBundle.load("assets/fonts/Cairo-Bold.ttf");
     final ttfRegular = pw.Font.ttf(regularFontData);
     final ttfBold = pw.Font.ttf(boldFontData);
@@ -632,7 +641,8 @@ class _VolunteerCertificatesViewState
               child: pw.Container(
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(
-                    color: PdfColor.fromHex('#0c1b33'), // Thick inner navy frame
+                    color:
+                        PdfColor.fromHex('#0c1b33'), // Thick inner navy frame
                     width: 8,
                   ),
                 ),
@@ -640,11 +650,13 @@ class _VolunteerCertificatesViewState
                 child: pw.Container(
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(
-                      color: PdfColor.fromHex('#c5a880'), // Thin inner gold line
+                      color:
+                          PdfColor.fromHex('#c5a880'), // Thin inner gold line
                       width: 1.5,
                     ),
                   ),
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                  padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 40, vertical: 12),
                   child: pw.Column(
                     mainAxisAlignment: pw.MainAxisAlignment.center,
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -669,7 +681,7 @@ class _VolunteerCertificatesViewState
                               ),
                               pw.Text(
                                 'منصة التمكين والعمل التطوعي',
-                                style: pw.TextStyle(
+                                style: const pw.TextStyle(
                                   fontSize: 8,
                                   color: PdfColors.grey600,
                                   height: 1.3,
@@ -677,7 +689,7 @@ class _VolunteerCertificatesViewState
                               ),
                             ],
                           ),
-                          
+
                           // Center crest
                           pw.Container(
                             width: 36,
@@ -706,14 +718,14 @@ class _VolunteerCertificatesViewState
                               ),
                             ),
                           ),
-                          
+
                           // Left-aligned verification details (appears on the left in RTL)
                           pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.end,
                             children: [
                               pw.Text(
                                 'الرقم المرجعي: TBT-${DateTime.now().year}-${1000 + Random().nextInt(9000)}',
-                                style: pw.TextStyle(
+                                style: const pw.TextStyle(
                                   fontSize: 8,
                                   color: PdfColors.grey600,
                                   height: 1.3,
@@ -721,7 +733,7 @@ class _VolunteerCertificatesViewState
                               ),
                               pw.Text(
                                 'التحقق الرقمي: موثقة ونشطة',
-                                style: pw.TextStyle(
+                                style: const pw.TextStyle(
                                   fontSize: 8,
                                   color: PdfColors.grey600,
                                   height: 1.3,
@@ -756,7 +768,7 @@ class _VolunteerCertificatesViewState
                       // 3. Recipient Block
                       pw.Text(
                         'تمنح هذه الشهادة بكل فخر واعتزاز إلى المتطوع المبادر',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 11,
                           color: PdfColors.grey800,
                           height: 1.3,
@@ -764,7 +776,9 @@ class _VolunteerCertificatesViewState
                       ),
                       pw.SizedBox(height: 6),
                       pw.Text(
-                        'عمر أحمد الشريف',
+                        provider.volunteerProfile.name.isEmpty
+                            ? 'المتطوع'
+                            : provider.volunteerProfile.name,
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 28,
@@ -781,7 +795,7 @@ class _VolunteerCertificatesViewState
                         child: pw.Text(
                           'تقديراً لمساهمته الاستثنائية وتفانيه في تقديم الدعم والتمكين الرقمي والاجتماعي لكبار السن من خلال برنامج "ونس" للتطوع الرقمي. لقد أثبت نموذجاً متميزاً يُحتذى به في المسؤولية المجتمعية والنبل الإنساني، وأحدث أثراً إيجابياً وملموساً في حياة المستفيدين.',
                           textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
+                          style: const pw.TextStyle(
                             fontSize: 10,
                             color: PdfColors.grey900,
                             height: 1.4,
@@ -794,10 +808,12 @@ class _VolunteerCertificatesViewState
 
                       // 5. Impact Metrics block
                       pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 6),
                         decoration: pw.BoxDecoration(
                           color: PdfColor.fromHex('#fbf9f4'),
-                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                          borderRadius:
+                              const pw.BorderRadius.all(pw.Radius.circular(8)),
                           border: pw.Border.all(
                             color: PdfColor.fromHex('#e8e2d5'),
                             width: 1,
@@ -807,15 +823,27 @@ class _VolunteerCertificatesViewState
                           mainAxisSize: pw.MainAxisSize.min,
                           mainAxisAlignment: pw.MainAxisAlignment.center,
                           children: [
-                            _buildPdfStatItem(ttfBold, ttfRegular, '${provider.volunteerHours} ساعة', 'العطاء الزمني'),
+                            _buildPdfStatItem(
+                                ttfBold,
+                                ttfRegular,
+                                '${provider.volunteerHours} ساعة',
+                                'العطاء الزمني'),
                             pw.SizedBox(width: 16),
-                            pw.Container(width: 1, height: 18, color: PdfColor.fromHex('#e8e2d5')),
+                            pw.Container(
+                                width: 1,
+                                height: 18,
+                                color: PdfColor.fromHex('#e8e2d5')),
                             pw.SizedBox(width: 16),
-                            _buildPdfStatItem(ttfBold, ttfRegular, '١٢ جلسة', 'الرعاية المكتملة'),
+                            _buildPdfStatItem(ttfBold, ttfRegular, '١٢ جلسة',
+                                'الرعاية المكتملة'),
                             pw.SizedBox(width: 16),
-                            pw.Container(width: 1, height: 18, color: PdfColor.fromHex('#e8e2d5')),
+                            pw.Container(
+                                width: 1,
+                                height: 18,
+                                color: PdfColor.fromHex('#e8e2d5')),
                             pw.SizedBox(width: 16),
-                            _buildPdfStatItem(ttfBold, ttfRegular, '٤.٧ / ٥.٠', 'تقييم الأثر'),
+                            _buildPdfStatItem(ttfBold, ttfRegular, '٤.٧ / ٥.٠',
+                                'تقييم الأثر'),
                           ],
                         ),
                       ),
@@ -849,7 +877,7 @@ class _VolunteerCertificatesViewState
                               pw.SizedBox(height: 2),
                               pw.Text(
                                 'المديرة التنفيذية لبرنامج ونس',
-                                style: pw.TextStyle(
+                                style: const pw.TextStyle(
                                   fontSize: 7.5,
                                   color: PdfColors.grey700,
                                   height: 1.3,
@@ -911,7 +939,7 @@ class _VolunteerCertificatesViewState
                               pw.SizedBox(height: 2),
                               pw.Text(
                                 'منسقة شؤون المتطوعين',
-                                style: pw.TextStyle(
+                                style: const pw.TextStyle(
                                   fontSize: 7.5,
                                   color: PdfColors.grey700,
                                   height: 1.3,
@@ -927,7 +955,7 @@ class _VolunteerCertificatesViewState
                       // 7. Footer text
                       pw.Text(
                         'هذه الشهادة معتمدة وموثقة رقمياً من قبل برنامج ونس الوطني للرعاية الاجتماعية ويمكن التحقق من صحتها عبر الرمز المرجعي المدرج.',
-                        style: pw.TextStyle(
+                        style: const pw.TextStyle(
                           fontSize: 6.5,
                           color: PdfColors.grey500,
                           height: 1.3,
@@ -974,7 +1002,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startTimer();
     });
@@ -984,7 +1012,8 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
     _timer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.offset + 0.5);
-        if (_scrollController.offset >= _scrollController.position.maxScrollExtent) {
+        if (_scrollController.offset >=
+            _scrollController.position.maxScrollExtent) {
           _scrollController.jumpTo(0);
         }
       }
@@ -1015,7 +1044,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
         itemBuilder: (context, index) {
           final cert = infiniteItems[index];
           final isEarned = !cert.isLocked;
-          
+
           return GestureDetector(
             onTap: isEarned
                 ? () {
@@ -1058,7 +1087,8 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                     ? null
                     : [
                         BoxShadow(
-                          color: const Color(0xFF059669).withValues(alpha: 0.06),
+                          color:
+                              const Color(0xFF059669).withValues(alpha: 0.06),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -1079,7 +1109,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                         fontSize: 12,
                       ),
                     ),
-                    
+
                     // Certificate Title
                     Expanded(
                       child: Center(
@@ -1099,7 +1129,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                         ),
                       ),
                     ),
-                    
+
                     // Mini Decorative Gold/Green Divider
                     Container(
                       width: 16,
@@ -1112,7 +1142,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
-                    
+
                     // Bottom Block (Subtitle and optional Progress Bar)
                     Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1139,7 +1169,8 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                                 child: Container(
                                     decoration: BoxDecoration(
                                         color: const Color(0xFF059669),
-                                        borderRadius: BorderRadius.circular(3)))),
+                                        borderRadius:
+                                            BorderRadius.circular(3)))),
                           ),
                         ],
                       ],

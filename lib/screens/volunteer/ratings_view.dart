@@ -55,6 +55,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildHeroSummary(AppRiverpod provider) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
@@ -628,7 +629,9 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
                             fontSize: 13, fontWeight: FontWeight.bold)),
                     Text(rating.date,
                         style: const TextStyle(
-                            color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w500)),
+                            color: Color(0xFF64748b),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500)),
                   ],
                 ),
                 const Spacer(),
@@ -653,7 +656,10 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
               child: Text(rating.comment,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                      color: Color(0xFF334155), fontSize: 12, fontWeight: FontWeight.w500, height: 1.6)),
+                      color: Color(0xFF334155),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.6)),
             ),
             if (rating.chips.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -818,6 +824,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
     );
   }
 
+  // ignore: unused_element
   void _showRatingSubmission(BuildContext context, VolunteerReview review) {
     showModalBottomSheet(
       context: context,

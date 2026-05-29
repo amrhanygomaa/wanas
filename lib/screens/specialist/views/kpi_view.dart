@@ -31,7 +31,8 @@ class SpecialistKPIView extends ConsumerWidget {
           padding: const EdgeInsets.all(14),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              _buildSectionLabel('مؤشرات الأداء الاجتماعي', const Color(0xFF10b981), 0),
+              _buildSectionLabel(
+                  'مؤشرات الأداء الاجتماعي', const Color(0xFF10b981), 0),
               const SizedBox(height: 12),
             ]),
           ),
@@ -65,15 +66,23 @@ class SpecialistKPIView extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Color(0xFF9a3412), fontSize: 11, fontWeight: FontWeight.bold)),
+          Text(label,
+              style: const TextStyle(
+                  color: Color(0xFF9a3412),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildKPICard(BuildContext context, SocialSpecialistKPI kpi, int index) {
+  Widget _buildKPICard(
+      BuildContext context, SocialSpecialistKPI kpi, int index) {
     return FadeTransition(
       opacity: fadeAnimations[min(index + 1, 11)],
       child: ScaleTransition(
@@ -99,13 +108,19 @@ class SpecialistKPIView extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: kpi.isPositive ? const Color(0xFFd1fae5) : const Color(0xFFfee2e2),
+                    color: kpi.isPositive
+                        ? const Color(0xFFd1fae5)
+                        : const Color(0xFFfee2e2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    kpi.isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                    kpi.isPositive
+                        ? Icons.trending_up_rounded
+                        : Icons.trending_down_rounded,
                     size: 16,
-                    color: kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626),
+                    color: kpi.isPositive
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFdc2626),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -113,7 +128,9 @@ class SpecialistKPIView extends ConsumerWidget {
                     style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
-                        color: kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626))),
+                        color: kpi.isPositive
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFdc2626))),
                 const SizedBox(height: 4),
                 Text(kpi.label,
                     textAlign: TextAlign.center,
@@ -123,7 +140,8 @@ class SpecialistKPIView extends ConsumerWidget {
                         color: Color(0xFF1e293b))),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: kpi.isPositive
                         ? const Color(0xFFd1fae5).withValues(alpha: 0.5)
@@ -132,7 +150,9 @@ class SpecialistKPIView extends ConsumerWidget {
                   ),
                   child: Text(kpi.trend,
                       style: TextStyle(
-                          color: kpi.isPositive ? const Color(0xFF065f46) : const Color(0xFF7f1d1d),
+                          color: kpi.isPositive
+                              ? const Color(0xFF065f46)
+                              : const Color(0xFF7f1d1d),
                           fontSize: 9,
                           fontWeight: FontWeight.w900)),
                 ),
@@ -162,7 +182,8 @@ class SpecialistKPIView extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2)),
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -191,18 +212,29 @@ class SpecialistKPIView extends ConsumerWidget {
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
                                     color: Color(0xFF1e293b))),
-                            Text('تحليل الأداء للفترة الحالية',
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                            const Text('تحليل الأداء للفترة الحالية',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF334155),
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 32),
-                    _buildDetailMetricRow('القيمة الحالية', kpi.value,
-                        kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626)),
+                    _buildDetailMetricRow(
+                        'القيمة الحالية',
+                        kpi.value,
+                        kpi.isPositive
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFdc2626)),
                     const Divider(height: 32),
-                    _buildDetailMetricRow('معدل التغير', kpi.trend,
-                        kpi.isPositive ? const Color(0xFF059669) : const Color(0xFFdc2626)),
+                    _buildDetailMetricRow(
+                        'معدل التغير',
+                        kpi.trend,
+                        kpi.isPositive
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFdc2626)),
                     const SizedBox(height: 32),
                     const Text('مخطط النمو الزمني',
                         style: TextStyle(
@@ -210,7 +242,7 @@ class SpecialistKPIView extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1e293b))),
                     const SizedBox(height: 16),
-                    _buildMockChart(),
+                    _buildTrendChart(kpi.history),
                     const SizedBox(height: 32),
                     const Text('توصيات الأداء',
                         style: TextStyle(
@@ -234,7 +266,8 @@ class SpecialistKPIView extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(15)),
                         ),
                         child: const Text('فهمت',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
                   ],
@@ -251,16 +284,22 @@ class SpecialistKPIView extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF334155),
+                fontWeight: FontWeight.w600)),
         Text(value,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.w900, color: color)),
       ],
     );
   }
 
-  Widget _buildMockChart() {
-    final days = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
-    final values = [45, 60, 55, 75, 80, 70, 90];
+  Widget _buildTrendChart(List<double> history) {
+    final values = history.isEmpty
+        ? const <double>[0]
+        : history.map((value) => value <= 1 ? value * 100 : value).toList();
 
     return Container(
       height: 160,
@@ -275,7 +314,7 @@ class SpecialistKPIView extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: List.generate(
-            7,
+            values.length,
             (i) => Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -298,7 +337,7 @@ class SpecialistKPIView extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(days[i],
+                    Text('${i + 1}',
                         style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,

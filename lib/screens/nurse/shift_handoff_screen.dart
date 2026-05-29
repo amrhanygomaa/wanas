@@ -15,6 +15,8 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
   bool _isConfirmed = false; // حالة إقرار الممرض بصحة البيانات المسلمة
   final TextEditingController _incomingNurseName =
       TextEditingController(); // متحكم اسم الممرض المستلم
+  bool _isGeneratingSummary = false;
+  String? _aiSummary;
 
   @override
   void dispose() {
@@ -78,6 +80,8 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
                         '${provider.nursingNotes.length} ملاحظة جديدة'),
                     _summaryRow('تحديثات الملف الطبي', '٤ تحديثات'),
                   ]),
+                  const SizedBox(height: 16),
+                  _buildAiSummarySection(provider),
                   const SizedBox(height: 32),
 
                   _buildHandoverSection(), // واجهة إدخال بيانات الممرض المستلم والإقرار
@@ -182,6 +186,58 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
     );
   }
 
+  Widget _buildAiSummarySection(AppRiverpod provider) {
+    if (_aiSummary != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F3FF),
+          border: Border.all(color: const Color(0xFFC4B5FD)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6), size: 20),
+                SizedBox(width: 8),
+                Text('ملخص الذكاء الاصطناعي للشيفت', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D28D9))),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(_aiSummary!, style: const TextStyle(fontSize: 13, color: Color(0xFF4C1D95), height: 1.5)),
+          ],
+        ),
+      );
+    }
+    
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: _isGeneratingSummary
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Icon(Icons.auto_awesome, size: 18),
+        label: Text(_isGeneratingSummary ? 'جاري التلخيص...' : '✨ تلخيص الشيفت بالذكاء الاصطناعي'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8B5CF6),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+        onPressed: _isGeneratingSummary ? null : () async {
+          setState(() => _isGeneratingSummary = true);
+          final summary = await provider.generateShiftSummary('الكل');
+          setState(() {
+            _aiSummary = summary;
+            _isGeneratingSummary = false;
+          });
+        },
+      ),
+    );
+  }
+
   Widget _buildHandoverSection() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -258,7 +314,7 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
         width: double.infinity,
         child: ElevatedButton(
           onPressed: (_isConfirmed && _incomingNurseName.text.isNotEmpty)
-              ? _handleFinalHandoff
+              ? () => _handleFinalHandoff()
               : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0369A1),
@@ -276,16 +332,23 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
     );
   }
 
-  void _handleFinalHandoff() {
+  Future<void> _handleFinalHandoff() async {
     final provider = ref.read(appRiverpod);
-    provider.addHandoff(ShiftHandoff(
-      nurseName: 'أ. منى',
-      shiftType: 'الوردية الصباحية',
+    final criticalCases = provider.residentFiles
+        .where((resident) =>
+            resident.status.toLowerCase().contains('critical') ||
+            resident.status.contains('حرج'))
+        .map((resident) => resident.name)
+        .toList();
+    await provider.submitHandoff(ShiftHandoff(
+      nurseName: provider.currentAccount?.name ?? 'فريق التمريض',
+      shiftType: _currentShiftName(),
       notes: 'تم تسليم الوردية بنجاح إلى ${_incomingNurseName.text}',
       timestamp: DateTime.now(),
-      criticalCases: ['الحاج محمود (ضغط مرتفع)'],
+      criticalCases: criticalCases,
     ));
 
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -331,5 +394,12 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
         ),
       ),
     );
+  }
+
+  String _currentShiftName() {
+    final hour = DateTime.now().hour;
+    if (hour >= 6 && hour < 14) return 'الوردية الصباحية';
+    if (hour >= 14 && hour < 22) return 'الوردية المسائية';
+    return 'الوردية الليلية';
   }
 }

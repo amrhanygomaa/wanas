@@ -1,13 +1,24 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/app_models.dart';
 import '../providers/app_riverpod.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:file_picker/file_picker.dart' as file_picker_lib;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:io';
+import 'dart:math';
 import 'package:lottie/lottie.dart';
-import 'dart:ui';
 
+// ─── حالات المساعد الصوتي ───────────────────────────────────────────
+enum _VoiceState { idle, listening, thinking, speaking, done }
+
+// ════════════════════════════════════════════════════════════════════
+//  شاشة المحادثة الرئيسية مع الـ AI
+// ════════════════════════════════════════════════════════════════════
 class AICompanionChat extends ConsumerStatefulWidget {
   const AICompanionChat({super.key});
 
@@ -25,9 +36,7 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
     super.initState();
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
-        Future.delayed(const Duration(milliseconds: 250), () {
-          _scrollToBottom();
-        });
+        Future.delayed(const Duration(milliseconds: 250), _scrollToBottom);
       }
     });
   }
@@ -54,30 +63,42 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
 
   Future<void> _pickFile() async {
     final provider = ref.read(appRiverpod);
-    final file_picker_lib.FilePickerResult? result =
-        await file_picker_lib.FilePicker.platform.pickFiles(
+    final result = await file_picker_lib.FilePicker.platform.pickFiles(
       type: file_picker_lib.FileType.custom,
       allowedExtensions: ['jpg', 'png', 'pdf', 'doc', 'docx'],
     );
-
     if (result != null) {
-      String? path = result.files.single.path;
-      String name = result.files.single.name;
-      String type =
-          name.endsWith('jpg') || name.endsWith('png')
-              ? 'image'
-              : 'file';
-
+      final path = result.files.single.path;
+      final name = result.files.single.name;
+      final type =
+          (name.endsWith('jpg') || name.endsWith('png')) ? 'image' : 'file';
       provider.sendCompanionMessage('', mediaPath: path, mediaType: type);
     }
+  }
+
+  void _openVoiceAssistant() {
+    FocusScope.of(context).unfocus();
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (ctx, anim, _) => const VoiceAssistantScreen(),
+        transitionsBuilder: (ctx, anim, _, child) => SlideTransition(
+          position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        ),
+      ),
+    );
+    // لا يوجد انتظار للنتيجة — الشاشة تتحكم في الـ flow كاملاً
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-    // Scroll only when the chat history length changes, not on every rebuild
-    ref.listen<AppRiverpod>(appRiverpod, (previous, next) {
-      if (previous?.companionChatHistory.length !=
+    ref.listen<AppRiverpod>(appRiverpod, (prev, next) {
+      if (prev?.companionChatHistory.length !=
           next.companionChatHistory.length) {
         _scrollToBottom();
       }
@@ -88,65 +109,48 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFFF8FAFC),
-                const Color(0xFFEEF2FF),
-                const Color(0xFFF1F5F9),
+                Color(0xFFF8FAFC),
+                Color(0xFFEEF2FF),
+                Color(0xFFF1F5F9),
               ],
             ),
           ),
           child: Column(
             children: [
-              // Header - Professional Design
               _buildHeader(context),
-    
-              // Chat Messages
               Expanded(
                 child: GestureDetector(
                   onTap: () => FocusScope.of(context).unfocus(),
                   behavior: HitTestBehavior.translucent,
                   child: Stack(
                     children: [
-                      // Animated-like Background Blobs
                       Positioned(
-                        top: 40,
-                        left: -30,
-                        child: _buildBackgroundBlob(
-                            120, const Color(0xFF6366F1).withValues(alpha: 0.08)),
-                      ),
+                          top: 40,
+                          left: -30,
+                          child: _buildBlob(120,
+                              const Color(0xFF6366F1).withValues(alpha: 0.07))),
                       Positioned(
-                        bottom: 100,
-                        right: -40,
-                        child: _buildBackgroundBlob(
-                            180, const Color(0xFF8B5CF6).withValues(alpha: 0.08)),
-                      ),
-                      Positioned(
-                        top: MediaQuery.of(context).size.height * 0.3,
-                        right: 20,
-                        child: _buildBackgroundBlob(
-                            60, const Color(0xFFEC4899).withValues(alpha: 0.05)),
-                      ),
-      
+                          bottom: 100,
+                          right: -40,
+                          child: _buildBlob(180,
+                              const Color(0xFF8B5CF6).withValues(alpha: 0.07))),
                       ListView.builder(
                         controller: _scrollController,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 24),
                         itemCount: provider.companionChatHistory.length,
-                        itemBuilder: (context, index) {
-                          final msg = provider.companionChatHistory[index];
-                          return _buildChatBubble(msg);
-                        },
+                        itemBuilder: (_, i) =>
+                            _buildBubble(provider.companionChatHistory[i]),
                       ),
                     ],
                   ),
                 ),
               ),
-    
-              // Input Area - Multi-functional
               _buildInputArea(provider),
             ],
           ),
@@ -155,33 +159,24 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
     );
   }
 
+  // ── Header ──────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(
-        top: 14,
-        bottom: 14,
-        left: 20,
-        right: 20,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE2E8F0),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
       ),
       child: Row(
         children: [
-          // Bot Animation - Premium circle container
+          // أيقونة الـ AI
           Stack(
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF3E8FF),
                   shape: BoxShape.circle,
@@ -195,15 +190,16 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
                 ),
               ),
               SizedBox(
-                width: 62,
-                height: 62,
+                width: 65,
+                height: 65,
                 child: Lottie.asset(
                   'assets/animations/Robot.json',
                   fit: BoxFit.contain,
                   repeat: true,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.smart_toy_rounded,
-                          color: Color(0xFF8B5CF6), size: 28),
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.smart_toy_rounded,
+                      color: Color(0xFF8B5CF6),
+                      size: 30),
                 ),
               ),
             ],
@@ -211,28 +207,27 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
+                      width: 9,
+                      height: 9,
                       decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
+                          color: Colors.green, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 8),
                     const Text(
                       'رفيقي الذكي',
                       style: TextStyle(
-                          fontSize: 17,
-                          color: Color(0xFF1E293B),
-                          fontFamily: 'Cairo',
-                          fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        color: Color(0xFF1E293B),
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -240,36 +235,50 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
                 const Text(
                   'نشط الآن',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green,
-                      fontFamily: 'Cairo',
-                      fontWeight: FontWeight.w600),
+                    fontSize: 13,
+                    color: Colors.green,
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-          // Back Button on the Left (pointing left)
-          Directionality(
-            textDirection: TextDirection.ltr,
+          // زر الصوت في الهيدر — واضح لكبار السن
+          GestureDetector(
+            onTap: _openVoiceAssistant,
             child: Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                ),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFE2E8F0),
-                  width: 1,
-                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              child: IconButton(
-                onPressed: () => Navigator.pop(context),
-                constraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 40,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 18, color: Color(0xFF64748B)),
-              ),
+              child:
+                  const Icon(Icons.mic_rounded, color: Colors.white, size: 22),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              constraints: const BoxConstraints(minWidth: 42, minHeight: 42),
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 18, color: Color(0xFF64748B)),
             ),
           ),
         ],
@@ -277,7 +286,8 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
     );
   }
 
-  Widget _buildChatBubble(CompanionMessage msg) {
+  // ── Chat Bubble ──────────────────────────────────────────────────
+  Widget _buildBubble(CompanionMessage msg) {
     final isAI = msg.isFromAI;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -289,12 +299,9 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
           if (isAI)
             Container(
               margin: const EdgeInsets.only(right: 8, bottom: 4),
-              width: 36,
-              height: 36,
-              child: Lottie.asset(
-                'assets/animations/Robot.json',
-                repeat: true,
-              ),
+              width: 38,
+              height: 38,
+              child: Lottie.asset('assets/animations/Robot.json', repeat: true),
             ),
           Flexible(
             flex: 5,
@@ -302,11 +309,11 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
               crossAxisAlignment:
                   isAI ? CrossAxisAlignment.start : CrossAxisAlignment.end,
               children: [
-                if (msg.mediaPath != null) _buildMediaPreview(msg),
+                if (msg.mediaPath != null) _buildMedia(msg),
                 if (msg.text.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
+                        horizontal: 20, vertical: 15),
                     decoration: BoxDecoration(
                       gradient: isAI
                           ? null
@@ -327,23 +334,46 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
                       boxShadow: [
                         BoxShadow(
                           color: isAI
-                              ? Colors.black.withOpacity(0.05)
-                              : const Color(0xFF6366F1).withOpacity(0.2),
+                              ? Colors.black.withValues(alpha: 0.05)
+                              : const Color(0xFF6366F1).withValues(alpha: 0.2),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: Text(
-                      msg.text,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isAI ? FontWeight.w500 : FontWeight.bold,
-                        color: isAI ? const Color(0xFF334155) : Colors.white,
-                        fontFamily: 'Cairo',
-                        height: 1.5,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          msg.text,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: isAI ? FontWeight.w500 : FontWeight.bold,
+                            color: isAI ? const Color(0xFF334155) : Colors.white,
+                            fontFamily: 'Cairo',
+                            height: 1.6,
+                          ),
+                        ),
+                        if (msg.sentiment != null && msg.sentiment!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isAI ? const Color(0xFFF1F5F9) : Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.psychology_outlined, size: 14, color: isAI ? const Color(0xFF64748B) : Colors.white),
+                                const SizedBox(width: 4),
+                                Text('التحليل الصوتي: ${msg.sentiment}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isAI ? const Color(0xFF64748B) : Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
               ],
@@ -352,20 +382,20 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
           if (!isAI)
             Container(
               margin: const EdgeInsets.only(left: 8, bottom: 4),
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: const Color(0xFF64748B).withOpacity(0.1),
+                color: const Color(0xFF64748B).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.person_rounded,
-                  size: 14, color: Color(0xFF64748B)),
+                  size: 15, color: Color(0xFF64748B)),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildMediaPreview(CompanionMessage msg) {
+  Widget _buildMedia(CompanionMessage msg) {
     if (msg.mediaType == 'image' && msg.mediaPath != null) {
       return Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -373,23 +403,19 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
           ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: Image.file(
-            File(msg.mediaPath!),
-            width: 200,
-            height: 150,
-            fit: BoxFit.cover,
-          ),
+          child: Image.file(File(msg.mediaPath!),
+              width: 200, height: 150, fit: BoxFit.cover),
         ),
       );
-    } else if (msg.mediaType == 'file') {
+    }
+    if (msg.mediaType == 'file') {
       return Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
@@ -398,19 +424,16 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.description_rounded, color: Color(0xFF64748B)),
-            const SizedBox(width: 8),
-            Text(
-              'ملف مرفق',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 14,
-                color: const Color(0xFF334155),
-              ),
-            ),
+            Icon(Icons.description_rounded, color: Color(0xFF64748B)),
+            SizedBox(width: 8),
+            Text('ملف مرفق',
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 14,
+                    color: Color(0xFF334155))),
           ],
         ),
       );
@@ -418,6 +441,7 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
     return const SizedBox.shrink();
   }
 
+  // ── Input Area ───────────────────────────────────────────────────
   Widget _buildInputArea(AppRiverpod provider) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -425,7 +449,7 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -433,46 +457,15 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
       ),
       child: Row(
         children: [
-          // Voice Button - Premium Style
-          _buildActionButton(
-            icon: Icons.mic_none_rounded,
-            gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
-            iconColor: Colors.white,
-            isPulse: false,
-            onTap: () async {
-              FocusScope.of(context).unfocus();
-              final String? result = await Navigator.push<String>(
-                context,
-                PageRouteBuilder(
-                  opaque: false,
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const VoiceAssistantScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
-                  },
-                ),
-              );
-
-              if (result != null && result.trim().isNotEmpty) {
-                provider.sendCompanionMessage(result.trim());
-                _scrollToBottom();
-              }
-            },
-          ),
-          const SizedBox(width: 10),
-          // Attach File Button
-          _buildActionButton(
+          // زر الملف
+          _buildIconBtn(
             icon: Icons.attach_file_rounded,
             color: const Color(0xFFF1F5F9),
             iconColor: const Color(0xFF64748B),
             onTap: _pickFile,
           ),
-          const SizedBox(width: 12),
-          // Input Field
+          const SizedBox(width: 10),
+          // حقل النص
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -487,11 +480,11 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
                       controller: _messageController,
                       focusNode: _focusNode,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 15),
+                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 16),
                       decoration: const InputDecoration(
                         hintText: 'اكتب رسالتك هنا...',
                         hintStyle: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: Color(0xFF94A3B8),
                             fontFamily: 'Cairo'),
                         border: InputBorder.none,
@@ -502,8 +495,9 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      if (_messageController.text.isNotEmpty) {
-                        provider.sendCompanionMessage(_messageController.text);
+                      final text = _messageController.text.trim();
+                      if (text.isNotEmpty) {
+                        provider.sendCompanionMessage(text);
                         _messageController.clear();
                         _scrollToBottom();
                       }
@@ -515,512 +509,925 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
               ),
             ),
           ),
+          const SizedBox(width: 10),
+          // زر الميكروفون — يفتح المساعد الصوتي
+          _buildIconBtn(
+            icon: Icons.mic_rounded,
+            gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+            iconColor: Colors.white,
+            onTap: _openVoiceAssistant,
+            size: 48,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBackgroundBlob(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-      {required IconData icon,
-      required VoidCallback onTap,
-      Color? color,
-      Gradient? gradient,
-      Color? iconColor,
-      bool isPulse = false}) {
+  Widget _buildIconBtn({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? color,
+    Gradient? gradient,
+    Color? iconColor,
+    double size = 44,
+  }) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(12),
+      child: Container(
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: gradient == null ? (color ?? const Color(0xFFF1F5F9)) : null,
           gradient: gradient,
           shape: BoxShape.circle,
-          boxShadow: isPulse
-              ? [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.3),
-                    blurRadius: 12,
-                    spreadRadius: 4,
-                  )
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 6,
+                offset: const Offset(0, 2))
+          ],
         ),
         child:
-            Icon(icon, color: iconColor ?? const Color(0xFF64748B), size: 24),
+            Icon(icon, color: iconColor ?? const Color(0xFF64748B), size: 22),
       ),
     );
   }
+
+  Widget _buildBlob(double size, Color color) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
 }
 
-class VoiceAssistantScreen extends StatefulWidget {
+enum _RayWave { sine, triangle, saw }
+
+class _RayTone {
+  const _RayTone(
+    this.frequency,
+    this.start,
+    this.duration, {
+    this.gain = 0.12,
+    this.wave = _RayWave.sine,
+  });
+
+  final double frequency;
+  final double start;
+  final double duration;
+  final double gain;
+  final _RayWave wave;
+}
+
+class _RayVoiceSfx {
+  final AudioPlayer _player = AudioPlayer();
+  bool _disposed = false;
+
+  Future<void> boot() => _play(const [
+        _RayTone(440, 0.00, 0.18, gain: 0.12),
+        _RayTone(554, 0.12, 0.18, gain: 0.12),
+        _RayTone(659, 0.24, 0.18, gain: 0.12),
+        _RayTone(880, 0.36, 0.34, gain: 0.08),
+        _RayTone(1108, 0.36, 0.34, gain: 0.08),
+      ], 0.78);
+
+  Future<void> disconnect() => _play(const [
+        _RayTone(659, 0.00, 0.15, gain: 0.1),
+        _RayTone(554, 0.10, 0.15, gain: 0.1),
+        _RayTone(440, 0.20, 0.25, gain: 0.1),
+      ], 0.5);
+
+  Future<void> wake() => _play(const [
+        _RayTone(880, 0.00, 0.1, gain: 0.14),
+        _RayTone(1108, 0.10, 0.15, gain: 0.16),
+      ], 0.32);
+
+  Future<void> mute() => _play(const [
+        _RayTone(330, 0.00, 0.12, gain: 0.1, wave: _RayWave.triangle),
+      ], 0.2);
+
+  Future<void> unmute() => _play(const [
+        _RayTone(660, 0.00, 0.1, gain: 0.12, wave: _RayWave.triangle),
+      ], 0.2);
+
+  Future<void> confirm() => _play(const [
+        _RayTone(523, 0.00, 0.12, gain: 0.1, wave: _RayWave.triangle),
+        _RayTone(784, 0.10, 0.2, gain: 0.12, wave: _RayWave.triangle),
+      ], 0.36);
+
+  Future<void> error() => _play(const [
+        _RayTone(220, 0.00, 0.25, gain: 0.12, wave: _RayWave.saw),
+        _RayTone(233, 0.00, 0.25, gain: 0.08, wave: _RayWave.saw),
+      ], 0.32);
+
+  Future<void> _play(List<_RayTone> tones, double seconds) async {
+    if (_disposed) return;
+    try {
+      await _player.stop();
+      await _player.play(
+        BytesSource(_wavForTones(tones, seconds), mimeType: 'audio/wav'),
+      );
+    } catch (e) {
+      debugPrint('[VoiceSfx] play failed: $e');
+    }
+  }
+
+  Uint8List _wavForTones(List<_RayTone> tones, double seconds) {
+    const sampleRate = 44100;
+    final samples = (sampleRate * seconds).ceil();
+    final data = ByteData(44 + samples * 2);
+
+    void writeAscii(int offset, String value) {
+      for (var i = 0; i < value.length; i++) {
+        data.setUint8(offset + i, value.codeUnitAt(i));
+      }
+    }
+
+    writeAscii(0, 'RIFF');
+    data.setUint32(4, 36 + samples * 2, Endian.little);
+    writeAscii(8, 'WAVE');
+    writeAscii(12, 'fmt ');
+    data.setUint32(16, 16, Endian.little);
+    data.setUint16(20, 1, Endian.little);
+    data.setUint16(22, 1, Endian.little);
+    data.setUint32(24, sampleRate, Endian.little);
+    data.setUint32(28, sampleRate * 2, Endian.little);
+    data.setUint16(32, 2, Endian.little);
+    data.setUint16(34, 16, Endian.little);
+    writeAscii(36, 'data');
+    data.setUint32(40, samples * 2, Endian.little);
+
+    for (var i = 0; i < samples; i++) {
+      final t = i / sampleRate;
+      var mixed = 0.0;
+      for (final tone in tones) {
+        if (t < tone.start || t > tone.start + tone.duration) continue;
+        final local = t - tone.start;
+        final phase = 2 * pi * tone.frequency * local;
+        final wave = switch (tone.wave) {
+          _RayWave.triangle => (2 / pi) * asin(sin(phase)),
+          _RayWave.saw => 2 *
+              ((local * tone.frequency) -
+                  (local * tone.frequency + 0.5).floor()),
+          _RayWave.sine => sin(phase),
+        };
+        final attack = min(0.015, tone.duration * 0.25);
+        final release = min(0.08, tone.duration * 0.45);
+        final fadeIn = attack <= 0 ? 1.0 : min(1.0, local / attack);
+        final fadeOut =
+            release <= 0 ? 1.0 : min(1.0, (tone.duration - local) / release);
+        mixed += wave * tone.gain * min(fadeIn, fadeOut);
+      }
+      final clamped = mixed < -1.0
+          ? -1.0
+          : mixed > 1.0
+              ? 1.0
+              : mixed;
+      data.setInt16(44 + i * 2, (clamped * 32767).round(), Endian.little);
+    }
+
+    return data.buffer.asUint8List();
+  }
+
+  void dispose() {
+    _disposed = true;
+    unawaited(_player.dispose());
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  شاشة المساعد الصوتي — phone call style
+// ════════════════════════════════════════════════════════════════════
+class VoiceAssistantScreen extends ConsumerStatefulWidget {
   const VoiceAssistantScreen({super.key});
 
   @override
-  State<VoiceAssistantScreen> createState() => _VoiceAssistantScreenState();
+  ConsumerState<VoiceAssistantScreen> createState() =>
+      _VoiceAssistantScreenState();
 }
 
-class _VoiceAssistantScreenState extends State<VoiceAssistantScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _glowController;
-  late Animation<double> _glowAnimation;
-  late stt.SpeechToText _speech;
-  bool _isListening = false;
-  bool _isSpeechAvailable = false;
-  String _wordsSpoken = '';
-  String _statusText = 'جاري التهيئة...';
-  bool _isPopping = false; // Prevents multiple Pops
+class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _ringCtrl;
+  late AnimationController _waveCtrl;
+  final _sfx = _RayVoiceSfx();
+
+  // ── Speech recognition & playback ─────────────────────────────────
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechReady = false;
+  bool _sessionActive = false;
+  bool _isSubmittingSpeech = false;
+  String _recognizedText = '';
+  String _lastSpeechError = '';
+
+  _VoiceState _state = _VoiceState.idle;
+  bool _isStarting = false; // يمنع double-tap
+  bool _isPopping = false;
+  String _userSpoken = '';
+  String _aiResponse = '';
+  String _errorMessage = '';
+
+  static const _colorListening = Color(0xFF27AE60);
+  static const _colorThinking = Color(0xFF8B5CF6);
+  static const _colorSpeaking = Color(0xFF1976D2);
+  static const _colorIdle = Color(0xFF4A6FE3);
+  static const _colorError = Color(0xFFEF4444);
+
+  Color get _stateColor {
+    if (_errorMessage.isNotEmpty) return _colorError;
+    switch (_state) {
+      case _VoiceState.listening:
+        return _colorListening;
+      case _VoiceState.thinking:
+        return _colorThinking;
+      case _VoiceState.speaking:
+        return _colorSpeaking;
+      case _VoiceState.done:
+        return _colorListening;
+      default:
+        return _colorIdle;
+    }
+  }
+
+  String get _stateLabel {
+    if (_errorMessage.isNotEmpty) return _errorMessage;
+    switch (_state) {
+      case _VoiceState.idle:
+        return _sessionActive ? 'جاهز للاستماع' : 'اضغط للبدء';
+      case _VoiceState.listening:
+        return 'بسمعك...';
+      case _VoiceState.thinking:
+        return 'بفكر...';
+      case _VoiceState.speaking:
+        return 'برد عليك...';
+      case _VoiceState.done:
+        return 'جاهز للاستماع';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    // 1. Initialize Glow Animation for Siri/Jarvis pulsating effect
-    _glowController = AnimationController(
+
+    _ringCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 3600),
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 0.85, end: 1.25).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
+    _waveCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
 
-    // 2. Initialize Speech engine with a small delay for smoother screen transitions
-    _speech = stt.SpeechToText();
-    Future.delayed(const Duration(milliseconds: 350), _initSpeech);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_sfx.boot());
+    });
   }
 
   @override
   void dispose() {
-    _glowController.dispose();
-    _speech.stop();
+    _ringCtrl.dispose();
+    _waveCtrl.dispose();
+    try {
+      _speech.cancel();
+    } catch (_) {}
+    try {
+      ref.read(appRiverpod).stopReading();
+    } catch (_) {}
+    _sfx.dispose();
     super.dispose();
   }
 
-  Future<void> _initSpeech() async {
+  // ── طلب صلاحية الميكروفون ───────────────────────────────────────
+  Future<bool> _ensureMicPermission() async {
+    final status = await Permission.microphone.status;
+    debugPrint('[Voice] mic permission status: $status');
+    if (status.isGranted) return true;
+    if (status.isPermanentlyDenied) {
+      _showError('صلاحية الميكروفون مرفوضة — افتح الإعدادات وفعّلها');
+      return false;
+    }
+    final result = await Permission.microphone.request();
+    debugPrint('[Voice] mic permission after request: $result');
+    if (result.isGranted) return true;
+    _showError('محتاجين صلاحية الميكروفون عشان نسمعك');
+    return false;
+  }
+
+  Future<bool> _ensureSpeechReady() async {
+    if (_speechReady) return true;
+
     try {
-      bool available = await _speech.initialize(
-        onStatus: (val) {
-          if (!mounted) return;
-          print('Speech Status: $val');
-          if (val == 'listening') {
-            setState(() {
-              _isListening = true;
-              _statusText = 'أنا أستمع إليك...';
-            });
-          } else if (val == 'notListening') {
-            setState(() {
-              _isListening = false;
-              if (_wordsSpoken.isEmpty) {
-                _statusText = 'اضغط على الأورب لبدء التحدث';
-              } else {
-                _statusText = 'تم التقاط الصوت بنجاح';
-              }
-            });
-            // Auto submit!
-            if (_wordsSpoken.isNotEmpty && !_isPopping) {
-              _isPopping = true;
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted) {
-                  Navigator.pop(context, _wordsSpoken);
-                }
-              });
-            }
-          }
-        },
-        onError: (val) {
-          if (!mounted) return;
-          print('Speech Error: $val');
-          setState(() {
-            _isListening = false;
-            _statusText = 'اضغط للبدء أو حاول مجدداً';
-          });
+      _speechReady = await _speech.initialize(
+        onStatus: _handleSpeechStatus,
+        onError: (error) {
+          _lastSpeechError = error.errorMsg;
+          debugPrint(
+            '[Voice] speech error: ${error.errorMsg} | permanent=${error.permanent}',
+          );
         },
       );
+    } catch (e, st) {
+      debugPrint('[Voice] speech initialize exception: $e\n$st');
+      _speechReady = false;
+    }
 
-      if (mounted) {
-        setState(() {
-          _isSpeechAvailable = available;
-          if (available) {
-            _startListening();
-          } else {
-            _statusText = 'التعرف على الصوت غير متاح';
-          }
-        });
+    if (!_speechReady) {
+      _showError('التعرّف على الكلام غير متاح على الجهاز');
+    }
+    return _speechReady;
+  }
+
+  void _handleSpeechStatus(String status) {
+    debugPrint('[Voice] speech status: $status');
+    final normalized = status.toLowerCase();
+    final stopped = normalized == 'done' || normalized == 'notlistening';
+
+    if (!stopped ||
+        _state != _VoiceState.listening ||
+        !_sessionActive ||
+        _isSubmittingSpeech) {
+      return;
+    }
+
+    if (_recognizedText.trim().isEmpty) {
+      _showError('لم أسمعك بوضوح، حاول مرة تانية');
+      _scheduleRestartListening(const Duration(milliseconds: 900));
+      return;
+    }
+
+    Future.microtask(_stopRecordingAndSend);
+  }
+
+  void _scheduleRestartListening(
+      [Duration delay = const Duration(milliseconds: 550)]) {
+    if (!_sessionActive || _isPopping) return;
+    Future.delayed(delay, () {
+      if (!mounted || !_sessionActive || _isPopping) return;
+      if (_state == _VoiceState.idle || _state == _VoiceState.done) {
+        _startRecording();
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _statusText = 'خطأ في تهيئة الميكروفون';
-        });
-      }
+    });
+  }
+
+  void _showError(String msg) {
+    debugPrint('[Voice] ❌ showError: $msg');
+    unawaited(_sfx.error());
+    if (!mounted) {
+      _isSubmittingSpeech = false;
+      return;
+    }
+    setState(() {
+      _errorMessage = msg;
+      _state = _VoiceState.idle;
+    });
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _errorMessage = '');
+    });
+  }
+
+  // ── ابدأ الاستماع ────────────────────────────────────────────────
+  Future<void> _startRecording() async {
+    if (_isStarting) {
+      debugPrint('[Voice] _startRecording blocked — already starting');
+      return;
+    }
+    if (_state == _VoiceState.listening || _state == _VoiceState.thinking) {
+      return;
+    }
+    _sessionActive = true;
+    _isStarting = true;
+    try {
+      final hasMic = await _ensureMicPermission();
+      if (!hasMic) return;
+
+      await ref.read(appRiverpod).stopReading();
+
+      final speechReady = await _ensureSpeechReady();
+      if (!speechReady) return;
+
+      _recognizedText = '';
+      _lastSpeechError = '';
+
+      if (!mounted) return;
+      setState(() {
+        _state = _VoiceState.listening;
+        _userSpoken = '';
+        _aiResponse = '';
+        _errorMessage = '';
+      });
+      unawaited(_sfx.unmute());
+
+      debugPrint('[Voice] 🎤 speech listen started');
+      await _speech.listen(
+        localeId: 'ar_EG',
+        listenFor: const Duration(seconds: 25),
+        pauseFor: const Duration(seconds: 4),
+        listenOptions: stt.SpeechListenOptions(
+          cancelOnError: false,
+          partialResults: true,
+          listenMode: stt.ListenMode.dictation,
+        ),
+        onResult: (result) {
+          final words = result.recognizedWords.trim();
+          if (words.isEmpty) return;
+          _recognizedText = words;
+          if (mounted) setState(() => _userSpoken = words);
+          debugPrint(
+            '[Voice] transcript partial=${!result.finalResult}: "$words"',
+          );
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[Voice] startListening exception: $e\n$st');
+      _showError('تعذّر تشغيل الاستماع، حاول مرة أخرى');
+    } finally {
+      _isStarting = false;
     }
   }
 
-  Future<void> _startListening() async {
-    if (!_isSpeechAvailable) return;
-    
-    setState(() {
-      _wordsSpoken = '';
-      _isListening = true;
-      _statusText = 'أستمع الآن...';
-    });
+  // ── أوقف الاستماع وأرسل النص للباك اند ──────────────────────────
+  Future<void> _stopRecordingAndSend() async {
+    if (_isSubmittingSpeech) return;
+    _isSubmittingSpeech = true;
+    debugPrint('[Voice] 🛑 stopping speech recognition');
+    try {
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+    } catch (e) {
+      debugPrint('[Voice] speech.stop exception: $e');
+    }
 
-    await _speech.listen(
-      onResult: (val) {
-        if (!mounted) return;
-        setState(() {
-          _wordsSpoken = val.recognizedWords;
-          if (_wordsSpoken.isNotEmpty) {
-            _statusText = 'جاري الكتابة...';
-          }
-        });
+    if (!mounted) return;
+
+    await Future.delayed(const Duration(milliseconds: 250));
+
+    final transcript = _recognizedText.trim();
+    debugPrint('[Voice] final transcript: "$transcript"');
+
+    if (transcript.isEmpty) {
+      final reason = _lastSpeechError.isEmpty ? '' : ' ($_lastSpeechError)';
+      debugPrint('[Voice] no speech detected$reason');
+      _showError('لم أسمعك بوضوح، حاول مرة تانية');
+      _isSubmittingSpeech = false;
+      _scheduleRestartListening(const Duration(milliseconds: 900));
+      return;
+    }
+
+    try {
+      setState(() {
+        _state = _VoiceState.thinking;
+        _userSpoken = transcript;
+      });
+      unawaited(_sfx.confirm());
+
+      debugPrint('[Voice] 📤 send transcript through /ai/chat');
+      final reply = await ref
+          .read(appRiverpod)
+          .sendCompanionMessage(transcript, voiceMode: true);
+
+      if (!mounted) {
+        _isSubmittingSpeech = false;
+        return;
+      }
+
+      final cleanReply = reply?.trim() ?? '';
+      if (cleanReply.isEmpty) {
+        _isSubmittingSpeech = false;
+        _showError('فشل الحصول على رد، حاول مرة تانية');
+        _scheduleRestartListening(const Duration(milliseconds: 1200));
+        return;
+      }
+
+      debugPrint('[Voice] 📥 reply: "$cleanReply"');
+      setState(() {
+        _aiResponse = cleanReply;
+        _state = _VoiceState.speaking;
+      });
+      unawaited(_sfx.wake());
+
+      await ref.read(appRiverpod).startCompanionSpeech(cleanReply);
+      _isSubmittingSpeech = false;
+      if (!mounted) return;
+      if (!ref.read(appRiverpod).isReadingAudio &&
+          _state == _VoiceState.speaking) {
+        setState(() => _state = _VoiceState.done);
+        _scheduleRestartListening();
+      }
+    } catch (e, st) {
+      debugPrint('[Voice] voice flow exception: $e\n$st');
+      _isSubmittingSpeech = false;
+      _showError('فشل الاتصال بالخادم، حاول مرة تانية');
+      _scheduleRestartListening(const Duration(milliseconds: 1200));
+    }
+  }
+
+  void _onOrbTap() {
+    debugPrint(
+        '[Voice] 👆 mic tapped | state=$_state | isStarting=$_isStarting');
+    if (_isStarting) return;
+    switch (_state) {
+      case _VoiceState.idle:
+      case _VoiceState.done:
+        _startRecording();
+        break;
+      case _VoiceState.listening:
+        _stopRecordingAndSend();
+        break;
+      case _VoiceState.thinking:
+        // مش نقدر نقاطع التفكير
+        break;
+      case _VoiceState.speaking:
+        _interruptAndRestart();
+        break;
+    }
+  }
+
+  Future<void> _interruptAndRestart() async {
+    debugPrint('[Voice] 🛑 interrupt requested');
+    try {
+      await ref.read(appRiverpod).stopReading();
+    } catch (_) {}
+    try {
+      if (_speech.isListening) await _speech.cancel();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _state = _VoiceState.idle;
+      _userSpoken = '';
+      _aiResponse = '';
+      _errorMessage = '';
+    });
+    unawaited(_sfx.wake());
+    await Future.delayed(const Duration(milliseconds: 150));
+    if (mounted) _startRecording();
+  }
+
+  void _close() {
+    if (_isPopping) return;
+    _isPopping = true;
+    _sessionActive = false;
+    try {
+      if (_speech.isListening) _speech.cancel();
+    } catch (_) {}
+    try {
+      ref.read(appRiverpod).stopReading();
+    } catch (_) {}
+    unawaited(_sfx.disconnect());
+    Navigator.pop(context);
+  }
+
+  // ── الموجة الصوتية ────────────────────────────────────────────────
+  Widget _buildWaveform() {
+    final active =
+        _state == _VoiceState.listening || _state == _VoiceState.speaking;
+    return AnimatedBuilder(
+      animation: _waveCtrl,
+      builder: (_, __) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(11, (i) {
+            final phase = i / 11.0;
+            final t = _waveCtrl.value;
+            final h =
+                active ? 8 + 32 * ((sin((t - phase) * 2 * pi) + 1) / 2) : 6.0;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 80),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 6,
+              height: h,
+              decoration: BoxDecoration(
+                color: _stateColor.withValues(alpha: active ? 0.85 : 0.3),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        );
       },
-      localeId: 'ar_SA',
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 5),
-      listenMode: stt.ListenMode.dictation,
     );
   }
 
-  Future<void> _stopListening() async {
-    await _speech.stop();
-    if (mounted) {
-      setState(() {
-        _isListening = false;
-      });
-      // Auto submit on manual stop if something was spoken
-      if (_wordsSpoken.isNotEmpty && !_isPopping) {
-        _isPopping = true;
-        Future.delayed(const Duration(milliseconds: 400), () {
-          if (mounted) {
-            Navigator.pop(context, _wordsSpoken);
-          }
-        });
-      }
-    }
-  }
-
-  void _toggleListening() {
-    if (_isListening) {
-      _stopListening();
-    } else {
-      _startListening();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          // 1. Premium Glassmorphic Backdrop Blur
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.75),
-                      const Color(0xFF1E1B4B).withOpacity(0.85), // Premium deep indigo
-                      Colors.black.withOpacity(0.92),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+  // ── الهيدر ─────────────────────────────────────────────────────────
+  Widget _buildElderlyHeader() {
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: _colorIdle.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
           ),
+          child: const Icon(
+            Icons.headset_mic_rounded,
+            color: Color(0xFF4A6FE3),
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Text(
+          'وناس',
+          style: TextStyle(
+            color: Color(0xFF1A1A2E),
+            fontFamily: 'Cairo',
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: _close,
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+                Icons.close_rounded, color: Color(0xFF6B7280), size: 28),
+          ),
+        ),
+      ],
+    );
+  }
 
-          // 2. Main Content
-          SafeArea(
-            child: Column(
+  // ── نص الحالة الكبير ───────────────────────────────────────────────
+  Widget _buildStateLabel() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      child: Text(
+        _stateLabel,
+        key: ValueKey(_stateLabel),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color:
+              _errorMessage.isNotEmpty ? _colorError : const Color(0xFF1A1A2E),
+          fontFamily: 'Cairo',
+          fontSize: 28,
+          fontWeight: FontWeight.w800,
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+
+  // ── زر الميكروفون الكبير ──────────────────────────────────────────
+  Widget _buildMicButton(bool active, IconData actionIcon) {
+    return GestureDetector(
+      onTap: _onOrbTap,
+      child: AnimatedBuilder(
+        animation: _ringCtrl,
+        builder: (_, __) {
+          return SizedBox(
+            width: 220,
+            height: 220,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // Top header controls (Back/Cancel)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Status dot indicator
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _isListening
-                              ? const Color(0xFF10B981).withOpacity(0.15)
-                              : Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _isListening
-                                ? const Color(0xFF10B981).withOpacity(0.3)
-                                : Colors.white.withOpacity(0.1),
-                          ),
+                if (active)
+                  Container(
+                    width: 140 + 60 * _ringCtrl.value,
+                    height: 140 + 60 * _ringCtrl.value,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _stateColor.withValues(
+                          alpha: 0.28 * (1 - _ringCtrl.value),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: _isListening ? const Color(0xFF10B981) : Colors.amber,
-                                shape: BoxShape.circle,
-                                boxShadow: _isListening
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(0xFF10B981).withOpacity(0.6),
-                                          blurRadius: 6,
-                                          spreadRadius: 2,
-                                        )
-                                      ]
-                                    : null,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isListening ? 'نشط' : 'متوقف',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontFamily: 'Cairo',
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                        width: 2.5,
                       ),
-                      
-                      // Title
-                      const Text(
-                        'المساعد الصوتي الذكي',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Cairo',
-                        ),
-                      ),
-                      
-                      // Close Icon
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-
-                const Spacer(),
-
-                // 3. Central AI Orb Assistant with Pulsating Aura
-                Center(
-                  child: GestureDetector(
-                    onTap: _toggleListening,
-                    behavior: HitTestBehavior.opaque,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Animated Breathing Radial Glow
-                        AnimatedBuilder(
-                          animation: _glowAnimation,
-                          builder: (context, child) {
-                            return Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Outer pulsating aura (cyan/blue)
-                                Container(
-                                  width: 290 * _glowAnimation.value,
-                                  height: 290 * _glowAnimation.value,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        const Color(0xFF6366F1).withOpacity(
-                                            0.28 * (1.8 - _glowAnimation.value)),
-                                        Colors.transparent,
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                // Inner pulsating aura (purple/pink)
-                                Container(
-                                  width: 210 * _glowAnimation.value,
-                                  height: 210 * _glowAnimation.value,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        const Color(0xFF8B5CF6).withOpacity(
-                                            0.38 * (1.8 - _glowAnimation.value)),
-                                        Colors.transparent,
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                        
-                        // Lottie Orb Animation
-                        Container(
-                          width: 240,
-                          height: 240,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF8B5CF6).withOpacity(0.2),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: Lottie.asset(
-                            'assets/animations/Orb_Ai_Assistant.json',
-                            fit: BoxFit.contain,
-                            repeat: true,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Color(0xFF1E1B4B),
-                                ),
-                                child: const Icon(
-                                  Icons.settings_voice_rounded,
-                                  color: Color(0xFF8B5CF6),
-                                  size: 60,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                if (active)
+                  Container(
+                    width: 164,
+                    height: 164,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _stateColor.withValues(alpha: 0.12),
+                    ),
+                  ),
+                Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _stateColor,
+                        _stateColor.withValues(alpha: 0.75),
                       ],
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // 4. Status Text (e.g. "أستمع الآن...", "اضغط للتحدث")
-                Text(
-                  _statusText,
-                  style: TextStyle(
-                    color: _isListening
-                        ? const Color(0xFFC084FC) // soft purple
-                        : Colors.white70,
-                    fontSize: 15,
-                    fontFamily: 'Cairo',
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // 5. Sleek dynamic thin caption (No box container, transparent when empty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: SizedBox(
-                    height: 100,
-                    child: _wordsSpoken.isNotEmpty
-                        ? SingleChildScrollView(
-                            reverse: true,
-                            child: Text(
-                              _wordsSpoken,
-                              textAlign: TextAlign.center,
-                              textDirection: TextDirection.rtl,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontFamily: 'Cairo',
-                                fontWeight: FontWeight.w300, // slender/thin font weight
-                                height: 1.5,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black45,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-
-                const Spacer(),
-
-                // 6. Floating Glassmorphic Discard Button (No Send Button - auto-trigger responds instantly)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 40),
-                  child: Center(
-                    child: Container(
-                      height: 50,
-                      width: 140,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: const Color(0xFFEF4444).withOpacity(0.3),
-                          width: 1.5,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _stateColor.withValues(
+                          alpha: active ? 0.42 : 0.22,
                         ),
+                        blurRadius: active ? 36 : 18,
+                        spreadRadius: active ? 4 : 0,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(25),
-                        child: Material(
-                          color: const Color(0xFFEF4444).withOpacity(0.08),
-                          child: InkWell(
-                            onTap: () {
-                              _speech.stop();
-                              Navigator.pop(context);
-                            },
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.close_rounded, color: Color(0xFFFCA5A5), size: 18),
-                                SizedBox(width: 8),
-                                Text(
-                                  'إلغاء',
-                                  style: TextStyle(
-                                    color: Color(0xFFFCA5A5),
-                                    fontSize: 14,
-                                    fontFamily: 'Cairo',
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
+                  child: Icon(actionIcon, color: Colors.white, size: 64),
                 ),
               ],
             ),
-          ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── منطقة المحادثة ────────────────────────────────────────────────
+  Widget _buildConversationArea() {
+    if (_userSpoken.isEmpty && _aiResponse.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.record_voice_over_rounded,
+              color: Color(0xFFD1D5DB),
+              size: 52,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'اضغط على الميكروفون وتكلم',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF9CA3AF),
+                fontFamily: 'Cairo',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        children: [
+          if (_userSpoken.isNotEmpty)
+            _buildMessage(
+              label: 'أنت قلت:',
+              text: _userSpoken,
+              color: const Color(0xFF27AE60),
+              alignRight: true,
+            ),
+          if (_aiResponse.isNotEmpty)
+            _buildMessage(
+              label: 'وناس قال:',
+              text: _aiResponse,
+              color: const Color(0xFF1976D2),
+              alignRight: false,
+            ),
         ],
       ),
     );
   }
+
+  Widget _buildMessage({
+    required String label,
+    required String text,
+    required Color color,
+    required bool alignRight,
+  }) {
+    return Align(
+      alignment: alignRight ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.22), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment:
+              alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontFamily: 'Cairo',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF1F2937),
+                fontFamily: 'Cairo',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                height: 1.7,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── زر الإغلاق العريض ─────────────────────────────────────────────
+  Widget _buildCloseButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 60,
+      child: OutlinedButton.icon(
+        onPressed: _close,
+        icon: const Icon(Icons.close_rounded, size: 24),
+        label: const Text(
+          'إغلاق',
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF6B7280),
+          side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<AppRiverpod>(appRiverpod, (prev, next) {
+      if (prev?.isReadingAudio == true &&
+          !next.isReadingAudio &&
+          _state == _VoiceState.speaking &&
+          mounted) {
+        _isSubmittingSpeech = false;
+        setState(() => _state = _VoiceState.done);
+        _scheduleRestartListening();
+      }
+    });
+
+    final isListening = _state == _VoiceState.listening;
+    final isSpeaking = _state == _VoiceState.speaking;
+    final active = isListening || isSpeaking;
+
+    final actionIcon = isListening
+        ? Icons.stop_rounded
+        : isSpeaking
+            ? Icons.call_split_rounded
+            : Icons.mic_rounded;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFBFF),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFAFBFF), Color(0xFFEEF3FF)],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              children: [
+                _buildElderlyHeader(),
+                const SizedBox(height: 28),
+                _buildStateLabel(),
+                const SizedBox(height: 36),
+                _buildMicButton(active, actionIcon),
+                const SizedBox(height: 20),
+                AnimatedOpacity(
+                  opacity: active ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: SizedBox(height: 44, child: _buildWaveform()),
+                ),
+                const SizedBox(height: 16),
+                Expanded(child: _buildConversationArea()),
+                const SizedBox(height: 16),
+                _buildCloseButton(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+

@@ -18,10 +18,14 @@ class ApiConfig {
   static const String cognitoEndpoint =
       'https://cognito-idp.$cognitoRegion.amazonaws.com/';
 
-  static const Duration requestTimeout = Duration(seconds: 15);
+  static const Duration requestTimeout = Duration(seconds: 10);
 
   // secret يُطلب عند تسجيل أول مدير لمنشأة جديدة
   // يجب أن يطابق ADMIN_REGISTRATION_SECRET في .env الباك اند
   static const String adminRegistrationSecret =
       String.fromEnvironment('ADMIN_REG_SECRET', defaultValue: '');
+
+  // يستخدمه التسجيل الذاتي للأسرة والمتطوعين عندما يكون التطبيق مخصصاً لمنشأة واحدة.
+  static const String defaultFacilityId =
+      String.fromEnvironment('FACILITY_ID', defaultValue: '');
 }

@@ -2,9 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
-import '../../../models/app_models.dart';
 import '../admin_staff_detail_screen.dart';
-
 
 class StaffManagementView extends StatelessWidget {
   final List<Animation<double>> fadeAnimations;
@@ -27,44 +25,53 @@ class StaffManagementView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  _buildStaffSummary(provider),
-                  const SizedBox(height: 24),
-                  const Text('قائمة الطاقم العملي الرسمي',
+                    _buildStaffSummary(provider),
+                    const SizedBox(height: 24),
+                    const Text('قائمة الطاقم العملي الرسمي',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1e293b))),
+                    const SizedBox(height: 16),
+                    ...staffList.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final s = entry.value;
+                      return FadeTransition(
+                        opacity: fadeAnimations[index % fadeAnimations.length],
+                        child: _buildStaffCard(
+                            context,
+                            ref,
+                            s.id,
+                            s.name,
+                            s.role,
+                            s.completionRate,
+                            s.status,
+                            s.lastActive,
+                            s.imageUrl),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              Positioned(
+                bottom: 24,
+                right: 24,
+                child: FloatingActionButton.extended(
+                  onPressed: () => _showAddStaffSheet(context, ref),
+                  backgroundColor: const Color(0xFF0ea5e9),
+                  icon: const Icon(Icons.add_moderator_rounded,
+                      color: Colors.white),
+                  label: const Text('إضافة موظف',
                       style: TextStyle(
-                          fontSize: 16,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1e293b))),
-                  const SizedBox(height: 16),
-                  ...staffList.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final s = entry.value;
-                    return FadeTransition(
-                      opacity: fadeAnimations[index % fadeAnimations.length],
-                      child: _buildStaffCard(context, ref, s.id,
-                          s.name, s.role, s.completionRate, s.status, s.lastActive, s.imageUrl),
-                    );
-                  }),
-                ],
+                          fontFamily: 'Cairo')),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                ),
               ),
-            ),
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: FloatingActionButton.extended(
-                onPressed: () => _showAddStaffSheet(context, ref),
-                backgroundColor: const Color(0xFF0ea5e9),
-                icon: const Icon(Icons.add_moderator_rounded, color: Colors.white),
-                label: const Text('إضافة موظف',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Cairo')),
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
         );
       },
     );
@@ -109,7 +116,8 @@ class StaffManagementView extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1e293b))),
-              const Text('قم بإضافة بيانات العضو الجديد للطاقم الطبي أو الإداري',
+              const Text(
+                  'قم بإضافة بيانات العضو الجديد للطاقم الطبي أو الإداري',
                   style: TextStyle(fontSize: 13, color: Color(0xFF64748b))),
               const SizedBox(height: 24),
               _buildField(nameController, 'الاسم الكامل'),
@@ -127,10 +135,7 @@ class StaffManagementView extends StatelessWidget {
               Wrap(
                 spacing: 10,
                 children: [
-                  _buildRoleTag(
-                      'ممرض',
-                      'تمريض',
-                      selectedRole == 'ممرض',
+                  _buildRoleTag('ممرض', 'تمريض', selectedRole == 'ممرض',
                       () => setModalState(() => selectedRole = 'ممرض')),
                   _buildRoleTag(
                       'أخصائي اجتماعي',
@@ -145,31 +150,34 @@ class StaffManagementView extends StatelessWidget {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (nameController.text.isNotEmpty &&
                         emailController.text.isNotEmpty) {
-                      ref.read(appRiverpod).createAccount(
-                            name: nameController.text,
-                            email: emailController.text,
-                            password: passwordController.text,
-                            role: selectedRole,
-                          );
-
-                      final newStaff = StaffPerformance(
-                        id: 'st${DateTime.now().millisecondsSinceEpoch}',
+                      final provider = ref.read(appRiverpod);
+                      final created = await provider.createAccount(
                         name: nameController.text,
+                        email: emailController.text,
+                        password: passwordController.text,
                         role: selectedRole,
-                        completionRate: 0.0,
-                        lastActive: 'نشط الآن',
-                        status: 'online',
                       );
-                      ref.read(appRiverpod).addStaff(newStaff);
+
+                      if (!context.mounted) return;
+                      if (!created) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(provider.backendSyncError ??
+                                'تعذر تسجيل الحساب على AWS'),
+                            backgroundColor: const Color(0xFFef4444),
+                          ),
+                        );
+                        return;
+                      }
 
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'تم تسجيل حساب "${nameController.text}" بنجاح! 🎉'),
+                              'تم تسجيل حساب "${nameController.text}" على AWS بنجاح'),
                           backgroundColor: const Color(0xFF0ea5e9),
                         ),
                       );
@@ -204,7 +212,9 @@ class StaffManagementView extends StatelessWidget {
           color: isSelected ? const Color(0xFF0ea5e9) : const Color(0xFFf8fafc),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: isSelected ? const Color(0xFF0ea5e9) : const Color(0xFFe2e8f0)),
+              color: isSelected
+                  ? const Color(0xFF0ea5e9)
+                  : const Color(0xFFe2e8f0)),
         ),
         child: Text(label,
             style: TextStyle(
@@ -237,14 +247,15 @@ class StaffManagementView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-          color: const Color(0xFF0369a1), borderRadius: BorderRadius.circular(24)),
+          color: const Color(0xFF0369a1),
+          borderRadius: BorderRadius.circular(24)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _summaryItem(provider.totalStaffCount.toString(), 'إجمالي الطاقم'),
           _summaryItem(provider.activeStaffCount.toString(), 'نشط الآن'),
-          _summaryItem(
-              '${(provider.averageStaffCompletion * 100).toInt()}%', 'معدل الإنجاز'),
+          _summaryItem('${(provider.averageStaffCompletion * 100).toInt()}%',
+              'معدل الإنجاز'),
         ],
       ),
     );
@@ -255,14 +266,25 @@ class StaffManagementView extends StatelessWidget {
       children: [
         Text(val,
             style: const TextStyle(
-                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 10)),
       ],
     );
   }
 
-  Widget _buildStaffCard(BuildContext context, WidgetRef ref, String id,
-      String name, String role, double rate, String status, String time, String? imageUrl) {
+  Widget _buildStaffCard(
+      BuildContext context,
+      WidgetRef ref,
+      String id,
+      String name,
+      String role,
+      double rate,
+      String status,
+      String time,
+      String? imageUrl) {
     bool isOnline = status == 'online';
 
     return TweenAnimationBuilder<double>(
@@ -318,12 +340,15 @@ class StaffManagementView extends StatelessWidget {
                                 return CircleAvatar(
                                   backgroundColor: const Color(0xFFf0f9ff),
                                   radius: 22,
-                                  backgroundImage: (img != null && img.isNotEmpty)
-                                      ? FileImage(File(img))
-                                      : null,
+                                  backgroundImage:
+                                      (img != null && img.isNotEmpty)
+                                          ? FileImage(File(img))
+                                          : null,
                                   child: (img == null || img.isEmpty)
                                       ? Text(
-                                          name.isNotEmpty ? name.substring(0, 1) : 'م',
+                                          name.isNotEmpty
+                                              ? name.substring(0, 1)
+                                              : 'م',
                                           style: const TextStyle(
                                             color: Color(0xFF0ea5e9),
                                             fontWeight: FontWeight.bold,
@@ -367,7 +392,9 @@ class StaffManagementView extends StatelessWidget {
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF0f172a))),
                           Text(
-                              role == 'Nurse' ? 'طاقم التمريض' : 'أخصائي اجتماعي',
+                              role == 'Nurse'
+                                  ? 'طاقم التمريض'
+                                  : 'أخصائي اجتماعي',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -385,8 +412,8 @@ class StaffManagementView extends StatelessWidget {
                                 color: Color(0xFF64748b), fontSize: 11)),
                         const SizedBox(height: 4),
                         Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                               color: isOnline
                                   ? const Color(0xFFdcfce7)
@@ -397,8 +424,8 @@ class StaffManagementView extends StatelessWidget {
                                   color: isOnline
                                       ? const Color(0xFF166534)
                                       : const Color(0xFF64748b),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold)),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -413,8 +440,6 @@ class StaffManagementView extends StatelessWidget {
       ),
     );
   }
-
-
 
   Widget _buildCompletionBar(double rate) {
     return Column(
@@ -437,7 +462,8 @@ class StaffManagementView extends StatelessWidget {
           child: LinearProgressIndicator(
               value: rate,
               backgroundColor: const Color(0xFFf1f5f9),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0ea5e9)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF0ea5e9)),
               minHeight: 6),
         ),
       ],

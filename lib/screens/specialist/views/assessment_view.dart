@@ -213,7 +213,9 @@ class SpecialistAssessmentView extends ConsumerWidget {
                           color: Color(0xFF1e293b))),
                   Text(tool.subtitle,
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600))
+                          fontSize: 11,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w600))
                 ])),
             const Spacer(), // نقل الـ Spacer هنا ليدفع الحالة والسهم لليسار
             _buildToolAction(tool.status), // عرض حالة الأداة (مكتمل/جديد)
@@ -235,7 +237,10 @@ class SpecialistAssessmentView extends ConsumerWidget {
     final questions = provider.getQuestionsForTool(tool.id);
     final Set<int> selectedIndices =
         Set.from(Iterable.generate(questions.length));
-    SocialSpecialistResidentScore? selectedResident = provider.filteredResidentScores.isNotEmpty ? provider.filteredResidentScores.first : null;
+    SocialSpecialistResidentScore? selectedResident =
+        provider.filteredResidentScores.isNotEmpty
+            ? provider.filteredResidentScores.first
+            : null;
 
     showModalBottomSheet(
       context: context,
@@ -266,52 +271,59 @@ class SpecialistAssessmentView extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                            Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                    color: _getToolColor(tool.icon),
-                                    borderRadius: BorderRadius.circular(18)),
-                                child: Center(
-                                    child: tool.icon == '🧠'
-                                        ? Lottie.asset(
-                                            'assets/animations/brian.json',
-                                            width: 40,
-                                            height: 40)
-                                        : tool.icon == '🤝'
+                          Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                        color: _getToolColor(tool.icon),
+                                        borderRadius:
+                                            BorderRadius.circular(18)),
+                                    child: Center(
+                                        child: tool.icon == '🧠'
                                             ? Lottie.asset(
-                                                'assets/animations/social.json',
+                                                'assets/animations/brian.json',
                                                 width: 40,
                                                 height: 40)
-                                            : tool.icon == '🏃'
+                                            : tool.icon == '🤝'
                                                 ? Lottie.asset(
-                                                    'assets/animations/Jogging.json',
+                                                    'assets/animations/social.json',
                                                     width: 40,
                                                     height: 40)
-                                                : tool.icon == '❤️'
+                                                : tool.icon == '🏃'
                                                     ? Lottie.asset(
-                                                        'assets/animations/hearts.json',
+                                                        'assets/animations/Jogging.json',
                                                         width: 40,
                                                         height: 40)
-                                                    : Text(tool.icon,
-                                                        style: const TextStyle(
-                                                            fontSize: 28)))),
-                            const SizedBox(width: 16),
-                            Expanded(
-                                child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                  Text(tool.name,
-                                      style: const TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF1e293b))),
-                                  Text(tool.subtitle,
-                                      style: TextStyle(
-                                          fontSize: 14, color: Colors.grey[600]))
-                                ])),
-                          ]),
+                                                    : tool.icon == '❤️'
+                                                        ? Lottie.asset(
+                                                            'assets/animations/hearts.json',
+                                                            width: 40,
+                                                            height: 40)
+                                                        : Text(tool.icon,
+                                                            style:
+                                                                const TextStyle(
+                                                                    fontSize:
+                                                                        28)))),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                    child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                      Text(tool.name,
+                                          style: const TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF1e293b))),
+                                      Text(tool.subtitle,
+                                          style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[600]))
+                                    ])),
+                              ]),
                           const SizedBox(height: 32),
                           const Text('اختر المقيم المراد تقييمه',
                               style: TextStyle(
@@ -319,13 +331,17 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF334155))),
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<SocialSpecialistResidentScore>(
-                            value: selectedResident,
+                          DropdownButtonFormField<
+                              SocialSpecialistResidentScore>(
+                            initialValue: selectedResident,
                             isExpanded: true,
-                            items: provider.filteredResidentScores.map((r) => DropdownMenuItem(
-                              value: r,
-                              child: Text(r.name, style: const TextStyle(fontSize: 14)),
-                            )).toList(),
+                            items: provider.filteredResidentScores
+                                .map((r) => DropdownMenuItem(
+                                      value: r,
+                                      child: Text(r.name,
+                                          style: const TextStyle(fontSize: 14)),
+                                    ))
+                                .toList(),
                             onChanged: (v) {
                               setBottomSheetState(() {
                                 selectedResident = v;
@@ -334,9 +350,16 @@ class SpecialistAssessmentView extends ConsumerWidget {
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Colors.white,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: Color(0xFFe2e8f0))),
+                              enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                      color: Color(0xFFe2e8f0))),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                             ),
                           ),
                           const SizedBox(height: 32),
@@ -391,7 +414,7 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                           const SizedBox(height: 32),
                           _buildInfoRow(
                               'الحالة الحالية',
@@ -400,8 +423,8 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                   ? const Color(0xFF059669)
                                   : const Color(0xFFea580c)),
                           const SizedBox(height: 16),
-                          _buildInfoRow(
-                              'آخر تحديث', 'منذ يومين', const Color(0xFF64748b)),
+                          _buildInfoRow('آخر تحديث', 'منذ يومين',
+                              const Color(0xFF64748b)),
                           const SizedBox(height: 32),
                           Row(children: [
                             Expanded(
@@ -413,7 +436,8 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                           selectedQuestions = [];
                                       for (int i in selectedIndices) {
                                         final q = questions[i];
-                                        selectedQuestions.add(AssessmentQuestion(
+                                        selectedQuestions
+                                            .add(AssessmentQuestion(
                                           id: 'q$i',
                                           text: q['text'],
                                           type: q['type'],
@@ -428,12 +452,14 @@ class SpecialistAssessmentView extends ConsumerWidget {
                                               builder: (context) =>
                                                   AssessmentDetailedScreen(
                                                       tool: tool,
-                                                      resident: selectedResident!,
+                                                      resident:
+                                                          selectedResident!,
                                                       initialQuestions:
                                                           selectedQuestions)));
                                     },
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFea580c),
+                                        backgroundColor:
+                                            const Color(0xFFea580c),
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 16),
@@ -604,7 +630,9 @@ class SpecialistAssessmentView extends ConsumerWidget {
                           color: Color(0xFF1e293b))),
                   Text('غرفة ${score.room} · ${score.date}',
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600))
+                          fontSize: 11,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w600))
                 ]),
                 const Spacer(),
                 if (score.isUrgent)
@@ -758,7 +786,10 @@ class SpecialistAssessmentView extends ConsumerWidget {
             width: 60,
             child: Text(label,
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 10, color: Color(0xFF334155), fontWeight: FontWeight.w600))),
+                style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF334155),
+                    fontWeight: FontWeight.w600))),
         const SizedBox(width: 8),
         Expanded(
             child: Container(
@@ -808,13 +839,13 @@ class SpecialistAssessmentView extends ConsumerWidget {
           _toggleBtn('قائمة', !SpecialistAssessmentView._showNeedMap,
               Icons.list_alt_rounded, () {
             setState(() => SpecialistAssessmentView._showNeedMap = false);
-            provider.notifyListeners();
+            provider.refreshState();
           }),
           const SizedBox(width: 8),
           _toggleBtn('خريطة', SpecialistAssessmentView._showNeedMap,
               Icons.grid_view_rounded, () {
             setState(() => SpecialistAssessmentView._showNeedMap = true);
-            provider.notifyListeners();
+            provider.refreshState();
           }),
         ],
       ),
@@ -937,11 +968,12 @@ class SpecialistAssessmentView extends ConsumerWidget {
   }
 }
 
-class _CardDustParticle {
+class CardDustParticle {
   Offset position;
   double speed;
   double radius;
-  _CardDustParticle({required this.position, required this.speed, required this.radius});
+  CardDustParticle(
+      {required this.position, required this.speed, required this.radius});
 }
 
 class CardDustAnimation extends StatefulWidget {
@@ -951,18 +983,21 @@ class CardDustAnimation extends StatefulWidget {
   State<CardDustAnimation> createState() => _CardDustAnimationState();
 }
 
-class _CardDustAnimationState extends State<CardDustAnimation> with SingleTickerProviderStateMixin {
+class _CardDustAnimationState extends State<CardDustAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<_CardDustParticle> _dust;
+  late List<CardDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
-    
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
+
     final random = Random();
     _dust = List.generate(45, (index) {
-      return _CardDustParticle(
+      return CardDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.05 + 0.02,
         radius: random.nextDouble() * 1.5 + 0.5,
@@ -983,7 +1018,8 @@ class _CardDustAnimationState extends State<CardDustAnimation> with SingleTicker
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: CardDustPainter(dust: _dust, animationValue: _controller.value),
+            painter:
+                CardDustPainter(dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -992,7 +1028,7 @@ class _CardDustAnimationState extends State<CardDustAnimation> with SingleTicker
 }
 
 class CardDustPainter extends CustomPainter {
-  final List<_CardDustParticle> dust;
+  final List<CardDustParticle> dust;
   final double animationValue;
 
   CardDustPainter({required this.dust, required this.animationValue});
@@ -1005,11 +1041,13 @@ class CardDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-      
-      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
+
+      double dy = (p.position.dy * size.height) -
+          (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx =
+          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 

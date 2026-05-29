@@ -8,17 +8,22 @@ import 'package:lottie/lottie.dart';
 
 // شاشة التقييم الاجتماعي التفصيلي للمقيم - تسمح للأخصائي بإجراء التقييمات وحفظ النتائج
 class AssessmentDetailedScreen extends ConsumerStatefulWidget {
-  final SocialSpecialistAssessmentTool? tool; // أداة التقييم المختارة (نفسي، اجتماعي، إلخ)
-  final SocialSpecialistResidentScore resident; // بيانات المقيم المستهدف بالتقييم
+  final SocialSpecialistAssessmentTool?
+      tool; // أداة التقييم المختارة (نفسي، اجتماعي، إلخ)
+  final SocialSpecialistResidentScore
+      resident; // بيانات المقيم المستهدف بالتقييم
   final List<AssessmentQuestion>? initialQuestions; // الأسئلة المختارة مسبقاً
-  const AssessmentDetailedScreen({super.key, this.tool, required this.resident, this.initialQuestions});
+  const AssessmentDetailedScreen(
+      {super.key, this.tool, required this.resident, this.initialQuestions});
 
   @override
   ConsumerState<AssessmentDetailedScreen> createState() =>
       _AssessmentDetailedScreenState();
 }
 
-class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScreen> with TickerProviderStateMixin {
+class _AssessmentDetailedScreenState
+    extends ConsumerState<AssessmentDetailedScreen>
+    with TickerProviderStateMixin {
   late AnimationController _fadeController; // متحكم حركات الظهور
   late AnimationController _ringController; // متحكم حركات الحلقات
   late AnimationController _shimmerController; // متحكم حركة اللمعان
@@ -36,7 +41,7 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
   @override
   void initState() {
     super.initState();
-    
+
     // تحميل الأسئلة ديناميكياً بناءً على نوع التقييم أو استخدام الأسئلة الممررة
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialQuestions != null) {
@@ -45,7 +50,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
         });
       } else {
         final provider = ref.read(appRiverpod);
-        final rawQuestions = provider.getQuestionsForTool(widget.tool?.id ?? 't1');
+        final rawQuestions =
+            provider.getQuestionsForTool(widget.tool?.id ?? 't1');
         setState(() {
           _questions = rawQuestions.asMap().entries.map((e) {
             final i = e.key;
@@ -54,7 +60,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
               id: 'q$i',
               text: q['text'],
               type: q['type'],
-              options: q['options'] != null ? List<String>.from(q['options']) : null,
+              options:
+                  q['options'] != null ? List<String>.from(q['options']) : null,
             );
           }).toList();
         });
@@ -67,13 +74,19 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
     ];
 
     // إعداد الـ Animations
-    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
-    _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _shimmerController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    _fadeController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1000));
+    _ringController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+    _shimmerController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat();
 
     _fadeAnimations = List.generate(12, (index) {
       return Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(parent: _fadeController, curve: Interval(index * 0.05, 1.0, curve: Curves.easeOut)),
+        CurvedAnimation(
+            parent: _fadeController,
+            curve: Interval(index * 0.05, 1.0, curve: Curves.easeOut)),
       );
     });
 
@@ -109,7 +122,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   const SizedBox(height: 16),
                   _buildQuestionnaire(provider), // منطقة الأسئلة والتقرير
                   const SizedBox(height: 20),
-                  _buildHistoryComparison(provider), // مقارنة مع التقييمات السابقة
+                  _buildHistoryComparison(
+                      provider), // مقارنة مع التقييمات السابقة
                   const SizedBox(height: 20),
                   _buildSpecialistNotes(), // حقل ملاحظات الأخصائي
                   const SizedBox(height: 20),
@@ -131,7 +145,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFF8C1D04), Color(0xFFEA580C), Color(0xFFFF7A45)],
         ),
         borderRadius: BorderRadius.only(
@@ -157,7 +172,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
@@ -209,7 +225,9 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        width: 1.5),
                   ),
                   child: const Center(
                     child: Icon(
@@ -230,7 +248,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15), width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -338,13 +357,15 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                          color:
+                              const Color(0xFFD97706).withValues(alpha: 0.15),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -370,18 +391,45 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
   }
 
   // بناء تبويبات التبديل بين أنواع التقييمات
+  // ignore: unused_element
   Widget _buildToolTabs() {
     final tools = [
-      {'label': 'نفسي', 'icon': '🧠', 'score': '٨/١٥', 'col': const Color(0xFFf59e0b), 'bg': const Color(0xFFfef3c7)},
-      {'label': 'اجتماعي', 'icon': '🤝', 'score': '٥/٢٠', 'col': const Color(0xFFef4444), 'bg': const Color(0xFFfee2e2)},
-      {'label': 'بدني', 'icon': '🏃', 'score': '٧٨/١٠٠', 'col': const Color(0xFF10b981), 'bg': const Color(0xFFd1fae5)},
-      {'label': 'جودة الحياة', 'icon': '❤️', 'score': '٦٢/١٠٠', 'col': const Color(0xFFf59e0b), 'bg': const Color(0xFFfef3c7)},
+      {
+        'label': 'نفسي',
+        'icon': '🧠',
+        'score': '٨/١٥',
+        'col': const Color(0xFFf59e0b),
+        'bg': const Color(0xFFfef3c7)
+      },
+      {
+        'label': 'اجتماعي',
+        'icon': '🤝',
+        'score': '٥/٢٠',
+        'col': const Color(0xFFef4444),
+        'bg': const Color(0xFFfee2e2)
+      },
+      {
+        'label': 'بدني',
+        'icon': '🏃',
+        'score': '٧٨/١٠٠',
+        'col': const Color(0xFF10b981),
+        'bg': const Color(0xFFd1fae5)
+      },
+      {
+        'label': 'جودة الحياة',
+        'icon': '❤️',
+        'score': '٦٢/١٠٠',
+        'col': const Color(0xFFf59e0b),
+        'bg': const Color(0xFFfef3c7)
+      },
     ];
 
     return Container(
-      height: 44, color: Colors.white,
+      height: 44,
+      color: Colors.white,
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal, reverse: true,
+        scrollDirection: Axis.horizontal,
+        reverse: true,
         child: Row(
           children: List.generate(tools.length, (index) {
             final isAct = _currentToolIndex == index;
@@ -390,16 +438,35 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
               onTap: () => setState(() => _currentToolIndex = index),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isAct ? const Color(0xFFea580c) : Colors.transparent, width: 2.5))),
+                decoration: BoxDecoration(
+                    border: Border(
+                        bottom: BorderSide(
+                            color: isAct
+                                ? const Color(0xFFea580c)
+                                : Colors.transparent,
+                            width: 2.5))),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(color: tool['bg'] as Color, borderRadius: BorderRadius.circular(6)),
-                      child: Text(tool['score'] as String, style: TextStyle(color: tool['col'] as Color, fontSize: 9, fontWeight: FontWeight.bold)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                          color: tool['bg'] as Color,
+                          borderRadius: BorderRadius.circular(6)),
+                      child: Text(tool['score'] as String,
+                          style: TextStyle(
+                              color: tool['col'] as Color,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 4),
-                    Text('${tool['icon']} ${tool['label']}', style: TextStyle(color: isAct ? const Color(0xFFea580c) : const Color(0xFF94a3b8), fontSize: 10, fontWeight: FontWeight.bold)),
+                    Text('${tool['icon']} ${tool['label']}',
+                        style: TextStyle(
+                            color: isAct
+                                ? const Color(0xFFea580c)
+                                : const Color(0xFF94a3b8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -471,9 +538,12 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _buildSubScoreBar('المزاج العام', 0.40, const Color(0xFFF59E0B)),
-                  _buildSubScoreBar('مستوى الطاقة', 0.30, const Color(0xFFEF4444)),
-                  _buildSubScoreBar('مؤشر التفاؤل', 0.65, const Color(0xFF10B981)),
+                  _buildSubScoreBar(
+                      'المزاج العام', 0.40, const Color(0xFFF59E0B)),
+                  _buildSubScoreBar(
+                      'مستوى الطاقة', 0.30, const Color(0xFFEF4444)),
+                  _buildSubScoreBar(
+                      'مؤشر التفاؤل', 0.65, const Color(0xFF10B981)),
                 ],
               ),
             ),
@@ -651,7 +721,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   ),
                   const SizedBox(width: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
@@ -685,7 +756,10 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                         gradient: LinearGradient(
                           colors: [
                             const Color(0xFFFF8C69),
-                            const Color(0xFFEA580C).withValues(alpha: 0.8 + 0.2 * sin(_shimmerController.value * 2 * pi)),
+                            const Color(0xFFEA580C).withValues(
+                                alpha: 0.8 +
+                                    0.2 *
+                                        sin(_shimmerController.value * 2 * pi)),
                           ],
                         ),
                       ),
@@ -695,21 +769,21 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
               },
             ),
             // عرض السؤال الحالي
-            Builder(
-              builder: (context) {
-                final q = _questions[_questionIndex];
-                return _buildQuestionItem(
-                  'السؤال ${_questionIndex + 1} من ${_questions.length}',
-                  q.text,
-                  type: q.type,
-                  options: q.options,
-                  selected: _selections[_questionIndex],
-                  onSelected: (idx) => setState(() => _selections[_questionIndex] = idx),
-                  selectedScale: _scales[_questionIndex],
-                  onScaleSelected: (val) => setState(() => _scales[_questionIndex] = val),
-                );
-              }
-            ),
+            Builder(builder: (context) {
+              final q = _questions[_questionIndex];
+              return _buildQuestionItem(
+                'السؤال ${_questionIndex + 1} من ${_questions.length}',
+                q.text,
+                type: q.type,
+                options: q.options,
+                selected: _selections[_questionIndex],
+                onSelected: (idx) =>
+                    setState(() => _selections[_questionIndex] = idx),
+                selectedScale: _scales[_questionIndex],
+                onScaleSelected: (val) =>
+                    setState(() => _scales[_questionIndex] = val),
+              );
+            }),
             const SizedBox(height: 24),
             // زر توليد تقرير PDF المطور كلياً
             Padding(
@@ -733,9 +807,11 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                 ),
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    await PdfService.generateAssessmentReport(widget.resident, tool, _selections, _questions);
+                    await PdfService.generateAssessmentReport(
+                        widget.resident, tool, _selections, _questions);
                   },
-                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 20, color: Colors.white),
+                  icon: const Icon(Icons.picture_as_pdf_rounded,
+                      size: 20, color: Colors.white),
                   label: const Text(
                     'تحميل التقرير كـ PDF',
                     style: TextStyle(
@@ -749,7 +825,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -776,14 +853,17 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1.5)),
+        border:
+            Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.help_outline_rounded, size: 14, color: const Color(0xFFEA580C).withValues(alpha: 0.7)),
+              Icon(Icons.help_outline_rounded,
+                  size: 14,
+                  color: const Color(0xFFEA580C).withValues(alpha: 0.7)),
               const SizedBox(width: 6),
               Text(
                 num,
@@ -820,19 +900,23 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                     onTap: () => onSelected?.call(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 16),
                       decoration: BoxDecoration(
                         color: isSel ? const Color(0xFFFFF5F2) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSel ? const Color(0xFFFF7A45) : const Color(0xFFF1F5F9),
+                          color: isSel
+                              ? const Color(0xFFFF7A45)
+                              : const Color(0xFFF1F5F9),
                           width: isSel ? 2 : 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: isSel 
+                            color: isSel
                                 ? const Color(0xFFEA580C).withValues(alpha: 0.1)
-                                : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                : const Color(0xFF0F172A)
+                                    .withValues(alpha: 0.03),
                             blurRadius: isSel ? 12 : 8,
                             offset: const Offset(0, 4),
                           )
@@ -847,13 +931,18 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: isSel ? const Color(0xFFEA580C) : const Color(0xFFCBD5E1),
+                                color: isSel
+                                    ? const Color(0xFFEA580C)
+                                    : const Color(0xFFCBD5E1),
                                 width: 2,
                               ),
-                              color: isSel ? const Color(0xFFEA580C) : Colors.transparent,
+                              color: isSel
+                                  ? const Color(0xFFEA580C)
+                                  : Colors.transparent,
                             ),
                             child: isSel
-                                ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                ? const Icon(Icons.check,
+                                    color: Colors.white, size: 14)
                                 : null,
                           ),
                           const SizedBox(width: 14),
@@ -861,9 +950,12 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                             child: Text(
                               options[index],
                               style: TextStyle(
-                                color: isSel ? const Color(0xFFC2410C) : const Color(0xFF1E293B),
+                                color: isSel
+                                    ? const Color(0xFFC2410C)
+                                    : const Color(0xFF1E293B),
                                 fontSize: 14,
-                                fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                fontWeight:
+                                    isSel ? FontWeight.bold : FontWeight.w600,
                                 fontFamily: 'Cairo',
                               ),
                             ),
@@ -902,24 +994,35 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                           height: 44,
                           decoration: BoxDecoration(
                             color: isSel ? null : const Color(0xFFF8FAFC),
-                            gradient: isSel 
-                                ? const LinearGradient(colors: [Color(0xFFEA580C), Color(0xFFFF7A45)]) 
+                            gradient: isSel
+                                ? const LinearGradient(colors: [
+                                    Color(0xFFEA580C),
+                                    Color(0xFFFF7A45)
+                                  ])
                                 : null,
                             shape: BoxShape.circle,
-                            border: isSel ? null : Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-                            boxShadow: isSel ? [
-                              BoxShadow(
-                                color: const Color(0xFFEA580C).withValues(alpha: 0.25),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              )
-                            ] : null,
+                            border: isSel
+                                ? null
+                                : Border.all(
+                                    color: const Color(0xFFE2E8F0), width: 1.5),
+                            boxShadow: isSel
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFFEA580C)
+                                          .withValues(alpha: 0.25),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ]
+                                : null,
                           ),
                           child: Center(
                             child: Text(
                               '$i',
                               style: TextStyle(
-                                color: isSel ? Colors.white : const Color(0xFF64748B),
+                                color: isSel
+                                    ? Colors.white
+                                    : const Color(0xFF64748B),
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
                                 fontFamily: 'Cairo',
@@ -983,7 +1086,9 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
         children: [
           // زر التالي على اليمين في اللغة العربية (RTL: التالي = اتجاه اليمين)
           GestureDetector(
-            onTap: () => setState(() { if (_questionIndex < _questions.length - 1) _questionIndex++; }),
+            onTap: () => setState(() {
+              if (_questionIndex < _questions.length - 1) _questionIndex++;
+            }),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
@@ -998,12 +1103,12 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   )
                 ],
               ),
-              child: Directionality(
+              child: const Directionality(
                 textDirection: TextDirection.ltr,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'التالي',
                       style: TextStyle(
                         color: Color(0xFFC2410C),
@@ -1012,8 +1117,9 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                         fontFamily: 'Cairo',
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFFC2410C)),
+                    SizedBox(width: 6),
+                    Icon(Icons.arrow_forward_rounded,
+                        size: 18, color: Color(0xFFC2410C)),
                   ],
                 ),
               ),
@@ -1030,7 +1136,9 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
           ),
           // زر السابق على اليسار في اللغة العربية (RTL: السابق = اتجاه اليسار)
           GestureDetector(
-            onTap: () => setState(() { if (_questionIndex > 0) _questionIndex--; }),
+            onTap: () => setState(() {
+              if (_questionIndex > 0) _questionIndex--;
+            }),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
@@ -1045,25 +1153,26 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   )
                 ],
               ),
-                child: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.arrow_back_rounded, size: 18, color: Color(0xFF475569)),
-                      SizedBox(width: 6),
-                      Text(
-                        'السابق',
-                        style: TextStyle(
-                          color: Color(0xFF475569),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Cairo',
-                        ),
+              child: const Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_back_rounded,
+                        size: 18, color: Color(0xFF475569)),
+                    SizedBox(width: 6),
+                    Text(
+                      'السابق',
+                      style: TextStyle(
+                        color: Color(0xFF475569),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Cairo',
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
             ),
           ),
         ],
@@ -1116,7 +1225,9 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
               ],
             ),
             child: Column(
-              children: provider.assessmentHistory.map((h) => _buildCompareRow(h)).toList(),
+              children: provider.assessmentHistory
+                  .map((h) => _buildCompareRow(h))
+                  .toList(),
             ),
           ),
         ],
@@ -1190,8 +1301,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
     if (trend == 'up') {
       return Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFD1FAE5),
+        decoration: const BoxDecoration(
+          color: Color(0xFFD1FAE5),
           shape: BoxShape.circle,
         ),
         child: const Icon(
@@ -1204,8 +1315,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
     if (trend == 'down') {
       return Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFEE2E2),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFEE2E2),
           shape: BoxShape.circle,
         ),
         child: const Icon(
@@ -1217,8 +1328,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
     }
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF1F5F9),
         shape: BoxShape.circle,
       ),
       child: const Icon(
@@ -1231,7 +1342,12 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
 
   // بناء منطقة ملاحظات الأخصائي مع الكلمات الدلالية (Tags) الملونة والمنعشة
   Widget _buildSpecialistNotes() {
-    final tags = ['متابعة شهرية', 'جلسة أسبوعية', 'تنسيق مع الأسرة', 'يحتاج دعم نفسي'];
+    final tags = [
+      'متابعة شهرية',
+      'جلسة أسبوعية',
+      'تنسيق مع الأسرة',
+      'يحتاج دعم نفسي'
+    ];
     return FadeTransition(
       opacity: _fadeAnimations[5],
       child: Container(
@@ -1295,7 +1411,8 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   hintText: 'اكتب ملاحظاتك وتوجيهاتك السريرية...',
-                  hintStyle: TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
+                  hintStyle:
+                      TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Cairo'),
                 ),
               ),
             ),
@@ -1304,16 +1421,19 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
               spacing: 8,
               runSpacing: 8,
               alignment: WrapAlignment.start,
-              children: tags.map((t) => GestureDetector(
-                onTap: () => setState(() {
-                  if (_activeNotes.contains(t)) {
-                    _activeNotes.remove(t);
-                  } else {
-                    _activeNotes.add(t);
-                  }
-                }),
-                child: _NoteChip('+ $t', isSelected: _activeNotes.contains(t)),
-              )).toList(),
+              children: tags
+                  .map((t) => GestureDetector(
+                        onTap: () => setState(() {
+                          if (_activeNotes.contains(t)) {
+                            _activeNotes.remove(t);
+                          } else {
+                            _activeNotes.add(t);
+                          }
+                        }),
+                        child: _NoteChip('+ $t',
+                            isSelected: _activeNotes.contains(t)),
+                      ))
+                  .toList(),
             ),
           ],
         ),
@@ -1330,12 +1450,17 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
         color: _isInterventionRequired ? const Color(0xFFFFF1F1) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: _isInterventionRequired ? const Color(0xFFFCA5A5) : const Color(0xFFF1F5F9),
+          color: _isInterventionRequired
+              ? const Color(0xFFFCA5A5)
+              : const Color(0xFFF1F5F9),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: (_isInterventionRequired ? const Color(0xFFEF4444) : const Color(0xFF0F172A)).withValues(alpha: 0.04),
+            color: (_isInterventionRequired
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFF0F172A))
+                .withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -1345,11 +1470,12 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEE2E2),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFEE2E2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.report_problem_rounded, color: Color(0xFFEF4444), size: 24),
+            child: const Icon(Icons.report_problem_rounded,
+                color: Color(0xFFEF4444), size: 24),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -1380,7 +1506,7 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
           Switch(
             value: _isInterventionRequired,
             onChanged: (v) => setState(() => _isInterventionRequired = v),
-            activeColor: const Color(0xFFEF4444),
+            activeThumbColor: const Color(0xFFEF4444),
             activeTrackColor: const Color(0xFFFCA5A5),
           ),
         ],
@@ -1426,27 +1552,31 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                   // حساب الدرجة التقريبية بناءً على عدد الإجابات المختارة
                   final Map<String, double> newScores = {};
                   if (widget.tool != null) {
-                    newScores[widget.tool!.name] = (_selections.length / _questions.length).clamp(0.1, 1.0);
+                    newScores[widget.tool!.name] =
+                        (_selections.length / _questions.length)
+                            .clamp(0.1, 1.0);
                   }
-                  
+
                   // استدعاء دالة الحفظ في الـ Provider لتحديث بيانات المقيم في النظام
                   ref.read(appRiverpod).saveSocialAssessment(
-                    residentId: widget.resident.id,
-                    newScores: newScores,
-                    needsIntervention: _isInterventionRequired,
-                    notes: _notesController.text,
-                  );
-                  
+                        residentId: widget.resident.id,
+                        newScores: newScores,
+                        needsIntervention: _isInterventionRequired,
+                        notes: _notesController.text,
+                      );
+
                   showDialog(
                     context: context,
                     barrierDismissible: false,
                     builder: (dialogContext) => AlertDialog(
                       backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24)),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Lottie.asset('assets/animations/Done.json', width: 130, height: 130, repeat: false),
+                          Lottie.asset('assets/animations/Done.json',
+                              width: 130, height: 130, repeat: false),
                           const SizedBox(height: 16),
                           const Text(
                             'تم حفظ التقييم بنجاح',
@@ -1478,8 +1608,10 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFEA580C),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
                                 elevation: 0,
                               ),
                               child: const Text(
@@ -1496,16 +1628,18 @@ class _AssessmentDetailedScreenState extends ConsumerState<AssessmentDetailedScr
                       ),
                     ),
                   );
-                }, 
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.save_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.save_rounded,
+                    color: Colors.white, size: 20),
                 label: const Text(
                   'حفظ التقييم وإرساله للإدارة',
                   style: TextStyle(
@@ -1537,21 +1671,24 @@ class _NoteChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: isSelected ? null : const Color(0xFFF1F5F9),
-        gradient: isSelected 
-            ? const LinearGradient(colors: [Color(0xFFEA580C), Color(0xFFFF7A45)]) 
+        gradient: isSelected
+            ? const LinearGradient(
+                colors: [Color(0xFFEA580C), Color(0xFFFF7A45)])
             : null,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isSelected ? Colors.transparent : const Color(0xFFE2E8F0),
           width: 1,
         ),
-        boxShadow: isSelected ? [
-          BoxShadow(
-            color: const Color(0xFFEA580C).withValues(alpha: 0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          )
-        ] : null,
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFEA580C).withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                )
+              ]
+            : null,
       ),
       child: Text(
         label,

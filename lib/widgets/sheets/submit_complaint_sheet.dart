@@ -83,9 +83,8 @@ class _SubmitComplaintSheetState extends State<SubmitComplaintSheet> {
       final c = await ComplaintsService.instance.create(
         category: _category,
         subject: _subject.text.trim(),
-        description: _description.text.trim().isEmpty
-            ? null
-            : _description.text.trim(),
+        description:
+            _description.text.trim().isEmpty ? null : _description.text.trim(),
         priority: _priority,
         residentId: _residentId,
       );
@@ -105,8 +104,8 @@ class _SubmitComplaintSheetState extends State<SubmitComplaintSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Colors.redAccent,
-        content:
-            Text('فشل: ${e.message}', style: const TextStyle(fontFamily: 'Cairo')),
+        content: Text('فشل: ${e.message}',
+            style: const TextStyle(fontFamily: 'Cairo')),
       ));
     } catch (e) {
       if (!mounted) return;

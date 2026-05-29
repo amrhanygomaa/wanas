@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/app_models.dart';
 import '../../providers/app_riverpod.dart';
-import 'dart:io';
 
 class ChatWithSpecialistScreen extends ConsumerStatefulWidget {
   final CareReport report;
   final String? otherUserId;
 
-  const ChatWithSpecialistScreen({super.key, required this.report, this.otherUserId});
+  const ChatWithSpecialistScreen(
+      {super.key, required this.report, this.otherUserId});
 
   @override
-  ConsumerState<ChatWithSpecialistScreen> createState() => _ChatWithSpecialistScreenState();
+  ConsumerState<ChatWithSpecialistScreen> createState() =>
+      _ChatWithSpecialistScreenState();
 }
 
-class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScreen> {
+class _ChatWithSpecialistScreenState
+    extends ConsumerState<ChatWithSpecialistScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -33,10 +35,11 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-    
+
     // Scroll only when the chat history length changes
     ref.listen<AppRiverpod>(appRiverpod, (previous, next) {
-      if (previous?.specialistChatHistory.length != next.specialistChatHistory.length) {
+      if (previous?.specialistChatHistory.length !=
+          next.specialistChatHistory.length) {
         _scrollToBottom();
       }
     });
@@ -70,14 +73,15 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
                 Text(widget.report.authorRole,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ],
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -105,7 +109,8 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe)
@@ -125,10 +130,12 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
           Flexible(
             flex: 5,
             child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
                     gradient: isMe
                         ? const LinearGradient(
@@ -141,12 +148,14 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(24),
                       topRight: const Radius.circular(24),
-                      bottomLeft: isMe ? const Radius.circular(24) : Radius.zero,
-                      bottomRight: isMe ? Radius.zero : const Radius.circular(24),
+                      bottomLeft:
+                          isMe ? const Radius.circular(24) : Radius.zero,
+                      bottomRight:
+                          isMe ? Radius.zero : const Radius.circular(24),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -171,7 +180,7 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
               margin: const EdgeInsets.only(left: 8, bottom: 4),
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF64748B).withOpacity(0.1),
+                color: const Color(0xFF64748B).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.person_rounded,
@@ -184,12 +193,13 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
 
   Widget _buildInputArea(AppRiverpod provider) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.fromLTRB(
+          16, 12, 16, MediaQuery.of(context).viewInsets.bottom + 20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -213,7 +223,8 @@ class _ChatWithSpecialistScreenState extends ConsumerState<ChatWithSpecialistScr
                       style: const TextStyle(fontSize: 15),
                       decoration: const InputDecoration(
                         hintText: 'اكتب رسالتك هنا...',
-                        hintStyle: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+                        hintStyle:
+                            TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 14),
                       ),

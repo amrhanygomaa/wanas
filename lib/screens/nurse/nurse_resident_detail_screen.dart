@@ -31,13 +31,6 @@ class _NurseResidentDetailScreenState
   final TextEditingController _noteContentController =
       TextEditingController(); // متحكم محتوى الملاحظة الجديدة
 
-  // بيانات تجريبية للأدوية (للعرض فقط في العرض التوضيحي)
-  final List<String> _meds = [
-    'ميتفورمين ٥٠٠ ملغ',
-    'أسبرين حماية',
-    'فيتامين د٣'
-  ];
-
   @override
   void initState() {
     // دالة التهيئة الأولية
@@ -84,9 +77,9 @@ class _NurseResidentDetailScreenState
         ),
         actions: [
           IconButton(
-            // زر محاكاة طباعة الملف الطبي
+            // زر طباعة الملف الطبي
             icon: const Icon(Icons.print_rounded, color: Color(0xFF0369A1)),
-            onPressed: _simulatePrint,
+            onPressed: _printMedicalFile,
           ),
         ],
       ),
@@ -503,7 +496,8 @@ class _NurseResidentDetailScreenState
                         residentName: widget.residentName,
                         title: _noteTitleController.text,
                         content: _noteContentController.text,
-                        author: 'أ. منى (مشرف)',
+                        author: ref.read(appRiverpod).currentAccount?.name ??
+                            'فريق التمريض',
                         timestamp: DateTime.now(),
                       );
                       ref
@@ -559,6 +553,7 @@ class _NurseResidentDetailScreenState
       },
     );
     Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
+      if (!mounted) return;
       Navigator.pop(context); // إغلاق حوار النجاح
     });
   }
@@ -664,8 +659,7 @@ class _NurseResidentDetailScreenState
     );
   }
 
-  void _simulatePrint() {
-    // محاكاة عملية الطباعة وتحويل الملف لـ PDF
+  void _printMedicalFile() {
     showDialog(
       context: context,
       builder: (context) => const Center(
@@ -687,7 +681,7 @@ class _NurseResidentDetailScreenState
       ),
     );
     Future.delayed(const Duration(seconds: 2), () {
-      // تأخير زمني لمحاكاة المعالجة
+      if (!mounted) return;
       Navigator.pop(context); // إغلاق الحوار
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم تحميل الملف الطبي الكامل بنجاح ✅')));

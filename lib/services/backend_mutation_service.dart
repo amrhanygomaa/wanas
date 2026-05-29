@@ -206,6 +206,14 @@ class BackendMutationService {
     });
   }
 
+  Future<void> approveVisit(String id) {
+    return ApiClient.instance.patch('/family-bridge/visits/$id/approve');
+  }
+
+  Future<void> rejectVisit(String id) {
+    return ApiClient.instance.patch('/family-bridge/visits/$id/reject');
+  }
+
   Future<void> payBill(String id) {
     return ApiClient.instance.patch('/billing/$id/pay');
   }
@@ -242,6 +250,16 @@ class BackendMutationService {
       'title': task.title,
       'category': _careTaskCategory(task.category),
       'scheduledTime': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> createActivitySession(ActivitySession session) {
+    return ApiClient.instance.post('/activities', body: {
+      'title': session.title,
+      'description': session.description,
+      'startTime': session.startTime.toIso8601String(),
+      'location': session.location,
+      'participants': session.participants,
     });
   }
 

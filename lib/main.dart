@@ -50,13 +50,9 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
-    // إبقاء شاشة السبلاش ظاهرة لمدة ١٠ ثوانٍ لإعطاء فرصة كاملة للقراءة والاستمتاع بالتصميم
-    Future.delayed(const Duration(seconds: 10), () {
-      if (mounted) {
-        setState(() {
-          _showSplash = false;
-        });
-      }
+    // حد أدنى 2.5 ثانية لإكمال أنيميشن الـ splash، ثم يُسيطر isInitialized على الانتقال
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) setState(() => _showSplash = false);
     });
   }
 
@@ -74,7 +70,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     Widget getHomeWidget() {
       // شاشة السبلاش الفخمة تظهر لمدة ٣ ثوانٍ أو حتى يكتمل تحميل البيانات في الذاكرة
       if (_showSplash || !provider.isInitialized) {
-        return const WanasSplashScreen();
+        return WanasSplashScreen(status: provider.splashStatus);
       }
 
       // تحديد الشاشة الحالية بناءً على حالة المستخدم
@@ -106,7 +102,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ونس',
+      title: 'ونيس',
       // ── Arabic RTL Configuration ──────────────────────────────
       locale: const Locale('ar', 'SA'),
       supportedLocales: const [Locale('ar', 'SA')],
@@ -140,6 +136,20 @@ class _MyAppState extends ConsumerState<MyApp> {
         brightness: Brightness.light,
         visualDensity: VisualDensity.adaptivePlatformDensity,
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1e293b),
+          brightness: Brightness.light,
+          surface: Colors.white,
+          surfaceTint: Colors.transparent,
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
         // ضبط اتجاه النص في الثيم
         typography: Typography.material2021(platform: TargetPlatform.android),
       ),

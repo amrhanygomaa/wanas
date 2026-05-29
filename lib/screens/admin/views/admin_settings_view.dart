@@ -147,7 +147,8 @@ class _AdminSettingsViewState extends ConsumerState<AdminSettingsView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+        backgroundColor:
+            isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -239,12 +240,10 @@ class _AdminSettingsViewState extends ConsumerState<AdminSettingsView> {
             icon: Icons.emergency_rounded,
             color: const Color(0xFFEF4444),
             children: [
-              _field(_ambulance, 'إسعاف',
-                  keyboardType: TextInputType.phone),
+              _field(_ambulance, 'إسعاف', keyboardType: TextInputType.phone),
               _field(_doctor, 'الطبيب المسؤول',
                   keyboardType: TextInputType.phone),
-              _field(_codeBlue, 'Code Blue',
-                  keyboardType: TextInputType.phone),
+              _field(_codeBlue, 'Code Blue', keyboardType: TextInputType.phone),
               _field(_emergencyNotes, 'ملاحظات إضافية', maxLines: 2),
               const SizedBox(height: 8),
               _saveBtn(_isSavingEmergency, _saveEmergency),
@@ -264,8 +263,7 @@ class _AdminSettingsViewState extends ConsumerState<AdminSettingsView> {
               _field(_walletProvider, 'مزوّد المحفظة (مثل: فودافون كاش)'),
               _field(_walletNumber, 'رقم المحفظة',
                   keyboardType: TextInputType.phone),
-              _field(_billingInstructions, 'تعليمات إضافية للأسر',
-                  maxLines: 3),
+              _field(_billingInstructions, 'تعليمات إضافية للأسر', maxLines: 3),
               const SizedBox(height: 8),
               _saveBtn(_isSavingBilling, _saveBilling),
             ],
@@ -390,7 +388,8 @@ class _AdminSettingsViewState extends ConsumerState<AdminSettingsView> {
         style: FilledButton.styleFrom(
           backgroundColor: const Color(0xFF0EA5E9),
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         icon: isLoading
             ? const SizedBox(

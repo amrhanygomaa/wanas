@@ -67,9 +67,8 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
         dateOfBirth: _fmt(_dateOfBirth),
         gender: _gender,
         admissionDate: _fmt(_admissionDate),
-        nationalId: _nationalId.text.trim().isEmpty
-            ? null
-            : _nationalId.text.trim(),
+        nationalId:
+            _nationalId.text.trim().isEmpty ? null : _nationalId.text.trim(),
         roomNumber: _room.text.trim().isEmpty ? null : _room.text.trim(),
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       );
@@ -99,8 +98,7 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.redAccent,
-          content:
-              Text('فشل: $e', style: const TextStyle(fontFamily: 'Cairo')),
+          content: Text('فشل: $e', style: const TextStyle(fontFamily: 'Cairo')),
         ),
       );
     } finally {
@@ -223,12 +221,10 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
                         initialValue: _gender,
                         decoration: _decoration('الجنس *'),
                         items: const [
-                          DropdownMenuItem(
-                              value: 'male', child: Text('ذكر')),
+                          DropdownMenuItem(value: 'male', child: Text('ذكر')),
                           DropdownMenuItem(
                               value: 'female', child: Text('أنثى')),
-                          DropdownMenuItem(
-                              value: 'other', child: Text('آخر')),
+                          DropdownMenuItem(value: 'other', child: Text('آخر')),
                         ],
                         onChanged: (v) => setState(() => _gender = v!),
                       ),
@@ -271,9 +267,7 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
                           )
                         : const Icon(Icons.cloud_upload_rounded),
                     label: Text(
-                      _isSubmitting
-                          ? 'جاري الحفظ في AWS...'
-                          : 'حفظ في AWS RDS',
+                      _isSubmitting ? 'جاري الحفظ في AWS...' : 'حفظ في AWS RDS',
                       style: const TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,

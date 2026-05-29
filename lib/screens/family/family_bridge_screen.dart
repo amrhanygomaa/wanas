@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,9 +24,6 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   String _uploadStatus = ''; // نص حالة الرفع
   bool _showDoneAnimation = false; // هل نعرض أنيميشن الانتهاء؟
   bool _showDeleteAnimation = false; // هل نعرض أنيميشن الحذف؟
-  bool _isRecording = false; // هل يجري تسجيل صوتي الآن؟
-  int _recordDuration = 0; // مدة التسجيل بالثواني
-  Timer? _timer; // مؤقت لحساب وقت التسجيل
 
   @override
   void initState() {
@@ -42,28 +38,9 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
 
   @override
   void dispose() {
-    _timer?.cancel();
     _floatController.dispose();
     _rotationController.dispose();
     super.dispose();
-  }
-
-  // بدء عملية التسجيل الصوتي (محاكاة)
-  void _startRecording() {
-    setState(() {
-      _isRecording = true;
-      _recordDuration = 0;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() => _recordDuration++);
-    });
-  }
-
-  // إيقاف التسجيل وفتح نافذة التأكيد
-  void _stopRecording() {
-    _timer?.cancel();
-    setState(() => _isRecording = false);
-    _showConfirmUpload('تسجيل صوتي');
   }
 
   // فتح المعرض واختيار صورة
@@ -75,8 +52,8 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
     }
   }
 
-  // محاكاة عملية الرفع مع تحديث شريط التقدم
-  void _simulateUpload(String title, String type, {String? imagePath}) async {
+  Future<void> _uploadToAws(String title, String type,
+      {String? imagePath}) async {
     setState(() {
       _isUploading = true;
       _uploadProgress = 0.0;
@@ -84,34 +61,43 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
       _showDoneAnimation = false;
     });
 
-    // محاكاة تأخير الرفع
-    for (int i = 1; i <= 10; i++) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      setState(() {
-        _uploadProgress = i / 10.0;
-      });
+    final provider = ref.read(appRiverpod);
+    final residentId = provider.currentAccount?.linkedResidentId ??
+        (provider.residentFiles.isNotEmpty
+            ? provider.residentFiles.first.id
+            : null);
+    final residentName = provider.residentFiles.isNotEmpty
+        ? provider.residentFiles.first.name
+        : 'المقيم';
+
+    if (residentId == null || residentId.isEmpty) {
+      provider.backendSyncError = 'لا يوجد مقيم مربوط من AWS';
+    } else if (type == 'صورة') {
+      setState(() => _uploadProgress = 0.4);
+      await provider.addMemoryMoment(MemoryMoment(
+        id: 'm${DateTime.now().millisecondsSinceEpoch}',
+        residentId: residentId,
+        residentName: residentName,
+        imageUrl: imagePath ?? '',
+        activityTitle: title,
+        date: 'الآن',
+        appreciations: 0,
+      ));
+    } else {
+      setState(() => _uploadProgress = 0.4);
+      await provider.sendVoiceMessageFromFamily(
+        title,
+        durationSeconds: 0,
+      );
     }
 
     setState(() {
-      _showDoneAnimation = true;
+      _uploadProgress = provider.backendSyncError == null ? 1.0 : 0.0;
+      _showDoneAnimation = provider.backendSyncError == null;
     });
 
-    // إنشاء كائن ذكرى جديدة وإضافته للمزود
-    final newMoment = MemoryMoment(
-      id: 'm${DateTime.now().millisecondsSinceEpoch}',
-      residentId: 'r1',
-      residentName: 'محمود', // إضافة المعامل المطلوب لاسم المقيم
-      imageUrl: imagePath ?? 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?q=80&w=400',
-      activityTitle: title,
-      date: 'الآن',
-      appreciations: 0,
-    );
-
-    ref.read(appRiverpod).addMemoryMoment(newMoment);
-
-    // إخفاء الأنيميشن بعد ثانيتين
     await Future.delayed(const Duration(seconds: 2));
-    
+
     if (mounted) {
       setState(() {
         _isUploading = false;
@@ -148,7 +134,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1e293b))),
             const SizedBox(height: 8),
-            Text('هل تريد إرسال ال$type الآن إلى الحاج محمود؟',
+            Text('هل تريد إرسال ال$type الآن إلى المقيم المرتبط بحسابك؟',
                 style: const TextStyle(fontSize: 14, color: Color(0xFF64748b))),
             const SizedBox(height: 24),
             Row(
@@ -157,7 +143,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _simulateUpload(title, type, imagePath: imagePath);
+                      _uploadToAws(title, type, imagePath: imagePath);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFea580c),
@@ -196,9 +182,15 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-    final moments = provider.memoryMoments
-        .where((m) => m.residentId == 'r1')
-        .toList();
+    final residentId = provider.currentAccount?.linkedResidentId ??
+        (provider.residentFiles.isNotEmpty
+            ? provider.residentFiles.first.id
+            : null);
+    final moments = residentId == null || residentId.isEmpty
+        ? provider.memoryMoments
+        : provider.memoryMoments
+            .where((m) => m.residentId == residentId)
+            .toList();
 
     return TaptabaScaffold(
       title: 'جسر العائلة',
@@ -395,7 +387,8 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
   }
 
   // بناء زر الرفع الفردي بتصميم عصري
-  Widget _uploadBtn(IconData icon, String label, Color color, VoidCallback onTap,
+  Widget _uploadBtn(
+      IconData icon, String label, Color color, VoidCallback onTap,
       {bool isRecording = false}) {
     return Expanded(
       child: GestureDetector(
@@ -434,7 +427,8 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('حذف الصورة', textAlign: TextAlign.center),
-        content: const Text('هل أنت متأكد أنك تريد حذف هذه الصورة من حائط الذكريات؟'),
+        content: const Text(
+            'هل أنت متأكد أنك تريد حذف هذه الصورة من حائط الذكريات؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -447,11 +441,11 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
               setState(() {
                 _showDeleteAnimation = true;
               });
-              
+
               ref.read(appRiverpod).deleteMemoryMoment(id);
-              
+
               await Future.delayed(const Duration(milliseconds: 1500));
-              
+
               if (mounted) {
                 setState(() {
                   _showDeleteAnimation = false;
@@ -498,12 +492,15 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                   children: [
                     Positioned.fill(
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(24)),
                         child: kIsWeb
                             ? Image.network(m.imageUrl, fit: BoxFit.cover)
-                            : (m.imageUrl.startsWith('http') || m.imageUrl.startsWith('blob')
+                            : (m.imageUrl.startsWith('http') ||
+                                    m.imageUrl.startsWith('blob')
                                 ? Image.network(m.imageUrl, fit: BoxFit.cover)
-                                : Image.file(File(m.imageUrl), fit: BoxFit.cover)),
+                                : Image.file(File(m.imageUrl),
+                                    fit: BoxFit.cover)),
                       ),
                     ),
                     Positioned(
@@ -522,7 +519,8 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                               BoxShadow(color: Colors.black26, blurRadius: 4),
                             ],
                           ),
-                          child: const Icon(Icons.close, color: Colors.red, size: 16),
+                          child: const Icon(Icons.close,
+                              color: Colors.red, size: 16),
                         ),
                       ),
                     ),
@@ -551,7 +549,6 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
       },
     );
   }
-
 
   // واجهة التغطية (Overlay) التي تظهر أثناء عملية الرفع
   Widget _buildUploadOverlay() {
@@ -630,7 +627,8 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                   color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2),
+                    BoxShadow(
+                        color: Colors.black26, blurRadius: 10, spreadRadius: 2),
                   ],
                 ),
                 child: const Column(

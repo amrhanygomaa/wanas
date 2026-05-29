@@ -10,15 +10,20 @@ class VideoCallOverlay extends ConsumerStatefulWidget {
   ConsumerState<VideoCallOverlay> createState() => _VideoCallOverlayState();
 }
 
-class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with TickerProviderStateMixin {
+class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay>
+    with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _slideController;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
+    _pulseController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
+    _slideController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600))
+      ..forward();
   }
 
   @override
@@ -31,7 +36,7 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
-    
+
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
       child: Container(
@@ -43,8 +48,11 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
             FadeTransition(
               opacity: _slideController,
               child: SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-                  CurvedAnimation(parent: _slideController, curve: Curves.easeOutBack),
+                position:
+                    Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+                        .animate(
+                  CurvedAnimation(
+                      parent: _slideController, curve: Curves.easeOutBack),
                 ),
                 child: Column(
                   children: [
@@ -52,28 +60,43 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
                       alignment: Alignment.center,
                       children: [
                         // Animated pulse rings
-                        ...List.generate(2, (index) => AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            return Container(
-                              width: 150 + (index * 40 * _pulseController.value),
-                              height: 150 + (index * 40 * _pulseController.value),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.3 * (1 - _pulseController.value)), width: 2),
-                              ),
-                            );
-                          },
-                        )),
+                        ...List.generate(
+                            2,
+                            (index) => AnimatedBuilder(
+                                  animation: _pulseController,
+                                  builder: (context, child) {
+                                    return Container(
+                                      width: 150 +
+                                          (index * 40 * _pulseController.value),
+                                      height: 150 +
+                                          (index * 40 * _pulseController.value),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white.withValues(
+                                                alpha: 0.3 *
+                                                    (1 -
+                                                        _pulseController
+                                                            .value)),
+                                            width: 2),
+                                      ),
+                                    );
+                                  },
+                                )),
                         // Large Avatar
                         Container(
                           width: 140,
                           height: 140,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: const LinearGradient(colors: [Color(0xFF6C63FF), Color(0xFFc084fc)]),
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFF6C63FF), Color(0xFFc084fc)]),
                             boxShadow: [
-                              BoxShadow(color: const Color(0xFF6C63FF).withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 5),
+                              BoxShadow(
+                                  color: const Color(0xFF6C63FF)
+                                      .withValues(alpha: 0.5),
+                                  blurRadius: 30,
+                                  spreadRadius: 5),
                             ],
                           ),
                           child: Center(
@@ -83,7 +106,10 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   provider.activeCallerInitials,
-                                  style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),
@@ -100,7 +126,10 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
                           provider.activeCallerName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -122,13 +151,17 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _circleButton(Icons.mic_off_rounded, Colors.white.withValues(alpha: 0.2), Colors.white),
+                    _circleButton(Icons.mic_off_rounded,
+                        Colors.white.withValues(alpha: 0.2), Colors.white),
                     const SizedBox(width: 20),
-                    _circleButton(Icons.call_end_rounded, Colors.redAccent, Colors.white, size: 85, iconSize: 42, onTap: () {
+                    _circleButton(
+                        Icons.call_end_rounded, Colors.redAccent, Colors.white,
+                        size: 85, iconSize: 42, onTap: () {
                       provider.endVideoCall();
                     }),
                     const SizedBox(width: 20),
-                    _circleButton(Icons.videocam_off_rounded, Colors.white.withValues(alpha: 0.2), Colors.white),
+                    _circleButton(Icons.videocam_off_rounded,
+                        Colors.white.withValues(alpha: 0.2), Colors.white),
                   ],
                 ),
               ),
@@ -139,7 +172,8 @@ class _VideoCallOverlayState extends ConsumerState<VideoCallOverlay> with Ticker
     );
   }
 
-  Widget _circleButton(IconData icon, Color bg, Color iconColor, {double size = 65, double iconSize = 32, VoidCallback? onTap}) {
+  Widget _circleButton(IconData icon, Color bg, Color iconColor,
+      {double size = 65, double iconSize = 32, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(

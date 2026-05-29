@@ -6,7 +6,6 @@ import '../../providers/app_riverpod.dart';
 import 'voice_messages_playback_screen.dart';
 import 'album_details_screen.dart';
 
-
 class MemoriesScreen extends ConsumerStatefulWidget {
   const MemoriesScreen({super.key});
 
@@ -134,13 +133,12 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                       padding:
                           EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
-                    Padding(
-                      padding:
-                          const EdgeInsets.only(right: 28, top: 4, bottom: 6),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 28, top: 4, bottom: 6),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const FittedBox(
+                          FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text('ذكرياتي الحلوة',
                                 style: TextStyle(
@@ -148,7 +146,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold)),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text('من الأسرة بكل الحب 💜',
                               style: TextStyle(
                                   color: Colors.white,
@@ -205,14 +203,16 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
   Widget _buildHeroChip(String value, String label, int index) {
     Color chipColor;
     Color borderColor;
-    
+
     switch (index) {
       case 0: // صورة
-        chipColor = const Color(0xFFF472B6).withValues(alpha: 0.15); // وردي خفيف
+        chipColor =
+            const Color(0xFFF472B6).withValues(alpha: 0.15); // وردي خفيف
         borderColor = const Color(0xFFF472B6).withValues(alpha: 0.3);
         break;
       case 1: // فيديو
-        chipColor = const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
+        chipColor =
+            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
         borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
         break;
       case 2: // رسالة
@@ -263,7 +263,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(label,
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
@@ -276,8 +276,10 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
 
   // تم إزالة أزرار التصنيفات (Categories Tabs)
 
+  // ignore: unused_element
   Widget _buildFeaturedCard() {
-    bool hc = ref.watch(appRiverpod).isHighContrast;
+    final provider = ref.watch(appRiverpod);
+    bool hc = provider.isHighContrast;
     return AnimatedBuilder(
       animation: Listenable.merge([_floatController, _glowController]),
       builder: (context, child) {
@@ -364,7 +366,10 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('عيد ميلاد خالد ٢٠٢٤',
+                              Text(
+                                  provider.memoriesList.isNotEmpty
+                                      ? provider.memoriesList.first.title
+                                      : 'لا توجد ذكريات من AWS',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
@@ -375,7 +380,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                           ? Colors.white
                                           : const Color(0xFF0f172a))),
                               const SizedBox(height: 6),
-                              Text('أرسلته سارة · ٥ مارس ٢٠٢٤',
+                              Text('من ألبوم AWS',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
@@ -412,6 +417,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildVoiceMessage(AppRiverpod provider) {
     final unreadCount = provider.voiceMessages.where((v) => v.isUnread).length;
     final latestMsg =
@@ -518,6 +524,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildWaveBar(double height, int index) {
     return AnimatedBuilder(
       animation: _waveController,
@@ -551,7 +558,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: hc ? Colors.black.withValues(alpha: 0.3) : const Color(0xFF6C63FF).withValues(alpha: 0.08),
+                color: hc
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : const Color(0xFF6C63FF).withValues(alpha: 0.08),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -583,7 +592,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.photo_album_rounded, color: Colors.white, size: 26),
+                    child: const Icon(Icons.photo_album_rounded,
+                        color: Colors.white, size: 26),
                   ),
                   const SizedBox(width: 16),
                   Column(
@@ -594,13 +604,16 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.2,
-                              color: hc ? Colors.white : const Color(0xFF0F172A))),
+                              color:
+                                  hc ? Colors.white : const Color(0xFF0F172A))),
                       const SizedBox(height: 4),
                       Text('مجلدات ذكرياتك ✨',
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: hc ? Colors.white70 : const Color(0xFF64748B))),
+                              color: hc
+                                  ? Colors.white70
+                                  : const Color(0xFF64748B))),
                     ],
                   ),
                 ],
@@ -611,7 +624,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                   onTap: () => _showCreateAlbumDialog(context, provider),
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFF472B6), Color(0xFFEC4899)],
@@ -627,9 +641,10 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                         ),
                       ],
                     ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.create_new_folder_rounded, color: Colors.white, size: 20),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.create_new_folder_rounded,
+                            color: Colors.white, size: 20),
                         SizedBox(width: 6),
                         Text('ألبوم',
                             style: TextStyle(
@@ -652,56 +667,70 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 0.9, 
+            childAspectRatio: 0.9,
           ),
           itemCount: albums.length,
           itemBuilder: (context, index) {
             final albumName = albums[index];
             final itemsCount = provider.getMemoriesByCategory(albumName).length;
-            
-            return _buildAlbumCell(context, provider, index, albumName, itemsCount, hc);
+
+            return _buildAlbumCell(
+                context, provider, index, albumName, itemsCount, hc);
           },
         ),
       ],
     );
   }
 
-  Widget _buildAlbumCell(BuildContext context, AppRiverpod provider, int index, String albumName, int itemsCount, bool hc) {
+  Widget _buildAlbumCell(BuildContext context, AppRiverpod provider, int index,
+      String albumName, int itemsCount, bool hc) {
     final gradients = [
-      const [Color(0xFF8B5CF6), Color(0xFFC4B5FD)], 
-      const [Color(0xFFEC4899), Color(0xFFF9A8D4)], 
-      const [Color(0xFF3B82F6), Color(0xFF93C5FD)], 
-      const [Color(0xFF10B981), Color(0xFF6EE7B7)], 
-      const [Color(0xFFF59E0B), Color(0xFFFCD34D)], 
-      const [Color(0xFFF43F5E), Color(0xFFFDA4AF)], 
+      const [Color(0xFF8B5CF6), Color(0xFFC4B5FD)],
+      const [Color(0xFFEC4899), Color(0xFFF9A8D4)],
+      const [Color(0xFF3B82F6), Color(0xFF93C5FD)],
+      const [Color(0xFF10B981), Color(0xFF6EE7B7)],
+      const [Color(0xFFF59E0B), Color(0xFFFCD34D)],
+      const [Color(0xFFF43F5E), Color(0xFFFDA4AF)],
     ];
     final gradient = gradients[index % gradients.length];
-    
+
     final coverPath = provider.albumCovers[albumName];
     final hasCover = coverPath != null && coverPath.isNotEmpty;
 
     return GestureDetector(
-      onLongPress: () => _showAlbumOptionsSheet(context, provider, albumName, hc),
+      onLongPress: () =>
+          _showAlbumOptionsSheet(context, provider, albumName, hc),
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => AlbumDetailsScreen(albumName: albumName)),
+          MaterialPageRoute(
+              builder: (context) => AlbumDetailsScreen(albumName: albumName)),
         );
       },
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          gradient: hasCover ? null : LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          gradient: hasCover
+              ? null
+              : LinearGradient(
+                  colors: gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
           image: hasCover
               ? (coverPath.startsWith('http')
-                  ? DecorationImage(image: NetworkImage(coverPath), fit: BoxFit.cover)
+                  ? DecorationImage(
+                      image: NetworkImage(coverPath), fit: BoxFit.cover)
                   : (coverPath.startsWith('assets/')
-                      ? DecorationImage(image: AssetImage(coverPath), fit: BoxFit.cover)
-                      : DecorationImage(image: FileImage(File(coverPath)), fit: BoxFit.cover)))
+                      ? DecorationImage(
+                          image: AssetImage(coverPath), fit: BoxFit.cover)
+                      : DecorationImage(
+                          image: FileImage(File(coverPath)),
+                          fit: BoxFit.cover)))
               : null,
           boxShadow: [
             BoxShadow(
-              color: (hasCover ? Colors.black : gradient[0]).withValues(alpha: 0.3),
+              color: (hasCover ? Colors.black : gradient[0])
+                  .withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -730,7 +759,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                 Positioned(
                   right: -20,
                   top: -20,
-                  child: Icon(Icons.folder_rounded, size: 120, color: Colors.white.withValues(alpha: 0.2)),
+                  child: Icon(Icons.folder_rounded,
+                      size: 120, color: Colors.white.withValues(alpha: 0.2)),
                 ),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -744,7 +774,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                         color: Colors.white.withValues(alpha: 0.25),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.photo_library_rounded, color: Colors.white, size: 24),
+                      child: const Icon(Icons.photo_library_rounded,
+                          color: Colors.white, size: 24),
                     ),
                     const Spacer(),
                     Text(
@@ -776,7 +807,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 
-  void _showAlbumOptionsSheet(BuildContext context, AppRiverpod provider, String albumName, bool hc) {
+  void _showAlbumOptionsSheet(
+      BuildContext context, AppRiverpod provider, String albumName, bool hc) {
     showModalBottomSheet(
       context: context,
       backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
@@ -789,7 +821,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
           children: [
             const SizedBox(height: 8),
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
@@ -815,12 +848,16 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                   color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.drive_file_rename_outline_rounded, color: Color(0xFF6C63FF)),
+                child: const Icon(Icons.drive_file_rename_outline_rounded,
+                    color: Color(0xFF6C63FF)),
               ),
               title: Text('تعديل اسم الألبوم',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: hc ? Colors.white : Colors.black)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: hc ? Colors.white : Colors.black)),
               subtitle: Text('تغيير اسم الألبوم الحالي',
-                  style: TextStyle(color: hc ? Colors.white54 : Colors.grey, fontSize: 12)),
+                  style: TextStyle(
+                      color: hc ? Colors.white54 : Colors.grey, fontSize: 12)),
               onTap: () {
                 Navigator.pop(ctx);
                 _showRenameAlbumDialog(context, provider, albumName, hc);
@@ -836,7 +873,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                 child: const Icon(Icons.delete_rounded, color: Colors.red),
               ),
               title: const Text('حذف الألبوم',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.red)),
               subtitle: const Text('سيتم حذف الألبوم وكل الصور بداخله',
                   style: TextStyle(color: Colors.red, fontSize: 12)),
               onTap: () {
@@ -851,7 +889,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 
-  void _showRenameAlbumDialog(BuildContext context, AppRiverpod provider, String albumName, bool hc) {
+  void _showRenameAlbumDialog(
+      BuildContext context, AppRiverpod provider, String albumName, bool hc) {
     final controller = TextEditingController(text: albumName);
     showDialog(
       context: context,
@@ -859,7 +898,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
         backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('تعديل اسم الألبوم',
-            style: TextStyle(color: hc ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: hc ? Colors.white : const Color(0xFF0F172A),
+                fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -877,7 +918,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text('إلغاء',
+                style:
+                    TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -889,16 +932,20 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6C63FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('حفظ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('حفظ',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  void _showDeleteAlbumConfirm(BuildContext context, AppRiverpod provider, String albumName, bool hc) {
+  void _showDeleteAlbumConfirm(
+      BuildContext context, AppRiverpod provider, String albumName, bool hc) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -906,29 +953,39 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            const Icon(Icons.warning_amber_rounded,
+                color: Colors.red, size: 28),
             const SizedBox(width: 10),
             Text('حذف الألبوم؟',
-                style: TextStyle(color: hc ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: hc ? Colors.white : const Color(0xFF0F172A),
+                    fontWeight: FontWeight.bold)),
           ],
         ),
         content: RichText(
           text: TextSpan(
-            style: TextStyle(fontSize: 16, color: hc ? Colors.white70 : Colors.black87, height: 1.5),
+            style: TextStyle(
+                fontSize: 16,
+                color: hc ? Colors.white70 : Colors.black87,
+                height: 1.5),
             children: [
               const TextSpan(text: 'هل أنت متأكد من حذف ألبوم '),
               TextSpan(
                 text: '"$albumName"',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.red),
               ),
-              const TextSpan(text: '؟\nسيتم حذف الألبوم وكل الصور بداخله نهائياً.'),
+              const TextSpan(
+                  text: '؟\nسيتم حذف الألبوم وكل الصور بداخله نهائياً.'),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text('إلغاء',
+                style:
+                    TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -937,9 +994,12 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('حذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('حذف',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -949,13 +1009,16 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
   void _showCreateAlbumDialog(BuildContext context, AppRiverpod provider) {
     final TextEditingController controller = TextEditingController();
     bool hc = provider.isHighContrast;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: hc ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('إنشاء ألبوم جديد', style: TextStyle(color: hc ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+        title: Text('إنشاء ألبوم جديد',
+            style: TextStyle(
+                color: hc ? Colors.white : const Color(0xFF0F172A),
+                fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -964,13 +1027,18 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             hintText: 'اسم الألبوم (مثال: رحلة الصيف)',
             hintStyle: TextStyle(color: hc ? Colors.white54 : Colors.grey),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: Color(0xFF6C63FF), width: 2)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text('إلغاء',
+                style:
+                    TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -981,9 +1049,12 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6C63FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('إنشاء', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('إنشاء',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -992,28 +1063,25 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
 
   Widget _buildFamilyNote(AppRiverpod provider) {
     final hc = provider.isHighContrast;
-    
+
     // Find the latest text or voice message sent from the family dashboard
     final familyMessages = provider.memoriesList
-        .where((m) => m.category == 'أسرة' && (m.type == 'text' || m.type == 'voice'))
+        .where((m) =>
+            m.category == 'أسرة' && (m.type == 'text' || m.type == 'voice'))
         .toList();
-        
+
     final hasCustomMessage = familyMessages.isNotEmpty;
     final latestMsg = hasCustomMessage ? familyMessages.first : null;
-    
+
     final messageText = latestMsg != null
-        ? (latestMsg.type == 'voice' 
-            ? '🎤 أرسلت لك العائلة رسالة صوتية تشجيعية، يمكنك الاستماع إليها من شاشة الاتصالات أو الرسائل!' 
+        ? (latestMsg.type == 'voice'
+            ? '🎤 أرسلت لك العائلة رسالة صوتية تشجيعية، يمكنك الاستماع إليها من شاشة الاتصالات أو الرسائل!'
             : '"${latestMsg.content}"')
-        : '"بنحبك يا بابا ونشتاق إليك كتير — الجمعة الجاية إن شاء الله هنيجي 🌸"';
-        
-    final signatureText = latestMsg != null
-        ? 'من: العائلة ❤️'
-        : 'من: أم أحمد وسارة وأحمد';
-        
-    final dateText = latestMsg != null
-        ? latestMsg.date
-        : 'اليوم ٨:٠٠ ص';
+        : 'لا توجد رسائل عائلية من AWS حتى الآن';
+
+    final signatureText = latestMsg != null ? 'من: العائلة ❤️' : 'من: العائلة';
+
+    final dateText = latestMsg != null ? latestMsg.date : 'اليوم ٨:٠٠ ص';
 
     return AnimatedBuilder(
       animation: Listenable.merge([_noteController, _floatController]),
@@ -1034,12 +1102,12 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
           color: hc ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: hc 
-                ? const Color(0xFFfbbf24) 
+            color: hc
+                ? const Color(0xFFfbbf24)
                 : const Color(0xFFFFF7ED), // Subtle warm borders
             width: hc ? 2.0 : 1.5,
           ),
-          boxShadow: hc 
+          boxShadow: hc
               ? [
                   BoxShadow(
                     color: const Color(0xFFfbbf24).withValues(alpha: 0.15),
@@ -1085,7 +1153,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // Core content column
               Expanded(
                 child: Column(
@@ -1097,8 +1165,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                       children: [
                         Expanded(
                           child: Text(
-                            latestMsg != null && latestMsg.type == 'voice' 
-                                ? 'رسالة صوتية من الأسرة' 
+                            latestMsg != null && latestMsg.type == 'voice'
+                                ? 'رسالة صوتية من الأسرة'
                                 : 'رسالة مكتوبة من الأسرة',
                             style: TextStyle(
                               fontSize: 16.5, // Slightly smaller and elegant
@@ -1113,17 +1181,21 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        
+
                         // Category Badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: hc 
-                                ? const Color(0xFF2D2D2D) 
-                                : const Color(0xFFF5F3FF), // Coordinated soft purple tint
+                            color: hc
+                                ? const Color(0xFF2D2D2D)
+                                : const Color(
+                                    0xFFF5F3FF), // Coordinated soft purple tint
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: hc ? Colors.transparent : const Color(0xFFDDD6FE),
+                              color: hc
+                                  ? Colors.transparent
+                                  : const Color(0xFFDDD6FE),
                               width: 0.8,
                             ),
                           ),
@@ -1142,30 +1214,34 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                       ],
                     ),
                     const SizedBox(height: 14),
-                    
+
                     // Message quote text - Highly clean, readable slate-indigo color with modern spacing
                     Text(
                       messageText,
                       style: TextStyle(
-                        fontSize: 19, // Spacious, highly readable for elderly eyes
+                        fontSize:
+                            19, // Spacious, highly readable for elderly eyes
                         fontFamily: 'Cairo',
                         height: 1.6,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.1,
-                        color: hc ? Colors.white : const Color(0xFF1E293B), // Clean, high-contrast Slate-Indigo
+                        color: hc
+                            ? Colors.white
+                            : const Color(
+                                0xFF1E293B), // Clean, high-contrast Slate-Indigo
                       ),
                     ),
                     const SizedBox(height: 14),
-                    
+
                     // Thin refined divider in light purple/grey
                     Container(
                       height: 1,
-                      color: hc 
-                          ? Colors.white.withValues(alpha: 0.1) 
+                      color: hc
+                          ? Colors.white.withValues(alpha: 0.1)
                           : const Color(0xFFF3F4F6),
                     ),
                     const SizedBox(height: 10),
-                    
+
                     // Bottom signature & timestamp row - Wrap prevents horizontal overflow
                     Wrap(
                       spacing: 12,
@@ -1178,7 +1254,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                           children: [
                             const Icon(
                               Icons.favorite_rounded,
-                              color: Color(0xFFEC4899), // Cheerful Rose/Pink heart
+                              color:
+                                  Color(0xFFEC4899), // Cheerful Rose/Pink heart
                               size: 16,
                             ),
                             const SizedBox(width: 6),
@@ -1190,7 +1267,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                 fontFamily: 'Cairo',
                                 color: hc
                                     ? Colors.white70
-                                    : const Color(0xFF4F46E5), // Coordinated Indigo
+                                    : const Color(
+                                        0xFF4F46E5), // Coordinated Indigo
                               ),
                             ),
                           ],
@@ -1200,7 +1278,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                           children: [
                             Icon(
                               Icons.access_time_rounded,
-                              color: hc ? Colors.white54 : const Color(0xFF8B5CF6), // Violet clock
+                              color: hc
+                                  ? Colors.white54
+                                  : const Color(0xFF8B5CF6), // Violet clock
                               size: 15,
                             ),
                             const SizedBox(width: 4),
@@ -1212,7 +1292,8 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                 fontFamily: 'Cairo',
                                 color: hc
                                     ? Colors.white54
-                                    : const Color(0xFF8B5CF6), // Violet timestamp
+                                    : const Color(
+                                        0xFF8B5CF6), // Violet timestamp
                               ),
                             ),
                           ],
@@ -1229,4 +1310,3 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
     );
   }
 }
-

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/app_riverpod.dart';
@@ -247,7 +246,8 @@ class _ResidentsManagementViewState
                                 decoration: BoxDecoration(
                                   color: statusColor,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 1.5),
+                                  border: Border.all(
+                                      color: Colors.white, width: 1.5),
                                 ),
                                 child: const Icon(
                                   Icons.edit_rounded,
@@ -345,7 +345,6 @@ class _ResidentsManagementViewState
     final phoneController = TextEditingController(text: resident?.phone ?? '');
     final ageController =
         TextEditingController(text: resident?.age?.toString() ?? '');
-    final passwordController = TextEditingController();
     String selectedStatus = resident?.status ?? 'updated';
 
     // Medical State
@@ -405,7 +404,8 @@ class _ResidentsManagementViewState
                       children: [
                         _buildSectionHeader('البيانات الأساسية'),
                         _buildLabel('الاسم بالكامل (عربي) *'),
-                        _buildField(nameArController, 'مثلاً: محمود الجوهري'),
+                        _buildField(
+                            nameArController, 'اسم المقيم كما سيحفظ في AWS'),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -523,7 +523,9 @@ class _ResidentsManagementViewState
                               : 'م',
                           categories:
                               isEdit ? resident.categories : ['resident'],
-                          familyMembers: isEdit ? resident.familyMembers : <FamilyMember>[],
+                          familyMembers: isEdit
+                              ? resident.familyMembers
+                              : <FamilyMember>[],
                           age: int.tryParse(ageController.text) ?? 70,
                           phone: phoneController.text,
                         );
@@ -664,6 +666,7 @@ class _ResidentsManagementViewState
     );
   }
 
+  // ignore: unused_element
   Widget _statusOption(String value, String label, Color color, bool isSelected,
       VoidCallback onTap) {
     return Expanded(
@@ -689,6 +692,7 @@ class _ResidentsManagementViewState
     );
   }
 
+  // ignore: unused_element
   void _showLinkFamilySheet(
       BuildContext context, WidgetRef ref, SpecialistResidentFile resident) {
     final emailController = TextEditingController(text: resident.familyEmail);

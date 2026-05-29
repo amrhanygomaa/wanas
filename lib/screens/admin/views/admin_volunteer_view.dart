@@ -116,7 +116,7 @@ class AdminVolunteerView extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               )
@@ -236,7 +236,7 @@ class AdminVolunteerView extends StatelessWidget {
                             // Delete logic
                             provider.volunteerOpportunities
                                 .removeWhere((o) => o.id == opp.id);
-                            provider.notifyListeners();
+                            provider.refreshState();
                             Navigator.pop(context);
                           },
                           icon: const Icon(Icons.delete_outline_rounded,

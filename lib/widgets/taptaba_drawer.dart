@@ -42,18 +42,9 @@ class TaptabaDrawer extends ConsumerWidget {
                   borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(35),
                       bottomLeft: Radius.circular(35)), // حواف دائرية
-                  border: Border(
-                    // إطار جمالي
-                    left: BorderSide(
-                        color: themeColor.withValues(alpha: 0.3), width: 1.5),
-                    top: BorderSide(
-                        color:
-                            Colors.white.withValues(alpha: isDark ? 0.05 : 0.2),
-                        width: 1.5),
-                    bottom: BorderSide(
-                        color:
-                            Colors.white.withValues(alpha: isDark ? 0.05 : 0.2),
-                        width: 1.5),
+                  border: Border.all(
+                    color: themeColor.withValues(alpha: isDark ? 0.18 : 0.3),
+                    width: 1.5,
                   ),
                 ),
               ),
@@ -215,6 +206,7 @@ class TaptabaDrawer extends ConsumerWidget {
     }
   }
 
+  // ignore: unused_element
   List<Color> _getRoleGradient(String role) {
     // دالة الحصول على تدرج الدور
     switch (role) {

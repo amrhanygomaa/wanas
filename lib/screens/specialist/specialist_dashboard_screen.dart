@@ -3,7 +3,7 @@ import 'dart:math'; // مكتبة العمليات الرياضية
 import 'package:flutter/material.dart'; // مكتبة فلاتر للواجهات
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // مكتبة إدارة الحالة
 import '../../providers/app_riverpod.dart'; // مزود الحالة الرئيسي
-import '../../widgets/taptaba_scaffold.dart'; // الهيكل الموحد للتطبيق
+// الهيكل الموحد للتطبيق
 import '../../widgets/taptaba_drawer.dart'; // القائمة الجانبية الموحدة
 import '../../widgets/taptaba_bell.dart'; // أيقونة الإشعارات
 import 'views/assessment_view.dart'; // واجهة التقييمات الاجتماعية
@@ -11,7 +11,7 @@ import 'views/complaints_view.dart'; // واجهة الشكاوى والاقتر
 import 'views/kpi_view.dart'; // واجهة مؤشرات الأداء للأخصائي
 import 'views/files_view.dart'; // واجهة الملفات والمستندات
 import 'views/activities_view.dart'; // واجهة الأنشطة والرحلات
-import '../common/notifications_center_screen.dart'; // مركز التنبيهات العام
+// مركز التنبيهات العام
 import 'specialist_chats_list_screen.dart'; // شاشة قائمة المحادثات
 
 class SocialSpecialistDashboardScreen extends ConsumerStatefulWidget {
@@ -70,8 +70,10 @@ class _SocialSpecialistDashboardScreenState
     final random = Random();
     _particles = List.generate(40, (index) {
       return Particle(
-        position: Offset(random.nextDouble(), random.nextDouble()), // نسب مئوية لتغطية الشاشة بالكامل
-        velocity: Offset((random.nextDouble() - 0.5) * 0.1, (random.nextDouble() - 0.5) * 0.1), // سرعة أبطأ لتناسب النسب
+        position: Offset(random.nextDouble(),
+            random.nextDouble()), // نسب مئوية لتغطية الشاشة بالكامل
+        velocity: Offset((random.nextDouble() - 0.5) * 0.1,
+            (random.nextDouble() - 0.5) * 0.1), // سرعة أبطأ لتناسب النسب
         radius: random.nextDouble() * 2 + 1, // حجم عشوائي
       );
     });
@@ -170,11 +172,13 @@ class _SocialSpecialistDashboardScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFea580c)),
+            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                color: Color(0xFFea580c)),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SpecialistChatsListScreen()),
+                MaterialPageRoute(
+                    builder: (_) => const SpecialistChatsListScreen()),
               );
             },
           ),
@@ -329,13 +333,17 @@ class _SocialSpecialistDashboardScreenState
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        _buildHeroChip('شكاوى مفتوحة ٢', const Color(0xFF34d399),
+                        _buildHeroChip(
+                            'شكاوى مفتوحة ٢',
+                            const Color(0xFF34d399),
                             () => navigateToTab(1)), // شريحة الشكاوى
                         const SizedBox(width: 12),
                         _buildHeroChip('تقييم مطلوب ٧', const Color(0xFFfbbf24),
                             () => navigateToTab(0)), // شريحة التقييمات المطلوبة
                         const SizedBox(width: 12),
-                        _buildHeroChip('احتياج فوري ١٣', const Color(0xFFf87171),
+                        _buildHeroChip(
+                            'احتياج فوري ١٣',
+                            const Color(0xFFf87171),
                             () => navigateToTab(0)), // شريحة الاحتياجات العاجلة
                       ],
                     ),
@@ -482,8 +490,9 @@ class _SocialSpecialistDashboardScreenState
                         ? const Color(0xFFea580c)
                         : const Color(0xFF475569), // تغميق لون النص غير المفعل
                     fontSize: 11, // تكبير الخط قليلاً
-                    fontWeight:
-                        isActive ? FontWeight.w900 : FontWeight.w600)), // جعل الخط أثقل في الحالتين
+                    fontWeight: isActive
+                        ? FontWeight.w900
+                        : FontWeight.w600)), // جعل الخط أثقل في الحالتين
           ],
         ),
       ),
@@ -496,7 +505,8 @@ class Particle {
   Offset velocity;
   double radius;
 
-  Particle({required this.position, required this.velocity, required this.radius});
+  Particle(
+      {required this.position, required this.velocity, required this.radius});
 }
 
 class SocialMeshPainter extends CustomPainter {
@@ -518,10 +528,14 @@ class SocialMeshPainter extends CustomPainter {
     // تحديث مواقع النقاط ورسمها
     for (var i = 0; i < particles.length; i++) {
       final p = particles[i];
-      
+
       // حركة تعتمد على الـ animationValue والـ velocity + حركة موجية (Floating)
-      double dx = (p.position.dx * size.width) + (p.velocity.dx * animationValue * size.width) + sin(animationValue * 2 * pi * 3 + i) * 10;
-      double dy = (p.position.dy * size.height) + (p.velocity.dy * animationValue * size.height) + cos(animationValue * 2 * pi * 3 + i) * 10;
+      double dx = (p.position.dx * size.width) +
+          (p.velocity.dx * animationValue * size.width) +
+          sin(animationValue * 2 * pi * 3 + i) * 10;
+      double dy = (p.position.dy * size.height) +
+          (p.velocity.dy * animationValue * size.height) +
+          cos(animationValue * 2 * pi * 3 + i) * 10;
 
       // التأكد من بقاء النقاط داخل الحدود (Bounce)
       dx = dx % size.width;
@@ -531,23 +545,34 @@ class SocialMeshPainter extends CustomPainter {
 
       // رسم النقطة
       canvas.drawCircle(currentPos, p.radius, paint);
-      
+
       // رسم وهج صغير للنقطة
-      canvas.drawCircle(currentPos, p.radius * 2, Paint()..color = Colors.white.withValues(alpha: 0.1)..style = PaintingStyle.fill);
+      canvas.drawCircle(
+          currentPos,
+          p.radius * 2,
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.1)
+            ..style = PaintingStyle.fill);
 
       // رسم الخطوط بين النقاط القريبة (شبكة العلاقات)
       for (var j = i + 1; j < particles.length; j++) {
         final p2 = particles[j];
-        double dx2 = (p2.position.dx * size.width) + (p2.velocity.dx * animationValue * size.width) + sin(animationValue * 2 * pi * 3 + j) * 10;
-        double dy2 = (p2.position.dy * size.height) + (p2.velocity.dy * animationValue * size.height) + cos(animationValue * 2 * pi * 3 + j) * 10;
+        double dx2 = (p2.position.dx * size.width) +
+            (p2.velocity.dx * animationValue * size.width) +
+            sin(animationValue * 2 * pi * 3 + j) * 10;
+        double dy2 = (p2.position.dy * size.height) +
+            (p2.velocity.dy * animationValue * size.height) +
+            cos(animationValue * 2 * pi * 3 + j) * 10;
         dx2 = dx2 % size.width;
         dy2 = dy2 % size.height;
         final pos2 = Offset(dx2, dy2);
 
         final distance = (currentPos - pos2).distance;
-        if (distance < 80) { // المسافة التي تظهر عندها الخطوط
+        if (distance < 80) {
+          // المسافة التي تظهر عندها الخطوط
           // شفافية الخط تعتمد على المسافة (أقرب = أوضح)
-          linePaint.color = Colors.white.withValues(alpha: (1.0 - (distance / 80)) * 0.15);
+          linePaint.color =
+              Colors.white.withValues(alpha: (1.0 - (distance / 80)) * 0.15);
           canvas.drawLine(currentPos, pos2, linePaint);
         }
       }
@@ -564,7 +589,8 @@ class BgParticle {
   Offset position;
   double speed;
   double radius;
-  BgParticle({required this.position, required this.speed, required this.radius});
+  BgParticle(
+      {required this.position, required this.speed, required this.radius});
 }
 
 class BackgroundPainter extends CustomPainter {
@@ -579,15 +605,17 @@ class BackgroundPainter extends CustomPainter {
     final blobPaint1 = Paint()
       ..shader = RadialGradient(
         colors: [
-          const Color(0xFFea580c).withValues(alpha: 0.25), // برتقالي (زيادة الوضوح بناء على طلب المستخدم)
+          const Color(0xFFea580c).withValues(
+              alpha: 0.25), // برتقالي (زيادة الوضوح بناء على طلب المستخدم)
           const Color(0xFFea580c).withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromCircle(center: const Offset(0, 0), radius: 150));
-    
+
     final blobPaint2 = Paint()
       ..shader = RadialGradient(
         colors: [
-          const Color(0xFF3b82f6).withValues(alpha: 0.25), // أزرق (زيادة الوضوح بناء على طلب المستخدم)
+          const Color(0xFF3b82f6).withValues(
+              alpha: 0.25), // أزرق (زيادة الوضوح بناء على طلب المستخدم)
           const Color(0xFF3b82f6).withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromCircle(center: const Offset(0, 0), radius: 200));
@@ -595,7 +623,7 @@ class BackgroundPainter extends CustomPainter {
     // حركة الفقاعات باستخدام الـ animationValue
     double blob1X = size.width * 0.2 + sin(animationValue * 2 * pi) * 80;
     double blob1Y = size.height * 0.3 + cos(animationValue * 2 * pi) * 80;
-    
+
     double blob2X = size.width * 0.8 + cos(animationValue * 2 * pi) * 100;
     double blob2Y = size.height * 0.7 + sin(animationValue * 2 * pi) * 100;
 
@@ -616,18 +644,22 @@ class BackgroundPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-      
+
       // حركة للأعلى
-      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
+      double dy = (p.position.dy * size.height) -
+          (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height; // إعادة التدوير للأعلى
 
-      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 10; // تمايل خفيف
+      double dx = p.position.dx * size.width +
+          sin(animationValue * 2 * pi + i) * 10; // تمايل خفيف
 
       final currentPos = Offset(dx, dy);
 
       // وميض (تغير الشفافية)
-      double opacity = (sin(animationValue * 2 * pi * 2 + i) + 1) / 2; // من 0 إلى 1
-      dustPaint.color = Colors.orange.withValues(alpha: opacity * 0.6); // زيادة الوضوح
+      double opacity =
+          (sin(animationValue * 2 * pi * 2 + i) + 1) / 2; // من 0 إلى 1
+      dustPaint.color =
+          Colors.orange.withValues(alpha: opacity * 0.6); // زيادة الوضوح
 
       canvas.drawCircle(currentPos, p.radius, dustPaint);
     }

@@ -254,7 +254,8 @@ class _NavWrapperState extends ConsumerState<NavWrapper>
       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // ضبابية خفيفة للخلفية
       child: Container(
         // وعاء أحمر شفاف
-        color: const Color(0xFFef4444).withValues(alpha: 0.85), // لون أحمر طوارئ
+        color:
+            const Color(0xFFef4444).withValues(alpha: 0.85), // لون أحمر طوارئ
         width: double.infinity, // كامل العرض
         height: double.infinity, // كامل الارتفاع
         child: Column(

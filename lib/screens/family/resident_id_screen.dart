@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/app_models.dart';
+import '../../providers/app_riverpod.dart';
 
-class ResidentIdScreen extends StatefulWidget {
+class ResidentIdScreen extends ConsumerStatefulWidget {
   const ResidentIdScreen({super.key});
 
   @override
-  State<ResidentIdScreen> createState() => _ResidentIdScreenState();
+  ConsumerState<ResidentIdScreen> createState() => _ResidentIdScreenState();
 }
 
-class _ResidentIdScreenState extends State<ResidentIdScreen>
+class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
     with TickerProviderStateMixin {
   late AnimationController _floatController;
   late AnimationController _rotationController;
@@ -64,6 +67,11 @@ class _ResidentIdScreenState extends State<ResidentIdScreen>
   }
 
   Widget _buildDigitalCard() {
+    final provider = ref.watch(appRiverpod);
+    final resident =
+        provider.residentFiles.isNotEmpty ? provider.residentFiles.first : null;
+    final qrData =
+        resident?.id ?? provider.currentAccount?.linkedResidentId ?? '';
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -84,19 +92,23 @@ class _ResidentIdScreenState extends State<ResidentIdScreen>
             padding: const EdgeInsets.all(32),
             child: Column(
               children: [
-                _buildQRCodeMock(),
+                _buildQRCode(qrData),
                 const SizedBox(height: 32),
-                const Text('الحاج محمود الجوهري',
-                    style: TextStyle(
+                Text(resident?.name ?? 'لا توجد بيانات مقيم من AWS',
+                    style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1e1b4b))),
-                const Text('الغرفة: ١٠١ — الجناح الشرقي',
-                    style: TextStyle(color: Color(0xFF64748b), fontSize: 13)),
+                Text(
+                    resident == null
+                        ? 'بانتظار المزامنة'
+                        : 'الغرفة: ${resident.room}',
+                    style: const TextStyle(
+                        color: Color(0xFF64748b), fontSize: 13)),
                 const SizedBox(height: 24),
                 const Divider(color: Color(0xFFf1f5f9)),
                 const SizedBox(height: 16),
-                _buildInfoGrid(),
+                _buildInfoGrid(resident),
               ],
             ),
           ),
@@ -121,7 +133,8 @@ class _ResidentIdScreenState extends State<ResidentIdScreen>
       height: 100,
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFFea580c), Color(0xFFf97316)]),
+        gradient:
+            LinearGradient(colors: [Color(0xFFea580c), Color(0xFFf97316)]),
       ),
       child: Stack(
         children: [
@@ -231,7 +244,9 @@ class _ResidentIdScreenState extends State<ResidentIdScreen>
     );
   }
 
-  Widget _buildQRCodeMock() {
+  Widget _buildQRCode(String data) {
+    final encoded =
+        Uri.encodeComponent(data.isEmpty ? 'pending-aws-resident' : data);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -239,21 +254,24 @@ class _ResidentIdScreenState extends State<ResidentIdScreen>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFf1f5f9), width: 2)),
       child: Image.network(
-          'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MahmoudAlGohary_Room101',
+          'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$encoded',
           width: 160,
           height: 160),
     );
   }
 
-  Widget _buildInfoGrid() {
+  Widget _buildInfoGrid(SpecialistResidentFile? resident) {
+    final primaryFamily = resident?.familyMembers.isNotEmpty == true
+        ? resident!.familyMembers.first.name
+        : '-';
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildMiniInfo('O+', 'فصيلة الدم'),
+        _buildMiniInfo(resident?.bloodType ?? '-', 'فصيلة الدم'),
         _buildDivider(),
-        _buildMiniInfo('سارة', 'جهة الاتصال'),
+        _buildMiniInfo(primaryFamily, 'جهة الاتصال'),
         _buildDivider(),
-        _buildMiniInfo('٧٢', 'العمر'),
+        _buildMiniInfo(resident?.age?.toString() ?? '-', 'العمر'),
       ],
     );
   }
@@ -281,8 +299,7 @@ class _ResidentIdScreenState extends State<ResidentIdScreen>
         Text(
             'امسح الرمز عند مدخل الدار لتأكيد الهوية وتسهيل عملية الدخول المباشر للغرفة.',
             textAlign: TextAlign.center,
-            style:
-                TextStyle(color: Colors.white60, fontSize: 12, height: 1.5)),
+            style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.5)),
       ],
     );
   }

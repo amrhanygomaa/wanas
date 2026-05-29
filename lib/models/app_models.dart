@@ -130,7 +130,7 @@ class Activity {
   String badges;
   int pointsReward;
   String dayTag; // 'أمس', 'اليوم', 'غداً', 'الأسبوع'
-  
+
   // الحقول الجديدة لربط واجهة الأخصائي مع المسن
   String? supervisor;
   String? target;
@@ -431,6 +431,7 @@ class SocialSpecialistKPI {
   final String value;
   final String trend;
   final bool isPositive;
+  final List<double> history;
 
   SocialSpecialistKPI({
     required this.id,
@@ -438,6 +439,7 @@ class SocialSpecialistKPI {
     required this.value,
     required this.trend,
     required this.isPositive,
+    this.history = const [],
   });
 }
 
@@ -1005,6 +1007,8 @@ class MealPlan {
   final String dinner;
   final String snacks;
   final String specialInstructions;
+  final bool isAiGenerated;
+  final String? aiRationale;
 
   MealPlan({
     required this.residentName,
@@ -1013,6 +1017,8 @@ class MealPlan {
     required this.dinner,
     this.snacks = '',
     this.specialInstructions = '',
+    this.isAiGenerated = false,
+    this.aiRationale,
   });
 }
 
@@ -1041,6 +1047,7 @@ class AIInsight {
   final String rationale;
   final DateTime generationDate;
   final double confidenceScore;
+  final String type; // 'recommendation', 'predictive_alert'
 
   AIInsight({
     required this.id,
@@ -1049,6 +1056,7 @@ class AIInsight {
     required this.rationale,
     required this.generationDate,
     this.confidenceScore = 0.85,
+    this.type = 'recommendation',
   });
 }
 
@@ -1059,6 +1067,7 @@ class CompanionMessage {
   final DateTime timestamp;
   final String? mediaPath; // مسار الملف المرفق (صورة أو ملف)
   final String? mediaType; // نوع الملف (image, file)
+  final String? sentiment; // 'happy', 'sad', 'stressed', 'neutral'
 
   CompanionMessage({
     required this.id,
@@ -1067,6 +1076,23 @@ class CompanionMessage {
     required this.timestamp,
     this.mediaPath,
     this.mediaType,
+    this.sentiment,
+  });
+}
+
+class CognitiveGameResult {
+  final String id;
+  final String residentId;
+  final DateTime date;
+  final int score;
+  final String feedback;
+  
+  CognitiveGameResult({
+    required this.id,
+    required this.residentId,
+    required this.date,
+    required this.score,
+    required this.feedback,
   });
 }
 
@@ -1092,7 +1118,7 @@ class AppAccount {
   final String? facilityName;
   final String? facilityAddress;
   final List<String>? amenities;
-  
+
   // حقول إضافية للفئات المختلفة
   final String? room; // للمسن
   final String? specialty; // للممرض/الأخصائي
@@ -1306,7 +1332,8 @@ class Resident {
       nationalId: nationalId ?? this.nationalId,
       imageUrl: imageUrl ?? this.imageUrl,
       emergencyContactName: emergencyContactName ?? this.emergencyContactName,
-      emergencyContactPhone: emergencyContactPhone ?? this.emergencyContactPhone,
+      emergencyContactPhone:
+          emergencyContactPhone ?? this.emergencyContactPhone,
       emergencyRelation: emergencyRelation ?? this.emergencyRelation,
       bloodType: bloodType ?? this.bloodType,
       allergies: allergies ?? this.allergies,
@@ -1383,7 +1410,7 @@ class SentReport {
   final String meta;
   final String status;
   final String date;
-  
+
   SentReport({
     required this.id,
     required this.icon,
@@ -1402,7 +1429,7 @@ class Review {
   final double rating; // 1 to 5
   final String comment;
   final String date;
-  
+
   Review({
     required this.id,
     required this.fromRole,
@@ -1412,4 +1439,58 @@ class Review {
     required this.comment,
     required this.date,
   });
+}
+
+// تعريف وسام واحد مع شرط فتحه وبياناته البصرية
+class BadgeDefinition {
+  final String id;
+  final String name;
+  final IconData icon;
+  final Color color;
+  final String requirement; // النص المعروض للمستخدم عن شرط الفتح
+  final bool Function(User user) isUnlocked;
+
+  BadgeDefinition({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.color,
+    required this.requirement,
+    required this.isUnlocked,
+  });
+
+  static final List<BadgeDefinition> all = [
+    BadgeDefinition(
+      id: 'wisdom',
+      name: 'وسام الحكمة',
+      icon: Icons.stars_rounded,
+      color: const Color(0xFFFBBF24),
+      requirement: '٥٠ نقطة',
+      isUnlocked: (u) => u.points >= 50,
+    ),
+    BadgeDefinition(
+      id: 'friend',
+      name: 'صديق الجميع',
+      icon: Icons.favorite_rounded,
+      color: const Color(0xFFEC4899),
+      requirement: '٥ أنشطة مكتملة',
+      isUnlocked: (u) => u.completedActivities >= 5,
+    ),
+    BadgeDefinition(
+      id: 'hero',
+      name: 'بطل النشاط',
+      icon: Icons.emoji_events_rounded,
+      color: const Color(0xFFFF6B35),
+      requirement: '١٠٠ نقطة',
+      isUnlocked: (u) => u.points >= 100,
+    ),
+    BadgeDefinition(
+      id: 'happiness',
+      name: 'خبير السعادة',
+      icon: Icons.wb_sunny_rounded,
+      color: const Color(0xFF10B981),
+      requirement: '٣ أيام متتالية',
+      isUnlocked: (u) => u.streakDays >= 3,
+    ),
+  ];
 }

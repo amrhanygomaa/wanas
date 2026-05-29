@@ -30,46 +30,50 @@ class VolunteerProfileView extends ConsumerWidget {
 
     return VolunteerAnimatedBackground(
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 16), // إضافة مسافة من فوق وحشو جانبي لمنع الالتصاق بالحواف
+        padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16), // إضافة مسافة من فوق وحشو جانبي لمنع الالتصاق بالحواف
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-        _buildSectionLabel('ملفي الشخصي', const Color(0xFF065f46), 0),
-        const SizedBox(height: 12),
-        _buildProfileCard(context, ref),
-        const SizedBox(height: 24),
-        _buildSectionLabel('فرص تطوعية جديدة', const Color(0xFF059669), 1,
-            action: GestureDetector(
-              onTap: onSeeAllOpportunities,
-              child: const Text('عرض الكل',
-                  style: TextStyle(
-                      color: Color(0xFF059669),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold)),
-            )),
-        const SizedBox(height: 12),
-        ...provider.volunteerOpportunities
-            .map((o) => _buildOpportunityCard(context, o)),
-        const SizedBox(height: 24),
-        _buildSectionLabel('حجوزاتي القادمة', const Color(0xFF059669), 2),
-        const SizedBox(height: 12),
-        ...provider.volunteerBookings.map((b) => _buildBookingCard(context, b)),
-        const SizedBox(height: 24),
-        _buildSectionLabel('سجل الساعات', const Color(0xFF059669), 3),
-        const SizedBox(height: 12),
-        _buildHoursLog(context, provider),
-        const SizedBox(height: 24),
-        _buildSectionLabel('شهاداتي وإنجازاتي', const Color(0xFFf59e0b), 4),
-        const SizedBox(height: 12),
-        _buildCertificatesCarousel(provider),
-        const SizedBox(height: 24),
-        _buildSectionLabel('التقييم والآراء', const Color(0xFF6366f1), 5),
-        const SizedBox(height: 12),
-        _buildRatingSection(),
-        const SizedBox(height: 40),
-            ],
-          ),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSectionLabel('ملفي الشخصي', const Color(0xFF065f46), 0),
+            const SizedBox(height: 12),
+            _buildProfileCard(context, ref),
+            const SizedBox(height: 24),
+            _buildSectionLabel('فرص تطوعية جديدة', const Color(0xFF059669), 1,
+                action: GestureDetector(
+                  onTap: onSeeAllOpportunities,
+                  child: const Text('عرض الكل',
+                      style: TextStyle(
+                          color: Color(0xFF059669),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold)),
+                )),
+            const SizedBox(height: 12),
+            ...provider.volunteerOpportunities
+                .map((o) => _buildOpportunityCard(context, o)),
+            const SizedBox(height: 24),
+            _buildSectionLabel('حجوزاتي القادمة', const Color(0xFF059669), 2),
+            const SizedBox(height: 12),
+            ...provider.volunteerBookings
+                .map((b) => _buildBookingCard(context, b)),
+            const SizedBox(height: 24),
+            _buildSectionLabel('سجل الساعات', const Color(0xFF059669), 3),
+            const SizedBox(height: 12),
+            _buildHoursLog(context, provider),
+            const SizedBox(height: 24),
+            _buildSectionLabel('شهاداتي وإنجازاتي', const Color(0xFFf59e0b), 4),
+            const SizedBox(height: 12),
+            _buildCertificatesCarousel(provider),
+            const SizedBox(height: 24),
+            _buildSectionLabel('التقييم والآراء', const Color(0xFF6366f1), 5),
+            const SizedBox(height: 12),
+            _buildRatingSection(),
+            const SizedBox(height: 40),
+          ],
         ),
+      ),
     );
   }
 
@@ -163,8 +167,10 @@ class VolunteerProfileView extends ConsumerWidget {
                       ),
                       Text('${profile.location} · مسجل منذ مارس ٢٠٢٤',
                           textAlign: TextAlign.right,
-                          style:
-                              const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w500)),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF475569),
+                              fontWeight: FontWeight.w500)),
                       const SizedBox(height: 8),
                       Wrap(
                         alignment: WrapAlignment.start,
@@ -206,7 +212,10 @@ class VolunteerProfileView extends ConsumerWidget {
             Text(profile.bio,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                    fontSize: 12, color: Color(0xFF334155), height: 1.5, fontWeight: FontWeight.w500)),
+                    fontSize: 12,
+                    color: Color(0xFF334155),
+                    height: 1.5,
+                    fontWeight: FontWeight.w500)),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
@@ -397,7 +406,9 @@ class VolunteerProfileView extends ConsumerWidget {
                         Text(opp.org,
                             textAlign: TextAlign.right,
                             style: const TextStyle(
-                                color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
+                                color: Color(0xFF475569),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         Wrap(
                           alignment: WrapAlignment.start,
@@ -419,7 +430,9 @@ class VolunteerProfileView extends ConsumerWidget {
                         Text('⏱ ${opp.hours} ساعة · يضيف لرصيدك',
                             textAlign: TextAlign.right,
                             style: const TextStyle(
-                                color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
+                                color: Color(0xFF475569),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
@@ -521,7 +534,10 @@ class VolunteerProfileView extends ConsumerWidget {
                           fontSize: 12, fontWeight: FontWeight.bold)),
                   Text(booking.timeInfo,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
+                      style: const TextStyle(
+                          color: Color(0xFF475569),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -679,8 +695,6 @@ class VolunteerProfileView extends ConsumerWidget {
     );
   }
 
-
-
   Widget _buildRatingSection() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -703,7 +717,7 @@ class VolunteerProfileView extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('قيّم جلسة القراءة — الحاج محمود',
+                      const Text('قيّم جلسة التطوع السابقة',
                           style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.bold)),
                       const Text('جلسة الأحد ٦ أبريل · انتظر تقييمك',
@@ -1193,14 +1207,14 @@ class VolunteerProfileView extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1e293b))),
                     const SizedBox(height: 12),
-                    _buildHistoryLogItem('جلسة قراءة - الحاج محمود',
-                        'الأحد، ٢٠ أبريل', '٣ ساعات'),
-                    _buildHistoryLogItem('مرافقة في الحديقة - الحاجة زينب',
-                        'الخميس، ١٧ أبريل', '٢ ساعة'),
+                    _buildHistoryLogItem(
+                        'جلسة تطوع', 'الأحد، ٢٠ أبريل', '٣ ساعات'),
+                    _buildHistoryLogItem(
+                        'مرافقة في الحديقة', 'الخميس، ١٧ أبريل', '٢ ساعة'),
                     _buildHistoryLogItem('أمسية ترفيهية - قسم (أ)',
                         'الثلاثاء، ١٥ أبريل', '٤ ساعات'),
                     _buildHistoryLogItem(
-                        'دعم نفسي - الحاج عمر', 'السبت، ١٢ أبريل', '١.٥ ساعة'),
+                        'دعم نفسي', 'السبت، ١٢ أبريل', '١.٥ ساعة'),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -1393,7 +1407,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startTimer();
     });
@@ -1403,7 +1417,8 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
     _timer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.offset + 0.5);
-        if (_scrollController.offset >= _scrollController.position.maxScrollExtent) {
+        if (_scrollController.offset >=
+            _scrollController.position.maxScrollExtent) {
           _scrollController.jumpTo(0);
         }
       }
@@ -1465,7 +1480,8 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                     ? null
                     : [
                         BoxShadow(
-                          color: const Color(0xFF059669).withValues(alpha: 0.06),
+                          color:
+                              const Color(0xFF059669).withValues(alpha: 0.06),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -1486,7 +1502,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                         fontSize: 12,
                       ),
                     ),
-                    
+
                     // Certificate Title
                     Expanded(
                       child: Center(
@@ -1506,7 +1522,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                         ),
                       ),
                     ),
-                    
+
                     // Mini Decorative Gold/Green Divider
                     Container(
                       width: 16,
@@ -1519,7 +1535,7 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
-                    
+
                     // Certificate Date/Subtitle
                     Text(
                       cert.isLocked ? cert.progressInfo : cert.date,
@@ -1540,4 +1556,3 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
     );
   }
 }
-

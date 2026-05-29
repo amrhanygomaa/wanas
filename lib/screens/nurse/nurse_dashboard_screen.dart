@@ -137,13 +137,12 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                   child:
                       _buildHomeView(provider)), // واجهة الرئيسية (نظرة عامة)
               const NurseResidentsScreen(), // واجهة قائمة المقيمين (لديها خلفيتها الخاصة)
-              AnimatedBackground(
-                  child: const OperationsView()), // واجهة العمليات والرعاية
-              AnimatedBackground(
-                  child: const MedicalAdminView()), // واجهة الإدارة الطبية
-              AnimatedBackground(
-                  child:
-                      const NurseReportsScreen()), // واجهة التقارير والتحليلات
+              const AnimatedBackground(
+                  child: OperationsView()), // واجهة العمليات والرعاية
+              const AnimatedBackground(
+                  child: MedicalAdminView()), // واجهة الإدارة الطبية
+              const AnimatedBackground(
+                  child: NurseReportsScreen()), // واجهة التقارير والتحليلات
             ],
           ),
           _buildDraggableSOS(), // زر الطوارئ المخفي القابل للسحب
@@ -408,7 +407,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
       ),
       child: Stack(
         children: [
-          // علامات شفاء (+) تتصاعد لأعلى لمحاكاة تأثير "الهيل"
+          // علامات شفاء (+) تتصاعد لأعلى كتأثير بصري
           const HealingParticles(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
@@ -436,7 +435,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                               builder: (context) =>
                                   const NurseProfileScreen())),
                       child: Text(
-                        'أ. منى — ${_getShiftName()}',
+                        '${ref.watch(appRiverpod).currentAccount?.name ?? 'فريق التمريض'} — ${_getShiftName()}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -609,6 +608,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildTabs() {
     // بناء فلاتر فرز المقيمين (التبويبات العلوية)
     final tabs = [
@@ -686,6 +686,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _vitalChip(String text, Color bg, Color color) {
     // بناء شريحة عرض العلامات الحيوية
     return Container(
@@ -737,21 +738,55 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
             ],
           ),
         ),
-        _buildResCard(
-          name: 'الحاج محمود سالم — غرفة ١٠٣',
-          room: '٧٨ سنة · متابعة دورية',
-          av: 'مح',
-          avBg: const Color(0xFFFFE4E6),
-          avColor: const Color(0xFF9F1239),
-          statusColor: const Color(0xFFEF4444),
-          borderColor: const Color(0xFFFCA5A5),
-          bg: const Color(0xFFFFF5F5),
-          btnText: 'تدخّل',
-          btnColor: const Color(0xFFEF4444),
-          warnText: '⏰ ميتفورمين — فات موعده منذ ٣٠ د',
-          category: 'حرجة 🔴',
-          note: getLatestNote('الحاج محمود سالم'),
-        ),
+        if (provider.residentFiles.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('لا توجد بيانات مقيمين من AWS الآن',
+                style: TextStyle(color: Color(0xFF64748B))),
+          )
+        else
+          ...provider.residentFiles.take(3).map((resident) {
+            final isCritical =
+                resident.status.toLowerCase().contains('critical') ||
+                    resident.status.contains('حرج');
+            final isWarning =
+                resident.status.toLowerCase().contains('pending') ||
+                    resident.status.toLowerCase().contains('warning');
+            final category = isCritical
+                ? 'حرجة 🔴'
+                : isWarning
+                    ? 'متابعة 🟡'
+                    : 'مستقرة ✅';
+            return _buildResCard(
+              name: '${resident.name} — غرفة ${resident.room}',
+              room: resident.age == null
+                  ? 'من AWS'
+                  : '${resident.age} سنة · من AWS',
+              av: resident.initials,
+              avBg: isCritical
+                  ? const Color(0xFFFFE4E6)
+                  : const Color(0xFFE0F2FE),
+              avColor: isCritical
+                  ? const Color(0xFF9F1239)
+                  : const Color(0xFF0369A1),
+              statusColor: isCritical
+                  ? const Color(0xFFEF4444)
+                  : const Color(0xFF0EA5E9),
+              borderColor: isCritical
+                  ? const Color(0xFFFCA5A5)
+                  : const Color(0xFFBAE6FD),
+              bg: isCritical
+                  ? const Color(0xFFFFF5F5)
+                  : const Color(0xFFF0F9FF),
+              btnText: isCritical ? 'تدخّل' : 'متابعة',
+              btnColor: isCritical
+                  ? const Color(0xFFEF4444)
+                  : const Color(0xFF0EA5E9),
+              warnText: resident.categories.join(' · '),
+              category: category,
+              note: getLatestNote(resident.name),
+            );
+          }),
       ],
     );
   }
@@ -773,7 +808,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     String? note,
   }) {
     final nameOnly = name.split(' — ')[0];
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12, left: 12, right: 12),
       decoration: BoxDecoration(
@@ -854,9 +889,13 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                       Row(
                         children: [
                           Icon(
-                            isStable ? Icons.check_circle_rounded : Icons.info_rounded,
+                            isStable
+                                ? Icons.check_circle_rounded
+                                : Icons.info_rounded,
                             size: 14,
-                            color: isStable ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                            color: isStable
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFEF4444),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -866,7 +905,9 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isStable ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                color: isStable
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFEF4444),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -901,6 +942,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _inputRow(String emoji, String lbl, TextEditingController controller,
       String unit, Color bg, bool hasBtn) {
     // بناء صف إدخال بيانات (مثل الضغط أو السكر)
@@ -969,6 +1011,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _bar(double h, Color c) {
     // بناء أعمدة الرسم البياني للإحصائيات
     return Expanded(
@@ -992,6 +1035,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildMedScheduleSection() {
     // بناء قسم جدول مواعيد الأدوية لليوم
     final provider = ref.watch(appRiverpod);
@@ -1106,13 +1150,15 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
   Widget _medRow(
       String n, String s, String d1, String d2, String d3, String d4) {
     // صف بيانات المقيم في جدول الأدوية
+    final residents =
+        ref.read(appRiverpod).residentFiles.where((r) => r.name == n).toList();
+    final roomNumber = residents.isEmpty ? '' : residents.first.room;
     return GestureDetector(
       onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
               builder: (_) => NurseResidentDetailScreen(
-                  residentName: n,
-                  roomNumber: n.contains('محمود') ? '١٠٣' : '١١٢'))),
+                  residentName: n, roomNumber: roomNumber))),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
@@ -1322,6 +1368,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   void _showNoteDialog(String residentName) {
     // نافذة إضافة ملاحظة تمريضية جديدة
     final titleController = TextEditingController();
@@ -1382,16 +1429,17 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
               ),
             ),
             const SizedBox(height: 8),
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Text('بواسطة: أ. منى (مشرف)',
-                    style: TextStyle(
+                Text(
+                    'بواسطة: ${ref.read(appRiverpod).currentAccount?.name ?? 'فريق التمريض'}',
+                    style: const TextStyle(
                         fontSize: 10,
                         color: Color(0xFF94A3B8),
                         fontWeight: FontWeight.bold)),
-                SizedBox(width: 4),
-                Icon(Icons.person_pin_rounded,
+                const SizedBox(width: 4),
+                const Icon(Icons.person_pin_rounded,
                     size: 14, color: Color(0xFF94A3B8)),
               ],
             ),
@@ -1411,7 +1459,8 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                   residentName: residentName,
                   title: titleController.text,
                   content: contentController.text,
-                  author: 'أ. منى (مشرف)',
+                  author: ref.read(appRiverpod).currentAccount?.name ??
+                      'فريق التمريض',
                   timestamp: DateTime.now(),
                 );
                 ref.read(appRiverpod).addNursingNote(newNote);
@@ -1770,7 +1819,9 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
 
       if (phoneNumber.isNotEmpty) {
         final Uri telUri = Uri.parse('tel:$phoneNumber');
-        if (await canLaunchUrl(telUri)) {
+        final canLaunch = await canLaunchUrl(telUri);
+        if (!mounted) return;
+        if (canLaunch) {
           await launchUrl(telUri);
           return; // الخروج بعد الاتصال
         }

@@ -1,15 +1,21 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../firebase_options.dart';
 import 'app_navigation_service.dart';
 import 'api_client.dart';
 
 // Handler للـ background messages (لازم top-level function)
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // لا نحتاج Firebase.initializeApp() هنا لأن flutter يعمله تلقائياً
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
   debugPrint('[FCM] Background: ${message.notification?.title}');
 }
 
@@ -17,12 +23,22 @@ class PushNotificationService {
   PushNotificationService._();
   static final PushNotificationService instance = PushNotificationService._();
 
-  final _fcm = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   String? _currentToken;
+  Future<void>? _initFuture;
 
-  Future<void> init() async {
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
+
+  Future<void> init() {
+    _initFuture ??= _initInternal();
+    return _initFuture!;
+  }
+
+  Future<void> _initInternal() async {
+    final firebaseReady = await _ensureFirebaseInitialized();
+    if (!firebaseReady) return;
+
     // طلب إذن الإشعارات
     final settings = await _fcm.requestPermission(
       alert: true,
@@ -59,6 +75,25 @@ class PushNotificationService {
       _currentToken = token;
       await _sendTokenToBackend(token);
     });
+  }
+
+  Future<bool> _ensureFirebaseInitialized() async {
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+      debugPrint('[FCM] Firebase Messaging غير مدعوم على هذه المنصة');
+      return false;
+    }
+
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[FCM] فشل تهيئة Firebase: $e');
+      return false;
+    }
   }
 
   Future<void> _initLocalNotifications() async {
@@ -166,7 +201,9 @@ class PushNotificationService {
     try {
       await ApiClient.instance.delete(
           '/notifications/push-tokens/${Uri.encodeComponent(_currentToken!)}');
-      await _fcm.deleteToken();
+      if (await _ensureFirebaseInitialized()) {
+        await _fcm.deleteToken();
+      }
       _currentToken = null;
     } catch (e) {
       debugPrint('[FCM] فشل حذف Token: $e');

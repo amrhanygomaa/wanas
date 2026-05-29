@@ -23,7 +23,8 @@ class UserPreferencesService {
     return BackendUserPreferences.fromJson(res as Map<String, dynamic>);
   }
 
-  Future<BackendUserPreferences> update(Map<String, dynamic> preferences) async {
+  Future<BackendUserPreferences> update(
+      Map<String, dynamic> preferences) async {
     final res = await ApiClient.instance.put(
       '/user-preferences/me',
       body: {'preferences': preferences},

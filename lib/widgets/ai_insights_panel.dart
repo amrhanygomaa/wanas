@@ -18,7 +18,9 @@ class AIInsightsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
-      child: isEnabled ? _buildEnabledState(context) : _buildDisabledState(context),
+      child: isEnabled
+          ? _buildEnabledState(context)
+          : _buildDisabledState(context),
     );
   }
 
@@ -65,7 +67,8 @@ class AIInsightsPanel extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildBadge('يتطلب مراجعة بشرية ⚖️', const Color(0xFFF59E0B)),
+                    _buildBadge(
+                        'يتطلب مراجعة بشرية ⚖️', const Color(0xFFF59E0B)),
                     const Row(
                       children: [
                         Text(
@@ -78,7 +81,8 @@ class AIInsightsPanel extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 8),
-                        Icon(Icons.auto_awesome_rounded, color: Color(0xFF6366F1), size: 18),
+                        Icon(Icons.auto_awesome_rounded,
+                            color: Color(0xFF6366F1), size: 18),
                       ],
                     ),
                   ],
@@ -162,7 +166,8 @@ class AIInsightsPanel extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.auto_awesome_motion_rounded, color: Color(0xFF94A3B8), size: 32),
+          const Icon(Icons.auto_awesome_motion_rounded,
+              color: Color(0xFF94A3B8), size: 32),
           const SizedBox(height: 12),
           const Text(
             'رؤى الذكاء الاصطناعي غير مفعلة',
@@ -189,12 +194,18 @@ class AIInsightsPanel extends StatelessWidget {
               onPressed: onToggle,
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text(
                 'تفعيل الآن',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Cairo'),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    fontFamily: 'Cairo'),
               ),
             ),
           ],

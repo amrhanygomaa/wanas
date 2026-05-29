@@ -69,7 +69,10 @@ class SpecialistFilesView extends ConsumerWidget {
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFc2410c))),
           const Text('إدارة السجلات الاجتماعية والنفسية',
-              style: TextStyle(fontSize: 12, color: Color(0xFF9a3412), fontWeight: FontWeight.w600)),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9a3412),
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 20),
           Container(
             decoration: BoxDecoration(
@@ -87,8 +90,7 @@ class SpecialistFilesView extends ConsumerWidget {
               textAlign: TextAlign.right,
               decoration: const InputDecoration(
                 hintText: 'بحث باسم المقيم أو رقم الغرفة...',
-                hintStyle:
-                    TextStyle(fontSize: 13, color: Color(0xFF64748b)),
+                hintStyle: TextStyle(fontSize: 13, color: Color(0xFF64748b)),
                 suffixIcon: Icon(Icons.search, color: Color(0xFFea580c)),
                 border: InputBorder.none,
                 contentPadding:
@@ -127,7 +129,8 @@ class SpecialistFilesView extends ConsumerWidget {
                 boxShadow: isAct
                     ? [
                         BoxShadow(
-                            color: const Color(0xFFea580c).withValues(alpha: 0.3),
+                            color:
+                                const Color(0xFFea580c).withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 3))
                       ]
@@ -157,7 +160,9 @@ class SpecialistFilesView extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFfed7aa).withValues(alpha: 0.5), width: 1.5),
+          border: Border.all(
+              color: const Color(0xFFfed7aa).withValues(alpha: 0.5),
+              width: 1.5),
           boxShadow: [
             BoxShadow(
                 color: const Color(0xFFea580c).withValues(alpha: 0.1),
@@ -207,7 +212,9 @@ class SpecialistFilesView extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Text(file.lastUpdate,
                               style: const TextStyle(
-                                  fontSize: 10, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                                  fontSize: 10,
+                                  color: Color(0xFF334155),
+                                  fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ],
@@ -233,7 +240,8 @@ class SpecialistFilesView extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                              color: const Color(0xFFea580c).withValues(alpha: 0.2),
+                              color: const Color(0xFFea580c)
+                                  .withValues(alpha: 0.2),
                               blurRadius: 10)
                         ],
                       ),
@@ -292,134 +300,137 @@ class SpecialistFilesView extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildStatusBadge(file.status),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded,
-                              color: Color(0xFF64748b)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [Color(0xFFfff7ed), Color(0xFFffedd5)]),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                                color: const Color(0xFFfed7aa), width: 2),
-                          ),
-                          child: Center(
-                            child: Text(file.initials,
-                                style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFea580c))),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(file.name,
-                                  style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0f172a))),
-                              Text('غرفة ${file.room} · الطابق الأول',
-                                  style: const TextStyle(
-                                      fontSize: 14, color: Color(0xFFea580c))),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    _buildDetailSectionTitle('الأقسام المفعلة'),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.start,
-                        children: file.categories.map((c) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFe2e8f0)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(_getCategoryIcon(c),
-                                    size: 16, color: const Color(0xFFea580c)),
-                                const SizedBox(width: 8),
-                                Text(_getCategoryLabel(c),
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Color(0xFF1e293b))),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildDetailSectionTitle('آخر التحديثات'),
-                    const SizedBox(height: 16),
-                    _buildTimelineItem('تحديث الملف النفسي', 'اليوم، ١٠:٣٠ ص',
-                        'أ. سارة المنسق', true),
-                    _buildTimelineItem('إضافة ملاحظة اجتماعية', 'أمس، ٠٩:١٥ م',
-                        'أ. محمد علي', false),
-                    _buildTimelineItem('توثيق الحالة المادية',
-                        '٢٤ مايو، ٠٣:٠٠ م', 'أ. نورهان سعيد', false),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFea580c),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showPdfPreview(context, file);
-                        },
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(Icons.download_rounded, color: Colors.white),
-                            SizedBox(width: 12),
-                            Text('تنزيل التقرير الشامل (PDF)',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold)),
+                            _buildStatusBadge(file.status),
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.close_rounded,
+                                  color: Color(0xFF64748b)),
+                            ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [
+                                  Color(0xFFfff7ed),
+                                  Color(0xFFffedd5)
+                                ]),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                    color: const Color(0xFFfed7aa), width: 2),
+                              ),
+                              child: Center(
+                                child: Text(file.initials,
+                                    style: const TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFea580c))),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(file.name,
+                                      style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0f172a))),
+                                  Text('غرفة ${file.room} · الطابق الأول',
+                                      style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFFea580c))),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        _buildDetailSectionTitle('الأقسام المفعلة'),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.start,
+                            children: file.categories.map((c) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0xFFe2e8f0)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(_getCategoryIcon(c),
+                                        size: 16,
+                                        color: const Color(0xFFea580c)),
+                                    const SizedBox(width: 8),
+                                    Text(_getCategoryLabel(c),
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF1e293b))),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        _buildDetailSectionTitle('آخر التحديثات'),
+                        const SizedBox(height: 16),
+                        _buildTimelineItem(
+                            'تحديث من AWS', 'آخر مزامنة', 'فريق الرعاية', true),
+                        const SizedBox(height: 40),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFea580c),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showPdfPreview(context, file);
+                            },
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.download_rounded,
+                                    color: Colors.white),
+                                SizedBox(width: 12),
+                                Text('تنزيل التقرير الشامل (PDF)',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
           ],
         ),
       ),
@@ -509,7 +520,9 @@ class SpecialistFilesView extends ConsumerWidget {
                         color: Color(0xFF1e293b))),
                 Text('$time · بواسطة $author',
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                        fontSize: 11,
+                        color: Color(0xFF334155),
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 20),
               ],
             ),
@@ -563,8 +576,8 @@ class SpecialistFilesView extends ConsumerWidget {
 
     return Container(
       padding: const EdgeInsets.all(8),
-      decoration:
-          BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
       child: Icon(icon, color: color, size: 20),
     );
   }
@@ -585,10 +598,12 @@ class SpecialistFilesView extends ConsumerWidget {
 
   void _showPdfPreview(BuildContext context, SpecialistResidentFile file) {
     final psychController = TextEditingController(
-      text: 'يظهر المقيم تحسناً ملحوظاً في التفاعل مع الأنشطة الجماعية. يوصى بزيادة جلسات الدعم النفسي الفردية بمعدل جلسة أسبوعياً.',
+      text:
+          'يظهر المقيم تحسناً ملحوظاً في التفاعل مع الأنشطة الجماعية. يوصى بزيادة جلسات الدعم النفسي الفردية بمعدل جلسة أسبوعياً.',
     );
     final medicalController = TextEditingController(
-      text: 'متابعة قياس ضغط الدم يومياً. الالتزام بمواعيد الأدوية المحددة في النظام.',
+      text:
+          'متابعة قياس ضغط الدم يومياً. الالتزام بمواعيد الأدوية المحددة في النظام.',
     );
 
     showDialog(
@@ -610,14 +625,26 @@ class SpecialistFilesView extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('مَضْبوط', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFea580c))),
-                  Text('التاريخ: ${DateTime.now().toString().substring(0, 10)}', style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                  const Text('مَضْبوط',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFea580c))),
+                  Text('التاريخ: ${DateTime.now().toString().substring(0, 10)}',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w600)),
                 ],
               ),
               const Divider(height: 30, color: Color(0xFFe2e8f0)),
-              const Text('تعديل ومعاينة التقرير الشامل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0f172a))),
+              const Text('تعديل ومعاينة التقرير الشامل',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0f172a))),
               const SizedBox(height: 20),
-              
+
               // Resident Info
               Container(
                 padding: const EdgeInsets.all(16),
@@ -631,12 +658,13 @@ class SpecialistFilesView extends ConsumerWidget {
                   children: [
                     _buildPdfRow('اسم المقيم:', file.name),
                     _buildPdfRow('رقم الغرفة:', file.room),
-                    _buildPdfRow('الحالة:', file.status == 'critical' ? 'حرجة' : 'مستقرة'),
+                    _buildPdfRow('الحالة:',
+                        file.status == 'critical' ? 'حرجة' : 'مستقرة'),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               // Editable Sections
               Expanded(
                 child: SingleChildScrollView(
@@ -648,47 +676,53 @@ class SpecialistFilesView extends ConsumerWidget {
                         controller: psychController,
                       ),
                       const SizedBox(height: 20),
-                      
                       _buildEditableSection(
                         title: 'التوصيات الطبية',
                         controller: medicalController,
                       ),
                       const SizedBox(height: 20),
-                      
                       _buildPdfSectionTitle('التحديثات الأخيرة'),
                       const SizedBox(height: 8),
-                      _buildPdfTimelineItem('تحديث الملف النفسي', 'اليوم، ١٠:٣٠ ص'),
-                      _buildPdfTimelineItem('إضافة ملاحظة اجتماعية', 'أمس، ٠٩:١٥ م'),
+                      _buildPdfTimelineItem(
+                          'تحديث الملف النفسي', 'اليوم، ١٠:٣٠ ص'),
+                      _buildPdfTimelineItem(
+                          'إضافة ملاحظة اجتماعية', 'أمس، ٠٩:١٥ م'),
                     ],
                   ),
                 ),
               ),
-              
+
               const Divider(height: 30, color: Color(0xFFe2e8f0)),
-              
+
               // Footer / Signatures
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     children: [
-                      Text('توقيع الطبيب', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text('توقيع الطبيب',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
                       SizedBox(height: 30),
-                      Text('......................', style: TextStyle(color: Colors.grey)),
+                      Text('......................',
+                          style: TextStyle(color: Colors.grey)),
                     ],
                   ),
-                  const Column(
+                  Column(
                     children: [
-                      Text('توقيع الأخصائي', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text('توقيع الأخصائي',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
                       SizedBox(height: 30),
-                      Text('......................', style: TextStyle(color: Colors.grey)),
+                      Text('......................',
+                          style: TextStyle(color: Colors.grey)),
                     ],
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Action Buttons
               Row(
                 children: [
@@ -696,7 +730,8 @@ class SpecialistFilesView extends ConsumerWidget {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => Navigator.pop(context),
                       child: const Text('إغلاق'),
@@ -709,12 +744,14 @@ class SpecialistFilesView extends ConsumerWidget {
                         backgroundColor: const Color(0xFFea580c),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
                       onPressed: () async {
                         Navigator.pop(context);
-                        await _generatePdfWithContent(file, psychController.text, medicalController.text);
+                        await _generatePdfWithContent(
+                            file, psychController.text, medicalController.text);
                       },
                       child: const Text('حفظ كـ PDF وتنزيل'),
                     ),
@@ -728,7 +765,8 @@ class SpecialistFilesView extends ConsumerWidget {
     );
   }
 
-  Widget _buildEditableSection({required String title, required TextEditingController controller}) {
+  Widget _buildEditableSection(
+      {required String title, required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -738,7 +776,11 @@ class SpecialistFilesView extends ConsumerWidget {
           controller: controller,
           maxLines: null,
           textAlign: TextAlign.right,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF0f172a), height: 1.5, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF0f172a),
+              height: 1.5,
+              fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFf8fafc),
@@ -761,7 +803,8 @@ class SpecialistFilesView extends ConsumerWidget {
     );
   }
 
-  Future<void> _generatePdfWithContent(SpecialistResidentFile file, String psychContent, String medicalContent) async {
+  Future<void> _generatePdfWithContent(SpecialistResidentFile file,
+      String psychContent, String medicalContent) async {
     final pdf = pw.Document();
     final font = await PdfGoogleFonts.amiriRegular();
     final boldFont = await PdfGoogleFonts.amiriBold();
@@ -786,8 +829,16 @@ class SpecialistFilesView extends ConsumerWidget {
                   child: pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('مَضْبوط - إدارة السجلات', style: pw.TextStyle(font: boldFont, fontSize: 18, color: PdfColors.white)),
-                      pw.Text(DateTime.now().toString().substring(0, 10), style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.white)),
+                      pw.Text('مَضْبوط - إدارة السجلات',
+                          style: pw.TextStyle(
+                              font: boldFont,
+                              fontSize: 18,
+                              color: PdfColors.white)),
+                      pw.Text(DateTime.now().toString().substring(0, 10),
+                          style: pw.TextStyle(
+                              font: font,
+                              fontSize: 12,
+                              color: PdfColors.white)),
                     ],
                   ),
                 ),
@@ -795,7 +846,11 @@ class SpecialistFilesView extends ConsumerWidget {
 
                 // Title
                 pw.Center(
-                  child: pw.Text('تقرير شامل للمقيم', style: pw.TextStyle(font: boldFont, fontSize: 22, color: PdfColors.blueGrey800)),
+                  child: pw.Text('تقرير شامل للمقيم',
+                      style: pw.TextStyle(
+                          font: boldFont,
+                          fontSize: 22,
+                          color: PdfColors.blueGrey800)),
                 ),
                 pw.SizedBox(height: 30),
 
@@ -809,21 +864,26 @@ class SpecialistFilesView extends ConsumerWidget {
                   ),
                   child: pw.Column(
                     children: [
-                      _buildPdfDataRow(font, boldFont, 'اسم المقيم:', file.name),
+                      _buildPdfDataRow(
+                          font, boldFont, 'اسم المقيم:', file.name),
                       pw.Divider(color: PdfColors.orange200),
-                      _buildPdfDataRow(font, boldFont, 'رقم الغرفة:', file.room),
+                      _buildPdfDataRow(
+                          font, boldFont, 'رقم الغرفة:', file.room),
                       pw.Divider(color: PdfColors.orange200),
-                      _buildPdfDataRow(font, boldFont, 'الحالة:', file.status == 'critical' ? 'حرجة' : 'مستقرة'),
+                      _buildPdfDataRow(font, boldFont, 'الحالة:',
+                          file.status == 'critical' ? 'حرجة' : 'مستقرة'),
                     ],
                   ),
                 ),
                 pw.SizedBox(height: 30),
 
                 // Content Sections
-                _buildPdfSection(font, boldFont, 'الحالة النفسية والاجتماعية', psychContent),
+                _buildPdfSection(
+                    font, boldFont, 'الحالة النفسية والاجتماعية', psychContent),
                 pw.SizedBox(height: 20),
 
-                _buildPdfSection(font, boldFont, 'التوصيات الطبية والملاحظات', medicalContent),
+                _buildPdfSection(font, boldFont, 'التوصيات الطبية والملاحظات',
+                    medicalContent),
                 pw.SizedBox(height: 40),
 
                 // Signatures
@@ -832,16 +892,28 @@ class SpecialistFilesView extends ConsumerWidget {
                   children: [
                     pw.Column(
                       children: [
-                        pw.Text('توقيع الطبيب المختص', style: pw.TextStyle(font: boldFont, fontSize: 14, color: PdfColors.blueGrey800)),
+                        pw.Text('توقيع الطبيب المختص',
+                            style: pw.TextStyle(
+                                font: boldFont,
+                                fontSize: 14,
+                                color: PdfColors.blueGrey800)),
                         pw.SizedBox(height: 40),
-                        pw.Text('---------------------------', style: pw.TextStyle(color: PdfColors.grey500)),
+                        pw.Text('---------------------------',
+                            style:
+                                const pw.TextStyle(color: PdfColors.grey500)),
                       ],
                     ),
                     pw.Column(
                       children: [
-                        pw.Text('توقيع الأخصائي الاجتماعي', style: pw.TextStyle(font: boldFont, fontSize: 14, color: PdfColors.blueGrey800)),
+                        pw.Text('توقيع الأخصائي الاجتماعي',
+                            style: pw.TextStyle(
+                                font: boldFont,
+                                fontSize: 14,
+                                color: PdfColors.blueGrey800)),
                         pw.SizedBox(height: 40),
-                        pw.Text('---------------------------', style: pw.TextStyle(color: PdfColors.grey500)),
+                        pw.Text('---------------------------',
+                            style:
+                                const pw.TextStyle(color: PdfColors.grey500)),
                       ],
                     ),
                   ],
@@ -850,7 +922,10 @@ class SpecialistFilesView extends ConsumerWidget {
                 pw.Spacer(),
                 // Footer
                 pw.Center(
-                  child: pw.Text('تم توليد هذا التقرير آلياً بواسطة تطبيق مضبوط', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey600)),
+                  child: pw.Text(
+                      'تم توليد هذا التقرير آلياً بواسطة تطبيق مضبوط',
+                      style: pw.TextStyle(
+                          font: font, fontSize: 10, color: PdfColors.grey600)),
                 ),
               ],
             ),
@@ -859,32 +934,42 @@ class SpecialistFilesView extends ConsumerWidget {
       ),
     );
 
-    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+    await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save());
   }
 
-  pw.Widget _buildPdfDataRow(pw.Font font, pw.Font boldFont, String label, String value) {
+  pw.Widget _buildPdfDataRow(
+      pw.Font font, pw.Font boldFont, String label, String value) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 4),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(label, style: pw.TextStyle(font: boldFont, fontSize: 14, color: PdfColors.blueGrey700)),
-          pw.Text(value, style: pw.TextStyle(font: font, fontSize: 14, color: PdfColors.black)),
+          pw.Text(label,
+              style: pw.TextStyle(
+                  font: boldFont, fontSize: 14, color: PdfColors.blueGrey700)),
+          pw.Text(value,
+              style: pw.TextStyle(
+                  font: font, fontSize: 14, color: PdfColors.black)),
         ],
       ),
     );
   }
 
-  pw.Widget _buildPdfSection(pw.Font font, pw.Font boldFont, String title, String content) {
+  pw.Widget _buildPdfSection(
+      pw.Font font, pw.Font boldFont, String title, String content) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Container(
           padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: pw.BoxDecoration(
-            border: pw.Border(right: pw.BorderSide(color: PdfColors.orange700, width: 4)),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+                right: pw.BorderSide(color: PdfColors.orange700, width: 4)),
           ),
-          child: pw.Text(title, style: pw.TextStyle(font: boldFont, fontSize: 16, color: PdfColors.orange700)),
+          child: pw.Text(title,
+              style: pw.TextStyle(
+                  font: boldFont, fontSize: 16, color: PdfColors.orange700)),
         ),
         pw.SizedBox(height: 10),
         pw.Container(
@@ -893,7 +978,10 @@ class SpecialistFilesView extends ConsumerWidget {
             color: PdfColors.grey50,
             borderRadius: pw.BorderRadius.circular(4),
           ),
-          child: pw.Text(content, style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.blueGrey800), textAlign: pw.TextAlign.justify),
+          child: pw.Text(content,
+              style: pw.TextStyle(
+                  font: font, fontSize: 12, color: PdfColors.blueGrey800),
+              textAlign: pw.TextAlign.justify),
         ),
       ],
     );
@@ -905,9 +993,17 @@ class SpecialistFilesView extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF334155),
+                  fontWeight: FontWeight.w600)),
           const SizedBox(width: 8),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0f172a))),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0f172a))),
         ],
       ),
     );
@@ -921,7 +1017,11 @@ class SpecialistFilesView extends ConsumerWidget {
         children: [
           Container(width: 4, height: 14, color: const Color(0xFFea580c)),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFea580c))),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFea580c))),
         ],
       ),
     );
@@ -935,20 +1035,26 @@ class SpecialistFilesView extends ConsumerWidget {
         children: [
           const Icon(Icons.circle, size: 8, color: Color(0xFFea580c)),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF1e293b))),
+          Text(title,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF1e293b))),
           const Spacer(),
-          Text(time, style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+          Text(time,
+              style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF334155),
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
 }
 
-class _FilesCardDustParticle {
+class FilesCardDustParticle {
   Offset position;
   double speed;
   double radius;
-  _FilesCardDustParticle({required this.position, required this.speed, required this.radius});
+  FilesCardDustParticle(
+      {required this.position, required this.speed, required this.radius});
 }
 
 class FilesCardDustAnimation extends StatefulWidget {
@@ -958,18 +1064,22 @@ class FilesCardDustAnimation extends StatefulWidget {
   State<FilesCardDustAnimation> createState() => _FilesCardDustAnimationState();
 }
 
-class _FilesCardDustAnimationState extends State<FilesCardDustAnimation> with SingleTickerProviderStateMixin {
+class _FilesCardDustAnimationState extends State<FilesCardDustAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<_FilesCardDustParticle> _dust;
+  late List<FilesCardDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
-    
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
+
     final random = Random();
-    _dust = List.generate(100, (index) { // استخدام 100 جزيء كما طلب المستخدم
-      return _FilesCardDustParticle(
+    _dust = List.generate(100, (index) {
+      // استخدام 100 جزيء كما طلب المستخدم
+      return FilesCardDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.05 + 0.02,
         radius: random.nextDouble() * 1.5 + 0.5,
@@ -990,7 +1100,8 @@ class _FilesCardDustAnimationState extends State<FilesCardDustAnimation> with Si
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: FilesCardDustPainter(dust: _dust, animationValue: _controller.value),
+            painter: FilesCardDustPainter(
+                dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -999,7 +1110,7 @@ class _FilesCardDustAnimationState extends State<FilesCardDustAnimation> with Si
 }
 
 class FilesCardDustPainter extends CustomPainter {
-  final List<_FilesCardDustParticle> dust;
+  final List<FilesCardDustParticle> dust;
   final double animationValue;
 
   FilesCardDustPainter({required this.dust, required this.animationValue});
@@ -1012,11 +1123,12 @@ class FilesCardDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-      
+
       double dy = (p.position.dy + (animationValue * p.speed * 20)) % 1.0;
       dy *= size.height;
 
-      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx =
+          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 

@@ -52,12 +52,11 @@ class _VolunteerOpportunitiesViewState
     }).toList();
 
     if (_selectedSort == 'الأقرب') {
-      // Mock sort by "closeness" - just reverse for demo
-      return filtered.reversed.toList();
+      filtered.sort((a, b) => a.dateInfo.compareTo(b.dateInfo));
     } else if (_selectedSort == 'الساعات') {
       filtered.sort((a, b) => b.hours.compareTo(a.hours));
     } else if (_selectedSort == 'الجديد') {
-      // Newest first - simulated
+      filtered.sort((a, b) => b.isNew.toString().compareTo(a.isNew.toString()));
     }
 
     return filtered;
@@ -93,9 +92,7 @@ class _VolunteerOpportunitiesViewState
                   _buildSectionLabel(
                       'فرص مناسبة لك', const Color(0xFF6366f1), 1),
                   const SizedBox(height: 12),
-                  ...others
-                      .map((o) => _buildOpportunityCard(o, provider))
-                      ,
+                  ...others.map((o) => _buildOpportunityCard(o, provider)),
                   const SizedBox(height: 24),
                 ],
                 if (filteredOpp.isEmpty)
@@ -371,7 +368,8 @@ class _VolunteerOpportunitiesViewState
               Text(opp.org,
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9), fontSize: 13)),
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13)),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -541,7 +539,9 @@ class _VolunteerOpportunitiesViewState
                               color: Color(0xFF0f172a))),
                       Text(opp.org,
                           style: const TextStyle(
-                              color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
+                              color: Color(0xFF475569),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500)),
                       const SizedBox(height: 6),
                       Text(opp.description,
                           maxLines: 2,
@@ -873,7 +873,8 @@ class _VolunteerOpportunitiesViewState
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        _buildDetailChip(opp.dateInfo, 'assets/icons/calendar.png'),
+                        _buildDetailChip(
+                            opp.dateInfo, 'assets/icons/calendar.png'),
                         const SizedBox(width: 12),
                         _buildDetailChip(
                             'المقاعد: ${opp.filledSlots}/${opp.totalSlots}',
@@ -997,7 +998,8 @@ class _VolunteerOpportunitiesViewState
           if (icon is IconData)
             Icon(icon, size: 16, color: const Color(0xFF059669))
           else if (icon is String)
-            Image.asset(icon, width: 16, height: 16, color: const Color(0xFF059669)),
+            Image.asset(icon,
+                width: 16, height: 16, color: const Color(0xFF059669)),
         ],
       ),
     );

@@ -49,8 +49,10 @@ class _TaptabaBellState extends ConsumerState<TaptabaBell>
 
     // Trigger animation when unreadCount increases for the current role
     ref.listen(appRiverpod, (previous, next) {
-      final prevUnread = previous?.filteredNotifications.where((n) => !n.isRead).length ?? 0;
-      final nextUnread = next.filteredNotifications.where((n) => !n.isRead).length;
+      final prevUnread =
+          previous?.filteredNotifications.where((n) => !n.isRead).length ?? 0;
+      final nextUnread =
+          next.filteredNotifications.where((n) => !n.isRead).length;
       if (nextUnread > prevUnread) {
         _controller.forward(from: 0);
       }
@@ -180,8 +182,10 @@ class _TaptabaBellState extends ConsumerState<TaptabaBell>
                                 borderRadius: BorderRadius.circular(18),
                               ),
                               alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: const Icon(Icons.delete_outline, color: Colors.white),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: const Icon(Icons.delete_outline,
+                                  color: Colors.white),
                             ),
                             secondaryBackground: Container(
                               margin: const EdgeInsets.only(bottom: 15),
@@ -190,68 +194,74 @@ class _TaptabaBellState extends ConsumerState<TaptabaBell>
                                 borderRadius: BorderRadius.circular(18),
                               ),
                               alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: const Icon(Icons.delete_outline, color: Colors.white),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: const Icon(Icons.delete_outline,
+                                  color: Colors.white),
                             ),
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 15),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: notif.isRead
-                                  ? Colors.grey[50]
-                                  : const Color(0xFF6C63FF).withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
                                 color: notif.isRead
-                                    ? Colors.transparent
-                                    : const Color(0xFF6C63FF).withValues(alpha: 0.1),
+                                    ? Colors.grey[50]
+                                    : const Color(0xFF6C63FF)
+                                        .withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: notif.isRead
+                                      ? Colors.transparent
+                                      : const Color(0xFF6C63FF)
+                                          .withValues(alpha: 0.1),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: _getNotifColor(notif.type)
+                                          .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(_getNotifIcon(notif.type),
+                                        color: _getNotifColor(notif.type),
+                                        size: 20),
+                                  ),
+                                  const SizedBox(width: 15),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(notif.title,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15)),
+                                        Text(notif.body,
+                                            style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 13)),
+                                        const SizedBox(height: 5),
+                                        Text(notif.time,
+                                            style: TextStyle(
+                                                color: Colors.grey[400],
+                                                fontSize: 11)),
+                                      ],
+                                    ),
+                                  ),
+                                  if (!notif.isRead)
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 20,
+                                          color: Color(0xFF6C63FF)),
+                                      onPressed: () => provider
+                                          .markNotificationAsRead(notif.id),
+                                    ),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: _getNotifColor(notif.type)
-                                        .withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(_getNotifIcon(notif.type),
-                                      color: _getNotifColor(notif.type),
-                                      size: 20),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(notif.title,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15)),
-                                      Text(notif.body,
-                                          style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 13)),
-                                      const SizedBox(height: 5),
-                                      Text(notif.time,
-                                          style: TextStyle(
-                                              color: Colors.grey[400],
-                                              fontSize: 11)),
-                                    ],
-                                  ),
-                                ),
-                                if (!notif.isRead)
-                                  IconButton(
-                                    icon: const Icon(Icons.check_circle_outline,
-                                        size: 20, color: Color(0xFF6C63FF)),
-                                    onPressed: () => provider
-                                        .markNotificationAsRead(notif.id),
-                                  ),
-                              ],
-                            ),
-                          ),
                           );
                         },
                       ),
@@ -265,21 +275,31 @@ class _TaptabaBellState extends ConsumerState<TaptabaBell>
 
   Color _getNotifColor(String type) {
     switch (type) {
-      case 'medical': return Colors.red;
-      case 'visit': return Colors.orange;
-      case 'activity': return Colors.green;
-      case 'social': return Colors.purple;
-      default: return Colors.blue;
+      case 'medical':
+        return Colors.red;
+      case 'visit':
+        return Colors.orange;
+      case 'activity':
+        return Colors.green;
+      case 'social':
+        return Colors.purple;
+      default:
+        return Colors.blue;
     }
   }
 
   IconData _getNotifIcon(String type) {
     switch (type) {
-      case 'medical': return Icons.medical_services_rounded;
-      case 'visit': return Icons.people_rounded;
-      case 'activity': return Icons.event_rounded;
-      case 'social': return Icons.volunteer_activism_rounded;
-      default: return Icons.info_rounded;
+      case 'medical':
+        return Icons.medical_services_rounded;
+      case 'visit':
+        return Icons.people_rounded;
+      case 'activity':
+        return Icons.event_rounded;
+      case 'social':
+        return Icons.volunteer_activism_rounded;
+      default:
+        return Icons.info_rounded;
     }
   }
 }

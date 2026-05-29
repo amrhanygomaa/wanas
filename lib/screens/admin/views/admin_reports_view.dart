@@ -78,14 +78,14 @@ class AdminReportsView extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 24),
-            _buildChartMockup(Colors.blue),
+            _buildOperationalChart(Colors.blue),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _statMini('$compliance%', 'التزام دوائي'),
-                _statMini(
-                    '${(provider.occupancyRate * 100).toInt()}%', 'نسبة الإشغال'),
+                _statMini('${(provider.occupancyRate * 100).toInt()}%',
+                    'نسبة الإشغال'),
               ],
             ),
           ],
@@ -94,7 +94,8 @@ class AdminReportsView extends ConsumerWidget {
     );
   }
 
-  void _showDetailedFinancialReport(BuildContext context, AppRiverpod provider) {
+  void _showDetailedFinancialReport(
+      BuildContext context, AppRiverpod provider) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -179,7 +180,10 @@ class AdminReportsView extends ConsumerWidget {
     final unresolved = provider.unresolvedComplaintsCount;
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: const Color(0xFFfef2f2), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFfee2e2))),
+      decoration: BoxDecoration(
+          color: const Color(0xFFfef2f2),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFfee2e2))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -196,9 +200,16 @@ class AdminReportsView extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _buildSafetyRow('شكاوى قيد المتابعة', unresolved.toString().padLeft(2, '٠'), Colors.red),
-          _buildSafetyRow('إجمالي المقيمين', provider.residentFiles.length.toString().padLeft(2, '٠'), Colors.green),
-          _buildSafetyRow('أعضاء الطاقم النشط', provider.activeStaffCount.toString().padLeft(2, '٠'), Colors.blue),
+          _buildSafetyRow('شكاوى قيد المتابعة',
+              unresolved.toString().padLeft(2, '٠'), Colors.red),
+          _buildSafetyRow(
+              'إجمالي المقيمين',
+              provider.residentFiles.length.toString().padLeft(2, '٠'),
+              Colors.green),
+          _buildSafetyRow(
+              'أعضاء الطاقم النشط',
+              provider.activeStaffCount.toString().padLeft(2, '٠'),
+              Colors.blue),
         ],
       ),
     );
@@ -226,14 +237,15 @@ class AdminReportsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildChartMockup(Color color) {
+  Widget _buildOperationalChart(Color color) {
     return Column(
       children: [
         const SizedBox(height: 10),
         Container(
           height: 160, // Increased height to accommodate labels
           width: double.infinity,
-          padding: const EdgeInsets.only(left: 30, right: 30, bottom: 40, top: 10),
+          padding:
+              const EdgeInsets.only(left: 30, right: 30, bottom: 40, top: 10),
           child: CustomPaint(
             painter: LineChartPainter(color),
           ),
@@ -258,8 +270,13 @@ class AdminReportsView extends ConsumerWidget {
   static Widget _statMini(String val, String label) {
     return Column(
       children: [
-        Text(val, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1e293b))),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748b))),
+        Text(val,
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1e293b))),
+        Text(label,
+            style: const TextStyle(fontSize: 10, color: Color(0xFF64748b))),
       ],
     );
   }
@@ -268,26 +285,38 @@ class AdminReportsView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('تصدير البيانات والتحاليل', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1e293b))),
+        const Text('تصدير البيانات والتحاليل',
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1e293b))),
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _exportBtn(context, 'Excel', 'Excel', Icons.table_chart_outlined, Colors.green, provider)),
+            Expanded(
+                child: _exportBtn(context, 'Excel', 'Excel',
+                    Icons.table_chart_outlined, Colors.green, provider)),
             const SizedBox(width: 12),
-            Expanded(child: _exportBtn(context, 'PDF', 'PDF Report', Icons.picture_as_pdf_outlined, Colors.red, provider)),
+            Expanded(
+                child: _exportBtn(context, 'PDF', 'PDF Report',
+                    Icons.picture_as_pdf_outlined, Colors.red, provider)),
           ],
         ),
       ],
     );
   }
 
-  Widget _exportBtn(BuildContext context, String format, String label, IconData icon, Color c, AppRiverpod provider) {
+  Widget _exportBtn(BuildContext context, String format, String label,
+      IconData icon, Color c, AppRiverpod provider) {
     return InkWell(
       onTap: () => _showExportDialog(context, provider, format),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.withValues(alpha: 0.2))),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: c.withValues(alpha: 0.2))),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -353,12 +382,15 @@ class AdminReportsView extends ConsumerWidget {
                         const SizedBox(height: 8),
                         Text(summary,
                             style: const TextStyle(
-                                fontSize: 11, height: 1.6, color: Color(0xFF1e293b))),
+                                fontSize: 11,
+                                height: 1.6,
+                                color: Color(0xFF1e293b))),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('سيتم إنشاء الملف بتصميم احترافي يشمل شعار المنشأة.',
+                  const Text(
+                      'سيتم إنشاء الملف بتصميم احترافي يشمل شعار المنشأة.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 13,
@@ -432,7 +464,7 @@ class LineChartPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
-    final arrowSize = 7.0;
+    const arrowSize = 7.0;
 
     // Draw Y Axis
     canvas.drawLine(Offset(0, size.height), const Offset(0, 0), paint);
@@ -457,19 +489,19 @@ class LineChartPainter extends CustomPainter {
     final textPainter = TextPainter(textDirection: TextDirection.rtl);
     final months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو'];
     final segmentWidth = size.width / (months.length - 1);
-    
+
     for (int i = 0; i < months.length; i++) {
       textPainter.text = TextSpan(
         text: months[i],
         style: const TextStyle(
-            color: Color(0xFF64748b),
-            fontSize: 9,
-            fontWeight: FontWeight.bold),
+            color: Color(0xFF64748b), fontSize: 9, fontWeight: FontWeight.bold),
       );
       textPainter.layout();
       // Center the text under the point
       textPainter.paint(
-          canvas, Offset((segmentWidth * i) - (textPainter.width / 2), size.height + 12));
+          canvas,
+          Offset(
+              (segmentWidth * i) - (textPainter.width / 2), size.height + 12));
     }
 
     // Draw Shadow Line (Glow)

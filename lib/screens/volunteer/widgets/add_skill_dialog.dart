@@ -23,7 +23,10 @@ class _AddSkillDialogState extends State<AddSkillDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       title: const Text('إضافة مهارة جديدة',
           textAlign: TextAlign.right,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF065f46))),
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF065f46))),
       content: TextField(
         controller: _controller,
         textAlign: TextAlign.right,
@@ -58,9 +61,11 @@ class _AddSkillDialogState extends State<AddSkillDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF059669),
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text('إضافة', style: TextStyle(fontWeight: FontWeight.bold)),
+          child: const Text('إضافة',
+              style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ],
     );

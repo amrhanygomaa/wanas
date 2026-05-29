@@ -34,9 +34,9 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
     _shimmerController =
         AnimationController(vsync: this, duration: const Duration(seconds: 2))
           ..repeat();
-    _bgController = AnimationController(
-        vsync: this, duration: const Duration(seconds: 15))
-      ..repeat();
+    _bgController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
   }
 
   @override
@@ -51,6 +51,21 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
+
+    // اعرض احتفال الوسام عند فتح وسام جديد
+    ref.listen<AppRiverpod>(appRiverpod, (prev, next) {
+      if (next.newlyUnlockedBadge != null &&
+          prev?.newlyUnlockedBadge != next.newlyUnlockedBadge) {
+        final badge = next.newlyUnlockedBadge!;
+        // نمسح الإشعار ونعرض الاحتفال خارج دورة البناء
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ref.read(appRiverpod).clearBadgeNotification();
+          _showBadgeCelebration(context, badge);
+        });
+      }
+    });
+
     final int points = provider.currentUser.points;
     final double progress = (points / targetPoints).clamp(0.0, 1.0);
 
@@ -430,12 +445,7 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
       builder: (context, _) => GestureDetector(
         onTap: () {
           provider.completeActivity(act.id);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('أحسنت! تم إنجاز ${act.name} 🌟',
-                style: const TextStyle(fontSize: 20)),
-            backgroundColor: const Color(0xFF10B981),
-            duration: const Duration(seconds: 3),
-          ));
+          _showPostSessionEvaluation(context, provider, act.name);
         },
         child: Container(
           padding: const EdgeInsets.all(18),
@@ -624,41 +634,16 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
 
   // ─── Badges ──────────────────────────────────────────────────────────
   Widget _buildBadgesSection() {
-    final badges = [
-      {
-        'icon': Icons.stars_rounded,
-        'label': 'وسام الحكمة',
-        'color': const Color(0xFFFBBF24),
-        'locked': false
-      },
-      {
-        'icon': Icons.favorite_rounded,
-        'label': 'صديق الجميع',
-        'color': const Color(0xFFEC4899),
-        'locked': false
-      },
-      {
-        'icon': Icons.lock_outline_rounded,
-        'label': 'بطل النشاط',
-        'color': const Color(0xFF94A3B8),
-        'locked': true
-      },
-      {
-        'icon': Icons.lock_outline_rounded,
-        'label': 'خبير السعادة',
-        'color': const Color(0xFF94A3B8),
-        'locked': true
-      },
-    ];
+    final earnedIds = ref.watch(appRiverpod).earnedBadgeIds;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       reverse: true,
       physics: const BouncingScrollPhysics(),
       child: Row(
-        children: badges.map((b) {
-          final locked = b['locked'] as bool;
-          final color = b['color'] as Color;
+        children: BadgeDefinition.all.map((badge) {
+          final locked = !earnedIds.contains(badge.id);
+          final color = locked ? const Color(0xFF94A3B8) : badge.color;
           return Container(
             width: 170,
             margin: const EdgeInsets.only(left: 14),
@@ -669,23 +654,20 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                 end: Alignment.bottomRight,
                 colors: locked
                     ? [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)]
-                    : [
-                        color.withValues(alpha: 0.05),
-                        Colors.white,
-                      ],
+                    : [badge.color.withValues(alpha: 0.05), Colors.white],
               ),
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
                 color: locked
                     ? const Color(0xFFE2E8F0)
-                    : color.withValues(alpha: 0.3),
+                    : badge.color.withValues(alpha: 0.3),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
                   color: locked
                       ? Colors.transparent
-                      : color.withValues(alpha: 0.15),
+                      : badge.color.withValues(alpha: 0.15),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 )
@@ -703,40 +685,44 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                         height: 65,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: color.withValues(alpha: 0.1),
+                          color: badge.color.withValues(alpha: 0.1),
                         ),
                       ),
                     Icon(
-                      locked ? Icons.lock_rounded : b['icon'] as IconData,
-                      color: locked ? const Color(0xFFCBD5E1) : color,
+                      locked ? Icons.lock_rounded : badge.icon,
+                      color: locked ? const Color(0xFFCBD5E1) : badge.color,
                       size: 40,
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  b['label'] as String,
+                  badge.name,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: locked ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+                    color: locked
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF1E293B),
                     letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: locked
-                        ? Colors.transparent
-                        : color.withValues(alpha: 0.1),
+                        ? const Color(0xFFF1F5F9)
+                        : badge.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    locked ? 'بانتظارك ✨' : 'مكتسب بفخر 🏆',
+                    locked ? badge.requirement : 'مكتسب بفخر 🏆',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: locked ? const Color(0xFFCBD5E1) : color,
                     ),
@@ -747,6 +733,15 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
           );
         }).toList(),
       ),
+    );
+  }
+
+  void _showBadgeCelebration(BuildContext context, BadgeDefinition badge) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (_) => _BadgeCelebrationDialog(badge: badge),
     );
   }
 
@@ -778,29 +773,17 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
               'me': isMe,
             };
           }).toList()
-        : [
-            {
-              'rank': toArabicDigit(1),
-              'ini': 'مح',
-              'name': currentName.trim().isEmpty ? 'الحاج محمود' : currentName,
-              'pts': toArabicDigit(max(provider.currentUser.points, 370).toInt()),
-              'me': true,
-            },
-            {
-              'rank': toArabicDigit(2),
-              'ini': 'فا',
-              'name': 'الحاجة فاطمة',
-              'pts': toArabicDigit(340),
-              'me': false,
-            },
-            {
-              'rank': toArabicDigit(3),
-              'ini': 'أح',
-              'name': 'الحاج أحمد',
-              'pts': toArabicDigit(310),
-              'me': false,
-            },
-          ];
+        : currentName.trim().isEmpty
+            ? <Map<String, Object>>[]
+            : [
+                {
+                  'rank': toArabicDigit(1),
+                  'ini': String.fromCharCode(currentName.runes.first),
+                  'name': currentName,
+                  'pts': toArabicDigit(provider.currentUser.points),
+                  'me': true,
+                },
+              ];
     final rankColors = [
       const Color(0xFFD97706),
       const Color(0xFF64748B),
@@ -917,6 +900,578 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
       ),
     );
   }
+
+  // ── تقييم ما بعد النشاط ──────────────────────────────────────────────
+  void _showPostSessionEvaluation(
+      BuildContext context, AppRiverpod provider, String activityName) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(4))),
+            ),
+            const SizedBox(height: 20),
+            const Text('أحسنت! 🌟',
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A))),
+            const SizedBox(height: 8),
+            Text('تم إنجاز $activityName بنجاح',
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 16, color: Color(0xFF64748B))),
+            const SizedBox(height: 28),
+            _buildEvaluationCard(
+              icon: Icons.volunteer_activism_rounded,
+              iconBg: const Color(0xFF86EFAC),
+              iconColor: const Color(0xFF15803D),
+              bg: const Color(0xFFF0FDF4),
+              border: const Color(0xFFBBF7D0),
+              title: 'كيف كانت جلستك التطوعية؟',
+              subtitle: 'أخبرنا برأيك في المتطوع الذي زارك',
+              titleColor: const Color(0xFF166534),
+              subtitleColor: const Color(0xFF15803D),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showVolunteerRatingSheet(context, provider, activityName);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildEvaluationCard(
+              icon: Icons.star_rounded,
+              iconBg: const Color(0xFF93C5FD),
+              iconColor: const Color(0xFF1D4ED8),
+              bg: const Color(0xFFEFF6FF),
+              border: const Color(0xFFBFDBFE),
+              title: 'تقييم جودة الخدمة',
+              subtitle: 'رأيك يهمنا في الدار والممرض والأخصائي',
+              titleColor: const Color(0xFF1E40AF),
+              subtitleColor: const Color(0xFF1D4ED8),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showServiceRatingSheet(context, provider);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildEvaluationCard(
+              icon: Icons.room_service_rounded,
+              iconBg: const Color(0xFFFCA5A5),
+              iconColor: const Color(0xFFB91C1C),
+              bg: const Color(0xFFFEF2F2),
+              border: const Color(0xFFFECACA),
+              title: 'طلب مساعدة / شكوى',
+              subtitle: 'هل تحتاج لشيء؟ نحن هنا لخدمتك',
+              titleColor: const Color(0xFF991B1B),
+              subtitleColor: const Color(0xFFB91C1C),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showComplaintSheet(context, provider);
+              },
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('ربما لاحقاً',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF94A3B8))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEvaluationCard({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required Color bg,
+    required Color border,
+    required String title,
+    required String subtitle,
+    required Color titleColor,
+    required Color subtitleColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: border, width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: titleColor)),
+                  Text(subtitle,
+                      style: TextStyle(fontSize: 13, color: subtitleColor)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: titleColor, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingEmoji(String emoji, String label, int value,
+      int selectedValue, VoidCallback onTap) {
+    final isSelected = value == selectedValue;
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFFDCFCE7)
+                  : const Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF22C55E)
+                      : Colors.transparent,
+                  width: 3),
+            ),
+            child: Text(emoji,
+                style: TextStyle(fontSize: isSelected ? 48 : 36)),
+          ),
+          const SizedBox(height: 12),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? const Color(0xFF166534)
+                      : const Color(0xFF64748B))),
+        ],
+      ),
+    );
+  }
+
+  void _showVolunteerRatingSheet(
+      BuildContext context, AppRiverpod provider, String activityName) {
+    int selectedRating = 0;
+    final commentController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 20,
+              right: 20,
+              top: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(4))),
+              ),
+              const SizedBox(height: 24),
+              const Text('تقييم زيارة التطوع 🌟',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A))),
+              const SizedBox(height: 12),
+              Text('كيف كان وقتك في $activityName؟',
+                  style:
+                      const TextStyle(fontSize: 18, color: Color(0xFF475569))),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildRatingEmoji('☹️', 'غير سعيد', 1, selectedRating,
+                      () => setModalState(() => selectedRating = 1)),
+                  _buildRatingEmoji('😐', 'عادي', 2, selectedRating,
+                      () => setModalState(() => selectedRating = 2)),
+                  _buildRatingEmoji('😊', 'سعيد', 3, selectedRating,
+                      () => setModalState(() => selectedRating = 3)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'اكتب رأيك هنا (اختياري)...',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: selectedRating == 0
+                      ? null
+                      : () {
+                          provider.rateVolunteerSession(
+                              'v_123', selectedRating,
+                              comment: commentController.text);
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('شكراً لتقييمك! 🌟',
+                                  style: TextStyle(fontSize: 18)),
+                              backgroundColor: Color(0xFF22C55E),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                  ),
+                  child: const Text('إرسال التقييم',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showServiceRatingSheet(BuildContext context, AppRiverpod provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(4))),
+            ),
+            const SizedBox(height: 24),
+            const Text('ماذا تريد أن تقيم اليوم؟ ⭐',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A))),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                    child: _buildServiceButton('الأخصائي', () {
+                  Navigator.pop(ctx);
+                  _showServiceReviewDialog(context, provider, 'specialist');
+                })),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: _buildServiceButton('الممرض', () {
+                  Navigator.pop(ctx);
+                  _showServiceReviewDialog(context, provider, 'nurse');
+                })),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: _buildServiceButton('الدار', () {
+                  Navigator.pop(ctx);
+                  _showServiceReviewDialog(context, provider, 'home');
+                })),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServiceButton(String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF3B82F6),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+      ),
+      child: Text(label,
+          style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold)),
+    );
+  }
+
+  void _showServiceReviewDialog(
+      BuildContext context, AppRiverpod provider, String toRole) {
+    int selectedRating = 0;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(
+              'تقييم ${toRole == 'specialist' ? 'الأخصائي' : toRole == 'nurse' ? 'الممرض' : 'الدار'}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontFamily: 'Cairo')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildRatingEmoji('☹️', 'غير سعيد', 1, selectedRating,
+                        () => setD(() => selectedRating = 1)),
+                    _buildRatingEmoji('😐', 'عادي', 2, selectedRating,
+                        () => setD(() => selectedRating = 2)),
+                    _buildRatingEmoji('😊', 'سعيد', 3, selectedRating,
+                        () => setD(() => selectedRating = 3)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: commentController,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'اكتب رأيك هنا (اختياري)...',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: selectedRating == 0
+                  ? null
+                  : () {
+                      provider.addReview(Review(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        fromRole: 'elderly',
+                        fromName: provider.currentUser.name,
+                        toRole: toRole,
+                        rating: selectedRating.toDouble(),
+                        comment: commentController.text,
+                        date: DateTime.now().toString(),
+                      ));
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('شكراً لتقييمك! 🌟',
+                              style: TextStyle(fontSize: 18)),
+                          backgroundColor: Color(0xFF22C55E),
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF22C55E)),
+              child: const Text('إرسال',
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showComplaintSheet(BuildContext context, AppRiverpod provider) {
+    String selectedType = 'جودة الطعام';
+    final descController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 20,
+              right: 20,
+              top: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(4))),
+              ),
+              const SizedBox(height: 24),
+              const Text('أخبرنا بما يزعجك',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A))),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  'جودة الطعام',
+                  'صيانة الغرفة',
+                  'مساعدة في التنظيف',
+                  'أحتاج ممرض',
+                  'أخرى'
+                ].map((type) {
+                  final isSelected = selectedType == type;
+                  return GestureDetector(
+                    onTap: () => setModalState(() => selectedType = type),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF6C63FF)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(type,
+                          style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF475569),
+                              fontSize: 18,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: descController,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  hintText: 'اكتب تفاصيل إضافية إن أردت...',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: () {
+                    provider.submitComplaint(
+                        descController.text.isNotEmpty
+                            ? descController.text
+                            : 'طلب من المسن بخصوص $selectedType',
+                        selectedType,
+                        'مسن');
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم استلام طلبك، سنخدمك فوراً 🙏',
+                            style: TextStyle(fontSize: 18)),
+                        backgroundColor: Color(0xFF6C63FF),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                  ),
+                  child: const Text('إرسال الطلب',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Ring Painter ─────────────────────────────────────────────────────
@@ -953,4 +1508,132 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RingPainter old) => old.progress != progress;
+}
+
+// ─── Badge Celebration Dialog ──────────────────────────────────────────
+class _BadgeCelebrationDialog extends StatefulWidget {
+  const _BadgeCelebrationDialog({required this.badge});
+  final BadgeDefinition badge;
+
+  @override
+  State<_BadgeCelebrationDialog> createState() =>
+      _BadgeCelebrationDialogState();
+}
+
+class _BadgeCelebrationDialogState extends State<_BadgeCelebrationDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+  late Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = widget.badge;
+    return FadeTransition(
+      opacity: _fade,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        child: ScaleTransition(
+          scale: _scale,
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: badge.color.withValues(alpha: 0.3),
+                  blurRadius: 40,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: badge.color.withValues(alpha: 0.12),
+                    border: Border.all(
+                        color: badge.color.withValues(alpha: 0.4), width: 3),
+                  ),
+                  child: Icon(badge.icon, color: badge.color, size: 52),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '🎉 مبروك!',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'حصلت على وسام',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  badge.name,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: badge.color,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: badge.color,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'رائع! 🌟',
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

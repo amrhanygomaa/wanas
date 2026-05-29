@@ -198,11 +198,13 @@ class _AdminResidentDetailScreenState
                       return CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.white12,
-                        backgroundImage: (imageUrl != null && imageUrl.isNotEmpty)
-                            ? FileImage(File(imageUrl))
-                            : null,
+                        backgroundImage:
+                            (imageUrl != null && imageUrl.isNotEmpty)
+                                ? FileImage(File(imageUrl))
+                                : null,
                         child: (imageUrl == null || imageUrl.isEmpty)
-                            ? const Icon(Icons.person, color: Colors.white, size: 45)
+                            ? const Icon(Icons.person,
+                                color: Colors.white, size: 45)
                             : null,
                       );
                     },
@@ -222,8 +224,8 @@ class _AdminResidentDetailScreenState
                       decoration: BoxDecoration(
                         color: const Color(0xFF0ea5e9),
                         shape: BoxShape.circle,
-                        border:
-                            Border.all(color: const Color(0xFF1e293b), width: 2),
+                        border: Border.all(
+                            color: const Color(0xFF1e293b), width: 2),
                       ),
                       child: const Icon(
                         Icons.camera_alt_rounded,
@@ -705,6 +707,7 @@ class _AdminResidentDetailScreenState
       onTap: () {
         setState(() => _isUploading = true);
         Future.delayed(const Duration(seconds: 2), () {
+          if (!mounted) return;
           setState(() => _isUploading = false);
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('تم رفع المستند بنجاح')));
@@ -736,6 +739,7 @@ class _AdminResidentDetailScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildDeleteBtn() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),

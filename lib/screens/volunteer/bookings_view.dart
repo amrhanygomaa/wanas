@@ -50,9 +50,18 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
   }
 
   void _updateCountdown() {
-    // Mock target: 26 hours and 14 minutes from now
     final now = DateTime.now();
-    final target = now.add(const Duration(hours: 26, minutes: 14));
+    final upcoming = ref
+        .read(appRiverpod)
+        .volunteerBookings
+        .where((booking) => booking.startTime.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    if (upcoming.isEmpty) {
+      setState(() => _countdownText = 'لا توجد جلسات قادمة من AWS');
+      return;
+    }
+    final target = upcoming.first.startTime;
     final diff = target.difference(now);
 
     if (diff.isNegative) {
@@ -76,7 +85,8 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -98,8 +108,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                     ...provider.volunteerBookings
                         .where((b) => b.status == 'confirmed')
                         .skip(1)
-                        .map((b) => _buildBookingCard(b))
-                        ,
+                        .map((b) => _buildBookingCard(b)),
                     const SizedBox(height: 24),
                     _buildSectionLabel(
                         'آخر جلسة مكتملة', const Color(0xFF6366f1), 2),
@@ -220,7 +229,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('قيّم جلسة الأمس — الحاج محمود',
+                const Text('قيّم جلسة التطوع السابقة',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                         fontSize: 12,
@@ -422,7 +431,8 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                   ),
                   Text('+${booking.points} نقطة عند الإتمام',
                       style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9), fontSize: 11)),
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 11)),
                 ],
               ),
             ],
@@ -488,7 +498,9 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                                 color: Color(0xFF0f172a))),
                         Text(booking.timeInfo,
                             style: const TextStyle(
-                                color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500)),
+                                color: Color(0xFF475569),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500)),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
@@ -500,7 +512,9 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                      color: Color(0xFF64748b), fontSize: 11, fontWeight: FontWeight.w500)),
+                                      color: Color(0xFF64748b),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500)),
                             ),
                           ],
                         ),

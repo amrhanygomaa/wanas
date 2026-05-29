@@ -336,7 +336,9 @@ class SpecialistComplaintsView extends ConsumerWidget {
                                 '${complaint.residentName} — غرفة ${complaint.room} · ${complaint.date}',
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
-                                    fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                                    fontSize: 12,
+                                    color: Color(0xFF334155),
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -411,144 +413,152 @@ class SpecialistComplaintsView extends ConsumerWidget {
                               controller: scrollController,
                               padding: const EdgeInsets.all(24),
                               children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildStatusBadge(
-                                    complaint.status, complaint.priority),
-                                IconButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  icon: const Icon(Icons.close_rounded,
-                                      color: Color(0xFF64748b)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(complaint.title,
-                                          style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF0f172a))),
-                                      Text(
-                                          '${complaint.residentName} · غرفة ${complaint.room}',
-                                          style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xFFea580c))),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: _getIconBg(complaint.category),
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  child: Center(
-                                    child: Text(complaint.icon,
-                                        style: const TextStyle(fontSize: 28)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 32),
-                            _buildDetailSectionTitle('تاريخ الشكوى'),
-                            const SizedBox(height: 12),
-                            Text(
-                              'تم تقديم الشكوى بتاريخ ${complaint.date} بخصوص ${complaint.title}. الحالة الحالية هي "${_getStatusLabel(complaint.status)}".',
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF334155),
-                                  height: 1.6),
-                            ),
-                            const SizedBox(height: 32),
-                            _buildDetailSectionTitle('سجل المتابعة'),
-                            const SizedBox(height: 16),
-                            ...complaint.timeline
-                                .map((s) => _buildTimelineItem(s)),
-                            const SizedBox(height: 40),
-                            if (complaint.status != 'done')
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Wrap(
-                                  spacing: 12,
-                                  runSpacing: 12,
-                                  alignment: WrapAlignment.center,
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF10b981),
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16)),
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 16),
-                                        ),
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          _showResolutionDialog(
-                                              context, ref, complaint);
-                                        },
-                                        child: const FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text('إغلاق وحل الشكوى ✓',
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold)),
-                                        ),
-                                      ),
+                                    _buildStatusBadge(
+                                        complaint.status, complaint.priority),
+                                    IconButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      icon: const Icon(Icons.close_rounded,
+                                          color: Color(0xFF64748b)),
                                     ),
-                                    if (!isAdmin)
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: OutlinedButton(
-                                          style: OutlinedButton.styleFrom(
-                                            side: const BorderSide(
-                                                color: Color(0xFFea580c)),
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(16)),
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 16),
-                                          ),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(const SnackBar(
-                                                    content: Text(
-                                                        'تم تصعيد الشكوى للإدارة')));
-                                          },
-                                          child: const FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text('تصعيد للإدارة ↑',
-                                                style: TextStyle(
-                                                    color: Color(0xFFea580c),
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
-                              ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(complaint.title,
+                                              style: const TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF0f172a))),
+                                          Text(
+                                              '${complaint.residentName} · غرفة ${complaint.room}',
+                                              style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Color(0xFFea580c))),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: _getIconBg(complaint.category),
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      child: Center(
+                                        child: Text(complaint.icon,
+                                            style:
+                                                const TextStyle(fontSize: 28)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 32),
+                                _buildDetailSectionTitle('تاريخ الشكوى'),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'تم تقديم الشكوى بتاريخ ${complaint.date} بخصوص ${complaint.title}. الحالة الحالية هي "${_getStatusLabel(complaint.status)}".',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF334155),
+                                      height: 1.6),
+                                ),
+                                const SizedBox(height: 32),
+                                _buildDetailSectionTitle('سجل المتابعة'),
+                                const SizedBox(height: 16),
+                                ...complaint.timeline
+                                    .map((s) => _buildTimelineItem(s)),
+                                const SizedBox(height: 40),
+                                if (complaint.status != 'done')
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Wrap(
+                                      spacing: 12,
+                                      runSpacing: 12,
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color(0xFF10b981),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          16)),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                            ),
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              _showResolutionDialog(
+                                                  context, ref, complaint);
+                                            },
+                                            child: const FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text('إغلاق وحل الشكوى ✓',
+                                                  style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                            ),
+                                          ),
+                                        ),
+                                        if (!isAdmin)
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: OutlinedButton(
+                                              style: OutlinedButton.styleFrom(
+                                                side: const BorderSide(
+                                                    color: Color(0xFFea580c)),
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            16)),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 16),
+                                              ),
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(const SnackBar(
+                                                        content: Text(
+                                                            'تم تصعيد الشكوى للإدارة')));
+                                              },
+                                              child: const FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text('تصعيد للإدارة ↑',
+                                                    style: TextStyle(
+                                                        color:
+                                                            Color(0xFFea580c),
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
                     ],
                   ),
                 ),
@@ -618,7 +628,10 @@ class SpecialistComplaintsView extends ConsumerWidget {
           ),
           const Spacer(),
           Text(step.time,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF334155),
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -678,8 +691,10 @@ class SpecialistComplaintsView extends ConsumerWidget {
               const SizedBox(height: 2),
               Text(step.time,
                   textAlign: TextAlign.right,
-                  style:
-                      const TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w600)),
+                  style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF475569),
+                      fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
             ],
           ),
@@ -1033,6 +1048,7 @@ class SpecialistComplaintsView extends ConsumerWidget {
     );
   }
 
+  // ignore: unused_element
   Color _getStatusBorderColor(String status, String priority) {
     if (priority == 'high' && status == 'open') return const Color(0xFFfca5a5);
     if (status == 'progress') return const Color(0xFFfde68a);
@@ -1040,6 +1056,7 @@ class SpecialistComplaintsView extends ConsumerWidget {
     return const Color(0xFFe2e8f0);
   }
 
+  // ignore: unused_element
   Color _getStatusBgColor(String status, String priority) {
     if (priority == 'high' && status == 'open') return const Color(0xFFfff5f5);
     if (status == 'progress') return const Color(0xFFfffbeb);
@@ -1053,12 +1070,14 @@ class SpecialistComplaintsView extends ConsumerWidget {
     return const Color(0xFF10b981);
   }
 
+  // ignore: unused_element
   Color _getPriorityBg(String p) {
     if (p == 'high') return const Color(0xFFfee2e2);
     if (p == 'medium') return const Color(0xFFfef3c7);
     return const Color(0xFFd1fae5);
   }
 
+  // ignore: unused_element
   String _getPriorityLabel(String p) {
     if (p == 'high') return 'عاجل';
     if (p == 'medium') return 'متوسط';
@@ -1209,32 +1228,39 @@ class _NewsTickerChipsState extends State<NewsTickerChips> {
   }
 }
 
-class _ComplaintsCardDustParticle {
+class ComplaintsCardDustParticle {
   Offset position;
   double speed;
   double radius;
-  _ComplaintsCardDustParticle({required this.position, required this.speed, required this.radius});
+  ComplaintsCardDustParticle(
+      {required this.position, required this.speed, required this.radius});
 }
 
 class ComplaintsCardDustAnimation extends StatefulWidget {
   const ComplaintsCardDustAnimation({super.key});
 
   @override
-  State<ComplaintsCardDustAnimation> createState() => _ComplaintsCardDustAnimationState();
+  State<ComplaintsCardDustAnimation> createState() =>
+      _ComplaintsCardDustAnimationState();
 }
 
-class _ComplaintsCardDustAnimationState extends State<ComplaintsCardDustAnimation> with SingleTickerProviderStateMixin {
+class _ComplaintsCardDustAnimationState
+    extends State<ComplaintsCardDustAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<_ComplaintsCardDustParticle> _dust;
+  late List<ComplaintsCardDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
-    
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
+
     final random = Random();
-    _dust = List.generate(100, (index) { // زيادة العدد بناء على طلب المستخدم
-      return _ComplaintsCardDustParticle(
+    _dust = List.generate(100, (index) {
+      // زيادة العدد بناء على طلب المستخدم
+      return ComplaintsCardDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.05 + 0.02,
         radius: random.nextDouble() * 1.5 + 0.5,
@@ -1255,7 +1281,8 @@ class _ComplaintsCardDustAnimationState extends State<ComplaintsCardDustAnimatio
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: ComplaintsCardDustPainter(dust: _dust, animationValue: _controller.value),
+            painter: ComplaintsCardDustPainter(
+                dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -1264,7 +1291,7 @@ class _ComplaintsCardDustAnimationState extends State<ComplaintsCardDustAnimatio
 }
 
 class ComplaintsCardDustPainter extends CustomPainter {
-  final List<_ComplaintsCardDustParticle> dust;
+  final List<ComplaintsCardDustParticle> dust;
   final double animationValue;
 
   ComplaintsCardDustPainter({required this.dust, required this.animationValue});
@@ -1277,11 +1304,13 @@ class ComplaintsCardDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-      
-      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
+
+      double dy = (p.position.dy * size.height) -
+          (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx =
+          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 

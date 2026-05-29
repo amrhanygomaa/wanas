@@ -44,14 +44,24 @@ class RealtimeService {
     _facilityId = user.facilityId;
     _userId = user.userId;
 
-    final base = Uri.parse(ApiConfig.baseUrl);
-    final endpoint = '${base.scheme}://${base.authority}/realtime';
+    // بناء URL string مباشرة لتجنّب bug الـ port :0 في socket_io_client 2.0.x
+    final cleanBase = ApiConfig.baseUrl.endsWith('/')
+        ? ApiConfig.baseUrl.substring(0, ApiConfig.baseUrl.length - 1)
+        : ApiConfig.baseUrl;
+    final endpoint = '$cleanBase/realtime';
+
+    if (kDebugMode) {
+      debugPrint('[Realtime] connecting to: $endpoint (namespace=/realtime)');
+    }
 
     final socket = io.io(
       endpoint,
       io.OptionBuilder()
-          .setTransports(['polling'])
+          .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
+          .enableReconnection()
+          .setReconnectionAttempts(5)
+          .setReconnectionDelay(2000)
           .setQuery({
             'facilityId': user.facilityId,
             'userId': user.userId,
@@ -61,7 +71,7 @@ class RealtimeService {
 
     socket.onConnect((_) {
       if (kDebugMode) {
-        debugPrint('[Realtime] connected ${user.facilityId}/${user.userId}');
+        debugPrint('[Realtime] ✅ connected ${user.facilityId}/${user.userId}');
       }
     });
     socket.onDisconnect((_) {

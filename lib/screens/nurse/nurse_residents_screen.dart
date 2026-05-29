@@ -23,7 +23,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
   late AnimationController _spinController;
 
   String _searchQuery = '';
-  String _selectedFilter = 'الكل (٢٤)';
+  String _selectedFilter = 'الكل';
   bool _loadMore = false;
 
   @override
@@ -89,7 +89,8 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
                     _buildHero(),
                     _buildSearchAndFilter(isDark),
                     _buildBody(isDark),
-                    const SizedBox(height: 100), // Space for parent's bottom nav
+                    const SizedBox(
+                        height: 100), // Space for parent's bottom nav
                   ],
                 ),
               ),
@@ -101,6 +102,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
   }
 
   Widget _buildHero() {
+    final residentCount = ref.watch(appRiverpod).residentFiles.length;
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -126,7 +128,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
                     color: Colors.white),
               ),
               Text(
-                '٢٤ مقيم — ${_getShiftName()}',
+                '$residentCount مقيم — ${_getShiftName()}',
                 style: const TextStyle(fontSize: 13, color: Color(0xFFE0F2FE)),
               ),
               const SizedBox(height: 16),
@@ -250,7 +252,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
             reverse: true,
             child: Row(
               children: [
-                _filterChip(isDark, 'الكل (٢٤)', 'الكل (٢٤)'),
+                _filterChip(isDark, 'الكل', 'الكل'),
                 _filterChip(isDark, '🔴 حرجة', 'حرجة 🔴'),
                 _filterChip(isDark, '🟡 تحذير', 'تحذير 🟡'),
                 _filterChip(isDark, '✅ مستقرة', 'مستقرة ✅'),
@@ -296,8 +298,32 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
 
   Widget _buildBody(bool isDark) {
     final provider = ref.watch(appRiverpod);
+    final residents = provider.residentFiles.where((resident) {
+      final matchesSearch = _searchQuery.trim().isEmpty ||
+          resident.name.contains(_searchQuery) ||
+          resident.room.contains(_searchQuery);
+      final type = _residentStatusType(resident.status);
+      final matchesFilter = _selectedFilter == 'الكل' ||
+          (_selectedFilter == 'حرجة 🔴' && type == 'critical') ||
+          (_selectedFilter == 'تحذير 🟡' && type == 'warning') ||
+          (_selectedFilter == 'مستقرة ✅' && type == 'stable') ||
+          (_selectedFilter == 'جديد' && resident.lastUpdate.contains('جديد'));
+      return matchesSearch && matchesFilter;
+    }).toList();
 
-    String getLatestNote(String name) {
+    if (residents.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'لا توجد بيانات مقيمين من AWS حتى الآن',
+          textAlign: TextAlign.center,
+          style:
+              TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    String latestNote(String name) {
       final notes = provider.getNotesForResident(name);
       return notes.isNotEmpty
           ? '${notes.first.title}: ${notes.first.content}'
@@ -308,271 +334,97 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          if ((_selectedFilter == 'الكل (٢٤)' ||
-                  _selectedFilter == 'حرجة 🔴') &&
-              ('الحاج محمود سالم'.contains(_searchQuery) ||
-                  '١٠٣'.contains(_searchQuery)))
-            _buildCriticalSection(getLatestNote('الحاج محمود سالم')),
-          if ((_selectedFilter == 'الكل (٢٤)' ||
-                  _selectedFilter == 'تحذير 🟡') &&
-              ('الحاجة فاطمة علي'.contains(_searchQuery) ||
-                  '١٠٧'.contains(_searchQuery)))
-            _buildWarningSection(getLatestNote('الحاجة فاطمة علي')),
-          if ((_selectedFilter == 'الكل (٢٤)' ||
-                  _selectedFilter == 'مستقرة ✅') &&
-              ('الحاج أحمد كمال'.contains(_searchQuery) ||
-                  '١١٢'.contains(_searchQuery) ||
-                  'الحاجة سمية إبراهيم'.contains(_searchQuery) ||
-                  '١١٥'.contains(_searchQuery)))
-            _buildStableSection(
-              getLatestNote('الحاج أحمد كمال'),
-              getLatestNote('الحاجة سمية إبراهيم'),
+          for (final resident in residents) ...[
+            _buildResidentCard(
+              name: resident.name,
+              age: resident.age == null ? '' : '${resident.age} سنة',
+              room: resident.room.isEmpty ? '' : 'غرفة ${resident.room}',
+              diagnoses: _residentDiagnosisLabel(resident),
+              statusLabel: _residentStatusLabel(resident.status),
+              statusColor: _residentStatusColor(resident.status),
+              statusBg: _residentStatusBackground(resident.status),
+              type: _residentStatusType(resident.status),
+              meds: const [],
+              medPercentage: '',
+              note: latestNote(resident.name),
+              actions: [
+                _actionBtn(
+                  'طوارئ',
+                  color: const Color(0xFF7F1D1D),
+                  bg: const Color(0xFFFEE2E2),
+                  onTap: () => _showEmergencyAlert(resident.name),
+                ),
+                _actionBtn(
+                  'الملف الكامل',
+                  color: Colors.white,
+                  isPrimary: true,
+                  bg: const Color(0xFF0369A1),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NurseResidentDetailScreen(
+                        residentName: resident.name,
+                        roomNumber: resident.room,
+                      ),
+                    ),
+                  ),
+                ),
+                _actionBtn(
+                  'ملاحظة',
+                  color: const Color(0xFF0369A1),
+                  bg: const Color(0xFFF0F9FF),
+                  onTap: () => _showNoteDialog(resident.name),
+                ),
+              ],
             ),
-          if (_loadMore && (_selectedFilter == 'الكل (٢٤)' || _selectedFilter == 'مستقرة ✅'))
-            _buildStableSection(
-              'متابعة الضغط: مستقر منذ الصباح',
-              'تناول الدواء: تم أخذ جرعة الضغط',
-            ),
-          const SizedBox(height: 12),
-          _buildMoreIndicator(),
+            const SizedBox(height: 16),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildCriticalSection(String latestNote) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFEF4444),
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'حالات تحتاج تدخل فوري',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFEF4444),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildResidentCard(
-          name: 'الحاج محمود سالم',
-          age: '٧٨ سنة',
-          room: 'غرفة ١٠٣',
-          diagnoses: 'ضغط + سكري',
-          statusLabel: '🔴 حرجة',
-          statusColor: const Color(0xFFEF4444),
-          statusBg: const Color(0xFFFEF2F2),
-          type: 'critical',
-          meds: [
-            _medDot('✓', true),
-            _medDot('!', false, warning: true),
-            _medDot('!', false, warning: true),
-            _medDot('—', false, empty: true),
-          ],
-          medPercentage: '٣٣٪',
-          note: latestNote,
-          actions: [
-            _actionBtn('طوارئ',
-                color: const Color(0xFF7F1D1D),
-                bg: const Color(0xFFFEE2E2),
-                onTap: () => _showEmergencyAlert('الحاج محمود سالم')),
-            _actionBtn('الملف الكامل',
-                color: Colors.white,
-                isPrimary: true,
-                bg: const Color(0xFF0369A1),
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const NurseResidentDetailScreen(
-                            residentName: 'الحاج محمود سالم',
-                            roomNumber: '١٠٣')))),
-            _actionBtn('ملاحظة',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                onTap: () => _showNoteDialog('الحاج محمود سالم')),
-          ],
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
+  String _residentStatusType(String status) {
+    final lower = status.toLowerCase();
+    if (lower.contains('critical') || status.contains('حرج')) return 'critical';
+    if (lower.contains('warning') ||
+        lower.contains('pending') ||
+        status.contains('متابعة')) {
+      return 'warning';
+    }
+    return 'stable';
   }
 
-  Widget _buildWarningSection(String latestNote) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFF59E0B),
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'تحتاج متابعة دقيقة',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0369A1),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildResidentCard(
-          name: 'الحاجة فاطمة علي',
-          age: '٧٢ سنة',
-          room: 'غرفة ١٠٧',
-          diagnoses: 'أمراض قلب',
-          statusLabel: '🟡 تحذير',
-          statusColor: const Color(0xFF92400E),
-          statusBg: const Color(0xFFFEF3C7),
-          type: 'warning',
-          meds: [
-            _medDot('✓', true),
-            _medDot('—', false, empty: true),
-            _medDot('—', false, empty: true),
-            _medDot('—', false, empty: true),
-          ],
-          medPercentage: '٥٠٪',
-          note: latestNote,
-          actions: [
-            _actionBtn('طوارئ',
-                color: const Color(0xFF7F1D1D),
-                bg: const Color(0xFFFEE2E2),
-                onTap: () => _showEmergencyAlert('الحاجة فاطمة علي')),
-            _actionBtn('الملف الكامل',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                border: const Color(0xFFBAE6FD),
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const NurseResidentDetailScreen(
-                            residentName: 'الحاجة فاطمة علي',
-                            roomNumber: '١٠٧')))),
-            _actionBtn('ملاحظة',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                border: const Color(0xFFBAE6FD),
-                onTap: () => _showNoteDialog('الحاجة فاطمة علي')),
-          ],
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
+  String _residentStatusLabel(String status) {
+    return switch (_residentStatusType(status)) {
+      'critical' => '🔴 حرجة',
+      'warning' => '🟡 متابعة',
+      _ => '✅ مستقرة',
+    };
   }
 
-  Widget _buildStableSection(String note1, String note2) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF10B981),
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'مستقرة — لا تحتاج تدخل',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0369A1),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        _buildResidentCard(
-          name: 'الحاج أحمد كمال',
-          age: '٦٩ سنة',
-          room: 'غرفة ١١٢',
-          diagnoses: 'مستقر',
-          statusLabel: '✅ ممتاز',
-          statusColor: const Color(0xFF065F46),
-          statusBg: const Color(0xFFD1FAE5),
-          type: 'stable',
-          meds: [
-            _medDot('✓', true),
-            _medDot('—', false, empty: true),
-            _medDot('—', false, empty: true),
-            _medDot('○', false, warning: true),
-          ],
-          medPercentage: '٨٠٪',
-          note: note1,
-          actions: [
-            _actionBtn('ملاحظة',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                border: const Color(0xFFBAE6FD),
-                onTap: () => _showNoteDialog('الحاج أحمد كمال')),
-            _actionBtn('الملف الكامل',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                border: const Color(0xFFBAE6FD),
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const NurseResidentDetailScreen(
-                            residentName: 'الحاج أحمد كمال',
-                            roomNumber: '١١٢')))),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _buildResidentCard(
-          name: 'الحاجة سمية إبراهيم',
-          age: '٦٥ سنة',
-          room: 'غرفة ١١٥',
-          diagnoses: 'مستقرة',
-          statusLabel: '✅ جيد',
-          statusColor: const Color(0xFF065F46),
-          statusBg: const Color(0xFFD1FAE5),
-          type: 'stable',
-          meds: [],
-          medPercentage: '',
-          note: note2,
-          actions: [
-            _actionBtn('الملف الكامل',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                border: const Color(0xFFBAE6FD),
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const NurseResidentDetailScreen(
-                            residentName: 'الحاجة سمية إبراهيم',
-                            roomNumber: '١١٥')))),
-            _actionBtn('ملاحظة',
-                color: const Color(0xFF0369A1),
-                bg: const Color(0xFFF0F9FF),
-                border: const Color(0xFFBAE6FD),
-                onTap: () => _showNoteDialog('الحاجة سمية إبراهيم')),
-          ],
-        ),
-      ],
-    );
+  Color _residentStatusColor(String status) {
+    return switch (_residentStatusType(status)) {
+      'critical' => const Color(0xFFEF4444),
+      'warning' => const Color(0xFF92400E),
+      _ => const Color(0xFF065F46),
+    };
+  }
+
+  Color _residentStatusBackground(String status) {
+    return switch (_residentStatusType(status)) {
+      'critical' => const Color(0xFFFEF2F2),
+      'warning' => const Color(0xFFFEF3C7),
+      _ => const Color(0xFFD1FAE5),
+    };
+  }
+
+  String _residentDiagnosisLabel(SpecialistResidentFile resident) {
+    final items = [
+      ...?resident.chronicDiseases,
+      ...resident.categories,
+    ].where((item) => item.trim().isNotEmpty).toList();
+    return items.isEmpty ? 'من AWS' : items.join(' + ');
   }
 
   Widget _buildResidentCard({
@@ -693,10 +545,12 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, // محاذاة لليمين في الـ RTL
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start, // محاذاة لليمين في الـ RTL
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(6),
@@ -741,7 +595,10 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
                 children: [
                   const Text(
                     'أدوية اليوم 💊',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 8),
                   ...meds,
@@ -772,7 +629,9 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
                       note,
                       textAlign: TextAlign.right,
                       style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.bold),
+                          fontSize: 12,
+                          color: Color(0xFF475569),
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -799,6 +658,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _medDot(String txt, bool success,
       {bool warning = false, bool empty = false}) {
     Color bg = const Color(0xFFF1F5F9);
@@ -922,16 +782,17 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
               ),
             ),
             const SizedBox(height: 8),
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Text('بواسطة: أ. منى (مشرف)',
-                    style: TextStyle(
+                Text(
+                    'بواسطة: ${ref.read(appRiverpod).currentAccount?.name ?? 'فريق التمريض'}',
+                    style: const TextStyle(
                         fontSize: 10,
                         color: Color(0xFF94A3B8),
                         fontWeight: FontWeight.bold)),
-                SizedBox(width: 4),
-                Icon(Icons.person_pin_rounded,
+                const SizedBox(width: 4),
+                const Icon(Icons.person_pin_rounded,
                     size: 14, color: Color(0xFF94A3B8)),
               ],
             ),
@@ -950,7 +811,8 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
                   residentName: residentName,
                   title: titleController.text,
                   content: contentController.text,
-                  author: 'أ. منى (مشرف)',
+                  author: ref.read(appRiverpod).currentAccount?.name ??
+                      'فريق التمريض',
                   timestamp: DateTime.now(),
                 );
                 ref.read(appRiverpod).addNursingNote(newNote);
@@ -1019,14 +881,16 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
     ));
   }
 
+  // ignore: unused_element
   Widget _buildMoreIndicator() {
     final provider = ref.watch(appRiverpod);
     final total = provider.totalResidentsCount;
-    final shown = 4; // عدد الكروت المعروضة حالياً في الواجهة
+    const shown = 4; // عدد الكروت المعروضة حالياً في الواجهة
     final remaining = total - shown;
 
     if (remaining <= 0 || _loadMore) {
-      return const SizedBox.shrink(); // إخفاء العنصر إذا لم يكن هناك مقيمون إضافيون أو تم تحميلهم
+      return const SizedBox
+          .shrink(); // إخفاء العنصر إذا لم يكن هناك مقيمون إضافيون أو تم تحميلهم
     }
 
     return GestureDetector(
@@ -1063,7 +927,8 @@ class AnimatedBackground extends StatefulWidget {
   State<AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
-class _AnimatedBackgroundState extends State<AnimatedBackground> with SingleTickerProviderStateMixin {
+class _AnimatedBackgroundState extends State<AnimatedBackground>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -1112,19 +977,22 @@ class BackgroundPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     // Draw some circles that move based on progress!
-    final center1 = Offset(size.width * 0.2, size.height * (0.2 + 0.1 * sin(progress * 2 * pi)));
+    final center1 = Offset(
+        size.width * 0.2, size.height * (0.2 + 0.1 * sin(progress * 2 * pi)));
     canvas.drawCircle(center1, 150, paint1);
 
     final paint2 = Paint()
       ..color = const Color(0xFFD1FAE5).withValues(alpha: 0.15)
       ..style = PaintingStyle.fill;
-    final center2 = Offset(size.width * 0.8, size.height * (0.8 - 0.1 * cos(progress * 2 * pi)));
+    final center2 = Offset(
+        size.width * 0.8, size.height * (0.8 - 0.1 * cos(progress * 2 * pi)));
     canvas.drawCircle(center2, 200, paint2);
 
     final paint3 = Paint()
       ..color = const Color(0xFFFEF08A).withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
-    final center3 = Offset(size.width * 0.5, size.height * (0.5 + 0.05 * sin(progress * 4 * pi)));
+    final center3 = Offset(
+        size.width * 0.5, size.height * (0.5 + 0.05 * sin(progress * 4 * pi)));
     canvas.drawCircle(center3, 100, paint3);
   }
 
@@ -1141,16 +1009,16 @@ class SodaBubblesBackground extends StatefulWidget {
   State<SodaBubblesBackground> createState() => _SodaBubblesBackgroundState();
 }
 
-class _SodaBubblesBackgroundState extends State<SodaBubblesBackground> with SingleTickerProviderStateMixin {
+class _SodaBubblesBackgroundState extends State<SodaBubblesBackground>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this, 
-      duration: const Duration(seconds: 15)
-    )..repeat();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
   }
 
   @override
@@ -1167,16 +1035,19 @@ class _SodaBubblesBackgroundState extends State<SodaBubblesBackground> with Sing
         builder: (context, child) {
           final size = MediaQuery.of(context).size;
           return Stack(
-            children: List.generate(30, (index) { // كثرها (30 particles)
+            children: List.generate(30, (index) {
+              // كثرها (30 particles)
               final speed = 0.5 + (index * 0.15); // سرعات متفاوتة
-              final progress = (_controller.value * speed + (index * 0.05)) % 1.0;
-              
+              final progress =
+                  (_controller.value * speed + (index * 0.05)) % 1.0;
+
               // توزيع أفقي عشوائي بناءً على الـ index
               final left = (index * 17.0) % size.width;
-              
+
               return Positioned(
                 left: left,
-                bottom: progress * size.height, // تتصاعد من الأسفل للأعلى بكامل طول الشاشة
+                bottom: progress *
+                    size.height, // تتصاعد من الأسفل للأعلى بكامل طول الشاشة
                 child: Opacity(
                   opacity: (1.0 - progress) * 0.7, // جعلها باينة أكثر
                   child: RotationTransition(
@@ -1184,7 +1055,8 @@ class _SodaBubblesBackgroundState extends State<SodaBubblesBackground> with Sing
                     child: Icon(
                       Icons.add_rounded,
                       size: 12.0 + (index * 6) % 30, // تكبير الحجم قليلاً
-                      color: const Color(0xFF0EA5E9).withValues(alpha: 0.6), // توضيح اللون أكثر
+                      color: const Color(0xFF0EA5E9)
+                          .withValues(alpha: 0.6), // توضيح اللون أكثر
                     ),
                   ),
                 ),

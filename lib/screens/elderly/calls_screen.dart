@@ -81,7 +81,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                     const SizedBox(height: 12),
                     _buildVoiceMessages(provider),
                     const SizedBox(height: 12),
-                    _buildRecentCalls(),
+                    _buildRecentCalls(provider),
                   ],
                 ),
               ),
@@ -93,6 +93,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildRecordingButton(AppRiverpod provider) {
     return Center(
       child: GestureDetector(
@@ -295,7 +296,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                                   fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
                           Text('$availableCount متاحين الآن',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold)),
@@ -355,14 +356,16 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     bool hc = provider.isHighContrast;
     Color chipColor;
     Color borderColor;
-    
+
     switch (index) {
       case 0: // متاح
-        chipColor = const Color(0xFF10B981).withValues(alpha: 0.15); // أخضر خفيف
+        chipColor =
+            const Color(0xFF10B981).withValues(alpha: 0.15); // أخضر خفيف
         borderColor = const Color(0xFF10B981).withValues(alpha: 0.3);
         break;
       case 1: // مشغول
-        chipColor = const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
+        chipColor =
+            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
         borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
         break;
       case 2: // رسائل
@@ -413,7 +416,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(label,
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
@@ -546,11 +549,14 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                                           fontWeight: FontWeight.bold)),
                                 ),
                                 const SizedBox(height: 4),
-                                const Flexible(
-                                  child: Text('سارة',
+                                Flexible(
+                                  child: Text(
+                                      provider.activeCallerName.isEmpty
+                                          ? 'مكالمة واردة'
+                                          : provider.activeCallerName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold)),
@@ -628,7 +634,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                           const SizedBox(width: 3),
                           _buildWaveBar(4, 4),
                           const SizedBox(width: 8),
-                          Text('مكالمة واردة',
+                          const Text('مكالمة واردة',
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -670,10 +676,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     bool hc = provider.isHighContrast;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isLargeText = provider.fontScaleFactor >= 1.25;
-        final cardWidth = isLargeText
-            ? constraints.maxWidth
-            : ((constraints.maxWidth - 46) / 2).floorToDouble();
         final pinnedMembers =
             provider.familyMembersList.where((m) => m.isPinned).toList();
         final displayMembers =
@@ -902,13 +904,19 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     String initials = member.initials;
     String relation = member.relation;
     bool hc = provider.isHighContrast;
-    return TweenAnimationBuilder(
+    return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutBack,
-      builder: (context, value, child) => Transform.scale(
-          scale: 0.95 + (0.05 * value),
-          child: Opacity(opacity: value, child: child)),
+      builder: (context, value, child) {
+        final opacity = value.clamp(0.0, 1.0).toDouble();
+        final scale = 0.95 + (0.05 * value);
+
+        return Transform.scale(
+          scale: scale,
+          child: Opacity(opacity: opacity, child: child),
+        );
+      },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1168,13 +1176,13 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                   children: [
                     Icon(Icons.mic, color: Colors.white, size: 22),
                     SizedBox(width: 10),
-                    const Text('رسائل من القلب ✨',
+                    Text('رسائل من القلب ✨',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    const Text('— عائلتك بانتظارك',
+                    SizedBox(width: 8),
+                    Text('— عائلتك بانتظارك',
                         style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -1315,7 +1323,8 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     );
   }
 
-  Widget _buildRecentCalls() {
+  Widget _buildRecentCalls(AppRiverpod provider) {
+    final calls = provider.callHistory.take(3).toList();
     return Container(
       decoration: BoxDecoration(
           color: Colors.white,
@@ -1346,32 +1355,28 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               ],
             ),
             const SizedBox(height: 10),
-            _buildRecentCallRow(
-                'أم أحمد',
-                'فيديو · ١٢ دقيقة · أمس ٦:٣٠ م',
-                'أم',
-                const [Color(0xFFf472b6), Color(0xFFdb2777)],
-                'واردة',
-                const Color(0xFFd1fae5),
-                const Color(0xFF065f46)),
-            const Divider(color: Color(0xFFf5f3ff)),
-            _buildRecentCallRow(
-                'أحمد',
-                'صوت · ٥ دقائق · أمس ٢:١٥ م',
-                'أح',
-                const [Color(0xFF818cf8), Color(0xFF4f46e5)],
-                'صادرة',
-                const Color(0xFFede9fe),
-                const Color(0xFF4c1d95)),
-            const Divider(color: Color(0xFFf5f3ff)),
-            _buildRecentCallRow(
-                'سارة',
-                'فيديو · الأحد ١١:٠٠ ص',
-                'سا',
-                const [Color(0xFF34d399), Color(0xFF059669)],
-                'فائتة',
-                const Color(0xFFfee2e2),
-                const Color(0xFF7f1d1d)),
+            if (calls.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('لا توجد مكالمات من AWS حتى الآن',
+                    style: TextStyle(color: Color(0xFF64748b))),
+              )
+            else
+              for (final call in calls) ...[
+                _buildRecentCallRow(
+                    call.calleeName?.isNotEmpty == true
+                        ? call.calleeName!
+                        : 'مكالمة',
+                    '${call.callType} · ${call.startedAt}',
+                    call.calleeName?.isNotEmpty == true
+                        ? call.calleeName!.substring(0, 1)
+                        : 'م',
+                    const [Color(0xFF818cf8), Color(0xFF4f46e5)],
+                    call.status,
+                    const Color(0xFFede9fe),
+                    const Color(0xFF4c1d95)),
+                const Divider(color: Color(0xFFf5f3ff)),
+              ],
           ],
         ),
       ),
@@ -1440,6 +1445,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildActionButton({
     required VoidCallback onTap,
     required IconData icon,

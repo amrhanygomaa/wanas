@@ -10,11 +10,13 @@ class PermissionDialog extends StatelessWidget {
     required this.onDenied,
   });
 
-  static void show(BuildContext context, {required VoidCallback onGranted, required VoidCallback onDenied}) {
+  static void show(BuildContext context,
+      {required VoidCallback onGranted, required VoidCallback onDenied}) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => PermissionDialog(onGranted: onGranted, onDenied: onDenied),
+      builder: (context) =>
+          PermissionDialog(onGranted: onGranted, onDenied: onDenied),
     );
   }
 
@@ -30,7 +32,10 @@ class PermissionDialog extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10)),
           ],
         ),
         child: Column(
@@ -42,19 +47,24 @@ class PermissionDialog extends StatelessWidget {
                 color: Color(0xFFeef2ff),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.photo_library_rounded, size: 48, color: Color(0xFF4338ca)),
+              child: const Icon(Icons.photo_library_rounded,
+                  size: 48, color: Color(0xFF4338ca)),
             ),
             const SizedBox(height: 24),
             const Text(
               'طلب إذن الوصول 📸',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1e1b4b)),
+              style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1e1b4b)),
             ),
             const SizedBox(height: 16),
             const Text(
               'نحتاج مساعدتك للوصول لصور الذكريات لكي تتمكن من رؤية صورك الجميلة مع أهلك وأحبائك في المسكن',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Color(0xFF475569), height: 1.5),
+              style: TextStyle(
+                  fontSize: 16, color: Color(0xFF475569), height: 1.5),
             ),
             const SizedBox(height: 32),
             Row(
@@ -67,9 +77,14 @@ class PermissionDialog extends StatelessWidget {
                     },
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('ليس الآن', style: TextStyle(fontSize: 16, color: Color(0xFF94a3b8), fontWeight: FontWeight.bold)),
+                    child: const Text('ليس الآن',
+                        style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF94a3b8),
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -84,9 +99,12 @@ class PermissionDialog extends StatelessWidget {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('أوافق', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text('أوافق',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

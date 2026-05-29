@@ -6,6 +6,9 @@ import 'package:url_launcher/url_launcher.dart'; // لفتح الروابط ال
 import '../../providers/app_riverpod.dart'; // مزود الحالة الرئيسي للتطبيق
 import '../../models/app_models.dart'; // نماذج البيانات المستخدمة
 import '../../widgets/taptaba_scaffold.dart'; // الهيكل الموحد للشاشة
+import 'account_settings_screen.dart';
+import 'privacy_screen.dart';
+import 'help_support_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   // شاشة الملف الشخصي العامة (لكل الأدوار)
@@ -59,13 +62,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     // دالة بناء الواجهة
     final provider = ref.watch(appRiverpod); // مراقبة حالة التطبيق
     final account = provider.currentAccount; // جلب بيانات الحساب الحالي
-    final role = widget.overrideRole ?? provider.currentRole; // جلب الدور الوظيفي الحالي
+    final role =
+        widget.overrideRole ?? provider.currentRole; // جلب الدور الوظيفي الحالي
     final themeColor =
         _getRoleColor(role); // تحديد اللون الرئيسي بناءً على الدور
 
     return TaptabaScaffold(
       // استخدام الهيكل الموحد مع إخفاء الـ AppBar الافتراضي لمطابقة تصميم الممرض
-      hideAppBar: true, 
+      hideAppBar: true,
       overrideRole: role, // تمرير الدور للقائمة الجانبية
       body: Stack(
         children: [
@@ -73,7 +77,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             // جعل المحتوى قابلاً للتمرير بتأثير الارتداد
             physics: const BouncingScrollPhysics(),
             slivers: [
-              _buildHeroHeader(context, ref, account, role, themeColor, provider), // بناء شريط العنوان الممتد الموحد
+              _buildHeroHeader(context, ref, account, role, themeColor,
+                  provider), // بناء شريط العنوان الممتد الموحد
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0), // هوامش جانبية
@@ -93,8 +98,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       const SizedBox(height: 30), // مسافة فاصلة
                       FadeTransition(
                         opacity: _fadeAnimations[3],
-                        child:
-                            _buildActionsSection(themeColor), // قسم الروابط
+                        child: _buildActionsSection(themeColor), // قسم الروابط
                       ),
                       const SizedBox(height: 50), // مسافة في النهاية
                     ],
@@ -138,28 +142,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       Color themeColor,
       AppRiverpod provider) {
     // 1. Determine dynamic multi-color gradient based on role
-    List<Color> gradientColors = [themeColor, themeColor.withValues(alpha: 0.8)];
+    List<Color> gradientColors = [
+      themeColor,
+      themeColor.withValues(alpha: 0.8)
+    ];
     switch (role) {
       case 'ممرض':
-        gradientColors = const [Color(0xFF0369A1), Color(0xFF0EA5E9), Color(0xFF06B6D4)];
+        gradientColors = const [
+          Color(0xFF0369A1),
+          Color(0xFF0EA5E9),
+          Color(0xFF06B6D4)
+        ];
         break;
       case 'متطوع':
-        gradientColors = const [Color(0xFF047857), Color(0xFF10B981), Color(0xFF34D399)];
+        gradientColors = const [
+          Color(0xFF047857),
+          Color(0xFF10B981),
+          Color(0xFF34D399)
+        ];
         break;
       case 'عائلة':
-        gradientColors = const [Color(0xFFC2410C), Color(0xFFF97316), Color(0xFFFF9F1C)];
+        gradientColors = const [
+          Color(0xFFC2410C),
+          Color(0xFFF97316),
+          Color(0xFFFF9F1C)
+        ];
         break;
       case 'أخصائي':
       case 'أخصائي اجتماعي':
-        gradientColors = const [Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFBBF24)];
+        gradientColors = const [
+          Color(0xFFEA580C),
+          Color(0xFFF97316),
+          Color(0xFFFBBF24)
+        ];
         break;
       case 'مدير':
       case 'إدارة':
-        gradientColors = const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF475569)];
+        gradientColors = const [
+          Color(0xFF0F172A),
+          Color(0xFF1E293B),
+          Color(0xFF475569)
+        ];
         break;
       case 'مسن':
       default:
-        gradientColors = const [Color(0xFF4F46E5), Color(0xFF6366F1), Color(0xFF818CF8)];
+        gradientColors = const [
+          Color(0xFF4F46E5),
+          Color(0xFF6366F1),
+          Color(0xFF818CF8)
+        ];
         break;
     }
 
@@ -167,14 +198,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     String dynamicSubtitle = '';
     switch (role) {
       case 'ممرض':
-        dynamicSubtitle = account?.specialty != null 
-            ? '${account?.specialty} — الوردية ${account?.shift ?? "الصباحية"}' 
+        dynamicSubtitle = account?.specialty != null
+            ? '${account?.specialty} — الوردية ${account?.shift ?? "الصباحية"}'
             : 'مشرف تمريض — الوردية الصباحية';
         break;
       case 'أخصائي':
       case 'أخصائي اجتماعي':
-        dynamicSubtitle = account?.specialty != null 
-            ? 'أخصائي ${account?.specialty} — المستوى الذهبي' 
+        dynamicSubtitle = account?.specialty != null
+            ? 'أخصائي ${account?.specialty} — المستوى الذهبي'
             : 'أخصائي اجتماعي — المستوى الذهبي';
         break;
       case 'مسن':
@@ -182,10 +213,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         break;
       case 'مدير':
       case 'إدارة':
-        dynamicSubtitle = 'مدير المنشأة — ${account?.facilityName ?? "دار الرعاية والريادة"}';
+        dynamicSubtitle =
+            'مدير المنشأة — ${account?.facilityName ?? (provider.facilityName.isEmpty ? "المنشأة" : provider.facilityName)}';
         break;
       case 'عائلة':
-        dynamicSubtitle = 'حساب العائلة — قريب المقيم: ${account?.linkedResidentId != null ? "الحاج محمود" : "فاطمة الزهراء"}';
+        dynamicSubtitle =
+            'حساب العائلة — قريب المقيم: ${provider.residentFiles.isNotEmpty ? provider.residentFiles.first.name : "بانتظار بيانات AWS"}';
         break;
       case 'متطوع':
       default:
@@ -254,7 +287,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             children: [
               // Dynamic Role-based Particles Background Animation
               RoleParticles(role: role),
-              
+
               // Header Content
               Positioned.fill(
                 child: FadeTransition(
@@ -263,14 +296,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const SizedBox(height: 35),
-                      
+
                       // Styled Centered Avatar with White Outline
                       Stack(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                              color: Colors.white, 
+                              color: Colors.white,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
@@ -280,21 +313,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                                 ),
                               ],
                             ),
-                            child: account?.imageUrl != null && account!.imageUrl!.isNotEmpty
+                            child: account?.imageUrl != null &&
+                                    account!.imageUrl!.isNotEmpty
                                 ? (account.imageUrl!.startsWith('http')
                                     ? CircleAvatar(
                                         radius: 50,
-                                        backgroundImage: NetworkImage(account.imageUrl!),
+                                        backgroundImage:
+                                            NetworkImage(account.imageUrl!),
                                       )
                                     : CircleAvatar(
                                         radius: 50,
-                                        backgroundImage: FileImage(File(account.imageUrl!)),
+                                        backgroundImage:
+                                            FileImage(File(account.imageUrl!)),
                                       ))
                                 : CircleAvatar(
                                     radius: 50,
-                                    backgroundColor: themeColor.withValues(alpha: 0.2),
+                                    backgroundColor:
+                                        themeColor.withValues(alpha: 0.2),
                                     child: Text(
-                                      (account != null && account.name.isNotEmpty)
+                                      (account != null &&
+                                              account.name.isNotEmpty)
                                           ? account.name.substring(0, 1)
                                           : 'م',
                                       style: TextStyle(
@@ -314,7 +352,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                                 decoration: BoxDecoration(
                                   color: themeColor,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2.5),
+                                  border: Border.all(
+                                      color: Colors.white, width: 2.5),
                                   boxShadow: const [
                                     BoxShadow(
                                       color: Colors.black12,
@@ -331,7 +370,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         ],
                       ),
                       const SizedBox(height: 12),
-                      
+
                       // Name Text
                       Text(
                         account?.name ?? 'مستخدم',
@@ -349,7 +388,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           ],
                         ),
                       ),
-                      
+
                       // Role Subtitle
                       Text(
                         dynamicSubtitle,
@@ -368,10 +407,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         ),
                       ),
                       const SizedBox(height: 10),
-                      
+
                       // Employee/Member Code Capsule Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
@@ -534,21 +574,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader('المعلومات الأساسية', themeColor,
-            onEdit: role == 'مسن' ? null : () =>
-                _showEditPersonalDialog(context, ref, account, themeColor)),
+            onEdit: role == 'مسن'
+                ? null
+                : () =>
+                    _showEditPersonalDialog(context, ref, account, themeColor)),
         const SizedBox(height: 15),
         _buildInfoTile(Icons.person_outline, 'الاسم الكامل',
             account?.name ?? 'غير متوفر', themeColor,
-            onTap: role == 'مسن' ? null : () =>
-                _showEditPersonalDialog(context, ref, account, themeColor)),
+            onTap: role == 'مسن'
+                ? null
+                : () =>
+                    _showEditPersonalDialog(context, ref, account, themeColor)),
         _buildInfoTile(Icons.email_outlined, 'البريد الإلكتروني',
             account?.email ?? 'غير متوفر', themeColor,
-            onTap: role == 'مسن' ? null : () =>
-                _showEditPersonalDialog(context, ref, account, themeColor)),
+            onTap: role == 'مسن'
+                ? null
+                : () =>
+                    _showEditPersonalDialog(context, ref, account, themeColor)),
         _buildInfoTile(Icons.phone_outlined, 'رقم الهاتف',
             account?.phone ?? 'غير متوفر', themeColor,
-            onTap: role == 'مسن' ? null : () =>
-                _showEditPersonalDialog(context, ref, account, themeColor)),
+            onTap: role == 'مسن'
+                ? null
+                : () =>
+                    _showEditPersonalDialog(context, ref, account, themeColor)),
         const SizedBox(height: 30),
         if (role == 'مدير' || role == 'إدارة') ...[
           _buildSectionHeader('بيانات المنشأة (الدار)', themeColor,
@@ -579,20 +627,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               account?.facilityYearOfEst ?? 'غير محددة', themeColor,
               onTap: () =>
                   _showEditFacilityDialog(context, ref, account, themeColor)),
-          _buildInfoTile(Icons.group_add_rounded, 'السعة الاستيعابية',
-              (account != null && account.facilityCapacity != null && account.facilityCapacity!.isNotEmpty) ? '${account.facilityCapacity} مقيم' : 'غير محددة', themeColor,
+          _buildInfoTile(
+              Icons.group_add_rounded,
+              'السعة الاستيعابية',
+              (account != null &&
+                      account.facilityCapacity != null &&
+                      account.facilityCapacity!.isNotEmpty)
+                  ? '${account.facilityCapacity} مقيم'
+                  : 'غير محددة',
+              themeColor,
               onTap: () =>
                   _showEditFacilityDialog(context, ref, account, themeColor)),
-          _buildInfoTile(Icons.map_rounded, 'موقع الدار على الخريطة',
-              (account != null && account.facilityLocationUrl != null && account.facilityLocationUrl!.isNotEmpty) ? 'اضغط لفتح الموقع 📍' : 'لم يتم تحديده', themeColor,
-              onTap: () {
-                if (account != null && account.facilityLocationUrl != null && account.facilityLocationUrl!.isNotEmpty) {
-                  launchUrl(Uri.parse(account.facilityLocationUrl!));
-                } else {
-                  _showEditFacilityDialog(context, ref, account, themeColor);
-                }
-              }),
-          if (account != null && account.amenities != null && account.amenities!.isNotEmpty)
+          _buildInfoTile(
+              Icons.map_rounded,
+              'موقع الدار على الخريطة',
+              (account != null &&
+                      account.facilityLocationUrl != null &&
+                      account.facilityLocationUrl!.isNotEmpty)
+                  ? 'اضغط لفتح الموقع 📍'
+                  : 'لم يتم تحديده',
+              themeColor, onTap: () {
+            if (account != null &&
+                account.facilityLocationUrl != null &&
+                account.facilityLocationUrl!.isNotEmpty) {
+              launchUrl(Uri.parse(account.facilityLocationUrl!));
+            } else {
+              _showEditFacilityDialog(context, ref, account, themeColor);
+            }
+          }),
+          if (account != null &&
+              account.amenities != null &&
+              account.amenities!.isNotEmpty)
             _buildAmenitiesSection(account.amenities!, themeColor),
         ] else if (role == 'مسن') ...[
           _buildSectionHeader('بيانات الإقامة والرعاية', themeColor),
@@ -633,8 +698,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ] else if (role == 'أسرة') ...[
           _buildSectionHeader('بيانات المتابعة', themeColor),
           const SizedBox(height: 15),
-          _buildInfoTile(Icons.family_restroom_rounded, 'القريب المتابع',
-              'أ. محمود عبد العزيز (والد)', themeColor),
+          _buildInfoTile(
+              Icons.family_restroom_rounded,
+              'القريب المتابع',
+              ref.read(appRiverpod).residentFiles.isNotEmpty
+                  ? ref.read(appRiverpod).residentFiles.first.name
+                  : 'بانتظار بيانات AWS',
+              themeColor),
           _buildInfoTile(Icons.contact_phone_outlined, 'طوارئ المنشأة',
               account?.facilityName ?? 'ونس', themeColor),
           _buildInfoTile(Icons.verified_user_outlined, 'حالة التصريح',
@@ -741,20 +811,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   Widget _buildActionsSection(Color themeColor) {
-    // بناء قسم الأفعال والإعدادات
     return Column(
       children: [
         _buildActionTile(
-            Icons.settings_outlined, 'إعدادات الحساب'), // الإعدادات
-        _buildActionTile(Icons.security_rounded, 'الأمان والخصوصية'), // الأمان
+          Icons.settings_outlined,
+          'إعدادات الحساب',
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
+        ),
         _buildActionTile(
-            Icons.help_outline_rounded, 'المساعدة والدعم'), // الدعم
+          Icons.security_rounded,
+          'الأمان والخصوصية',
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const PrivacyScreen())),
+        ),
+        _buildActionTile(
+          Icons.help_outline_rounded,
+          'المساعدة والدعم',
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const HelpSupportScreen())),
+        ),
       ],
     );
   }
 
-  Widget _buildActionTile(dynamic icon, String label) {
-    // بناء عنصر اختيار واحد (ListTile)
+  Widget _buildActionTile(IconData icon, String label,
+      {required VoidCallback onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
@@ -762,9 +844,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         title: Text(label,
             style: const TextStyle(
                 fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-        trailing:
-            const Icon(Icons.arrow_forward_ios_rounded, size: 14), // سهم التنقل
-        onTap: () {},
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+        onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         tileColor: Colors.white,
       ),
@@ -919,10 +1000,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final addrController = TextEditingController(text: account.facilityAddress);
     final phoneController = TextEditingController(text: account.facilityPhone);
     final emailController = TextEditingController(text: account.facilityEmail);
-    final yearController = TextEditingController(text: account.facilityYearOfEst);
-    final capacityController = TextEditingController(text: account.facilityCapacity);
-    final licenseController = TextEditingController(text: account.licenseNumber);
-    final locationController = TextEditingController(text: account.facilityLocationUrl);
+    final yearController =
+        TextEditingController(text: account.facilityYearOfEst);
+    final capacityController =
+        TextEditingController(text: account.facilityCapacity);
+    final licenseController =
+        TextEditingController(text: account.licenseNumber);
+    final locationController =
+        TextEditingController(text: account.facilityLocationUrl);
 
     showModalBottomSheet(
       context: context,
@@ -970,8 +1055,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               _buildDialogField(licenseController, 'رقم الترخيص',
                   Icons.verified_user_outlined, themeColor),
               const SizedBox(height: 15),
-              _buildDialogField(locationController, 'رابط الموقع على خرائط جوجل',
-                  Icons.map_rounded, themeColor),
+              _buildDialogField(locationController,
+                  'رابط الموقع على خرائط جوجل', Icons.map_rounded, themeColor),
               const SizedBox(height: 30),
               _buildSaveButton(context, themeColor, () async {
                 final updated = account.copyWith(
@@ -1089,7 +1174,8 @@ class RoleParticles extends StatefulWidget {
   State<RoleParticles> createState() => _RoleParticlesState();
 }
 
-class _RoleParticlesState extends State<RoleParticles> with SingleTickerProviderStateMixin {
+class _RoleParticlesState extends State<RoleParticles>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -1149,18 +1235,21 @@ class _RoleParticlesState extends State<RoleParticles> with SingleTickerProvider
           return Stack(
             children: List.generate(8, (index) {
               final speed = 0.8 + (index * 0.25);
-              final progress = (_controller.value * speed + (index * 0.15)) % 1.0;
-              
+              final progress =
+                  (_controller.value * speed + (index * 0.15)) % 1.0;
+
               // توزيع أفقي مختلف لكل جسيم
               final leftOffset = 15.0 + (index * 48.0) % 360;
-              
+
               return Positioned(
                 left: leftOffset,
                 bottom: (progress * 260) - 35, // ترتفع بهدوء وتختفي
                 child: Opacity(
                   opacity: (1.0 - progress) * 0.22, // تتلاشى تدريجياً
                   child: Transform.rotate(
-                    angle: progress * 2.0 * 3.1415, // دوران خفيف يعطي إحساساً بالحيوية
+                    angle: progress *
+                        2.0 *
+                        3.1415, // دوران خفيف يعطي إحساساً بالحيوية
                     child: Icon(
                       particleIcon,
                       size: 16.0 + (index * 8) % 24, // أحجام عشوائية متناسقة

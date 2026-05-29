@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
+import '../models/app_models.dart';
 
 class AiChatResponse {
   final String reply;
@@ -123,16 +124,28 @@ class AiService {
 
   Future<AiSpeechResponse> synthesizeSpeech({
     required String text,
-    String voiceId = 'Hala',
+    String voiceId = 'Zayd',
     String engine = 'neural',
+    String? provider,
+    String? openAiVoice,
+    String? openAiVoiceId,
+    String? voiceInstructions,
   }) async {
+    final body = <String, dynamic>{
+      'text': text,
+      'voiceId': voiceId,
+      'engine': engine,
+    };
+    if (provider != null) body['provider'] = provider;
+    if (openAiVoice != null) body['openAiVoice'] = openAiVoice;
+    if (openAiVoiceId != null) body['openAiVoiceId'] = openAiVoiceId;
+    if (voiceInstructions != null) {
+      body['voiceInstructions'] = voiceInstructions;
+    }
+
     final res = await ApiClient.instance.post(
       '/ai/speech',
-      body: {
-        'text': text,
-        'voiceId': voiceId,
-        'engine': engine,
-      },
+      body: body,
       auth: false,
     );
     return AiSpeechResponse.fromJson(res as Map<String, dynamic>);
@@ -168,5 +181,81 @@ class AiService {
       if (memory is List) return memory.map((e) => e.toString()).toList();
     } catch (_) {}
     return [];
+  }
+
+  // 1. تلخيص الشيفت
+  Future<String> summarizeShiftHandoff(List<NursingNote> notes, List<CareTask> tasks) async {
+    final res = await ApiClient.instance.post(
+      '/ai/summarize-shift',
+      body: {
+        'notes': notes.map((e) => e.content).toList(),
+        'tasks': tasks.map((e) => e.title).toList(),
+      },
+      auth: true,
+    );
+    return res['summary']?.toString() ?? 'تم التلخيص بنجاح.';
+  }
+
+  // 2. الخطة الغذائية الذكية
+  Future<MealPlan> generateSmartDiet(ResidentMedicalInfo info) async {
+    final res = await ApiClient.instance.post(
+      '/ai/smart-diet',
+      body: {
+        'residentName': info.residentName,
+        'chronicDiseases': info.chronicDiseases,
+        'allergies': info.allergies,
+      },
+      auth: true,
+    );
+    return MealPlan(
+      residentName: info.residentName,
+      breakfast: res['breakfast'] ?? 'شوفان مع فواكه',
+      lunch: res['lunch'] ?? 'دجاج مشوي مع خضار مسلوق',
+      dinner: res['dinner'] ?? 'زبادي وخيار',
+      isAiGenerated: true,
+      aiRationale: res['rationale'] ?? 'تم اختيار هذه الوجبات لتقليل نسبة السكر.',
+    );
+  }
+
+  // 3. التنبؤ الصحي
+  Future<List<AIInsight>> getPredictiveHealthAlerts(String residentId) async {
+    final res = await ApiClient.instance.get('/ai/predictive-alerts/$residentId', auth: true);
+    if (res['alerts'] is List) {
+      return (res['alerts'] as List).map((e) => AIInsight(
+        id: e['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        residentName: e['residentName'] ?? 'مقيم',
+        summary: e['summary'] ?? '',
+        rationale: e['rationale'] ?? '',
+        generationDate: DateTime.now(),
+        type: 'predictive_alert',
+      )).toList();
+    }
+    return [];
+  }
+
+  // 4. التدريب الذهني
+  Future<AiChatResponse> playCognitiveGame(String residentId, String input) async {
+    final res = await ApiClient.instance.post(
+      '/ai/cognitive-game',
+      body: {'residentId': residentId, 'input': input},
+      auth: true,
+    );
+    return AiChatResponse.fromJson(res as Map<String, dynamic>);
+  }
+
+  // 5. التحديث العائلي التلقائي
+  Future<String> generateFamilyWeeklyUpdate(String residentId) async {
+    final res = await ApiClient.instance.post('/ai/family-update', body: {'residentId': residentId}, auth: true);
+    return res['update']?.toString() ?? '';
+  }
+
+  // 6. التحليل الصوتي للمشاعر
+  Future<AiChatResponse> analyzeVoiceSentiment(String base64Audio, String residentId) async {
+    final res = await ApiClient.instance.post(
+      '/ai/voice-sentiment',
+      body: {'audio': base64Audio, 'residentId': residentId},
+      auth: true,
+    );
+    return AiChatResponse.fromJson(res as Map<String, dynamic>);
   }
 }

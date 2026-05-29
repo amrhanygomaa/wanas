@@ -127,5 +127,4 @@ class ComplaintsService {
         .map((e) => BackendComplaint.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-
 }

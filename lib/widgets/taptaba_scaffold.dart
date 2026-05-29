@@ -80,7 +80,8 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
       floating: widget.hideAppBarOnScroll,
       snap: widget.hideAppBarOnScroll,
       pinned: !widget.hideAppBarOnScroll,
-      toolbarHeight: widget.appBarHeight ?? 56.0, // العودة للارتفاع الافتراضي (56 بكسل) دون تكبيره
+      toolbarHeight: widget.appBarHeight ??
+          56.0, // العودة للارتفاع الافتراضي (56 بكسل) دون تكبيره
       backgroundColor:
           widget.transparentAppBar ? Colors.transparent : Colors.white,
       elevation: 0,
@@ -102,7 +103,8 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
           widget.transparentAppBar ? Colors.transparent : Colors.white,
       elevation: 0,
       centerTitle: true,
-      toolbarHeight: widget.appBarHeight ?? 56.0, // العودة للارتفاع الافتراضي (56 بكسل) دون تكبيره
+      toolbarHeight: widget.appBarHeight ??
+          56.0, // العودة للارتفاع الافتراضي (56 بكسل) دون تكبيره
       iconTheme: const IconThemeData(color: Color(0xFF64748b)),
       leading: IconButton(
         icon: const Icon(Icons.menu_rounded, color: Color(0xFF64748b)),
@@ -114,21 +116,24 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
   }
 
   Widget _buildTitle() {
-    final isWanasTitle = widget.title.trim() == 'ونس' || widget.title.trim() == 'طبطبة';
-    
+    final isWanasTitle =
+        widget.title.trim() == 'ونس' || widget.title.trim() == 'طبطبة';
+
     if (isWanasTitle) {
-      final isDark = Theme.of(context).brightness == Brightness.dark || 
-                     ref.watch(appRiverpod).isDarkMode;
-      
+      final isDark = Theme.of(context).brightness == Brightness.dark ||
+          ref.watch(appRiverpod).isDarkMode;
+
       // تحديد اللون النشط للصفحة لصبغ الشعار به ديناميكياً ليتناسق تماماً مع نمط وألوان الصفحة
-      final activeColor = widget.titleColor ?? 
+      final activeColor = widget.titleColor ??
           (isDark ? const Color(0xFFFAF7F2) : const Color(0xFF6C63FF));
 
       return Transform.scale(
-        scale: 1.45, // تكبير الشعار بصرياً بنسبة 145% ليكون ضخماً وواضحاً جداً دون تكبير مقاس شريط التنقل نفسه
+        scale:
+            1.45, // تكبير الشعار بصرياً بنسبة 145% ليكون ضخماً وواضحاً جداً دون تكبير مقاس شريط التنقل نفسه
         child: Image.asset(
           'assets/icons/wanas_logo_nav.png',
-          height: 42, // الحجم الفعلي المحجوز في التخطيط ليتناسب مع الـ 56 بكسل الافتراضية
+          height:
+              42, // الحجم الفعلي المحجوز في التخطيط ليتناسب مع الـ 56 بكسل الافتراضية
           fit: BoxFit.contain,
           // صبغ الشعار ديناميكياً بلون النمط النشط للصفحة الحالية
           color: activeColor,
@@ -154,7 +159,10 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
     return Text(
       widget.title,
       style: TextStyle(
-        color: widget.titleColor ?? (Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1E293B)),
+        color: widget.titleColor ??
+            (Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : const Color(0xFF1E293B)),
         fontWeight: FontWeight.w900,
         fontSize: 22,
         fontFamily: 'Cairo',

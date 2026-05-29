@@ -299,7 +299,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(fontFamily: 'Cairo', color: Color(0xFF64748B)),
+      labelStyle:
+          const TextStyle(fontFamily: 'Cairo', color: Color(0xFF64748B)),
       prefixIcon: Icon(icon, color: const Color(0xFF6C63FF), size: 20),
       suffixIcon: suffix,
       filled: true,
@@ -316,8 +317,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 1.6),
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

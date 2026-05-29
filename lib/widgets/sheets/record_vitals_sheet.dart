@@ -71,7 +71,8 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
     if (!_formKey.currentState!.validate()) return;
     if (_residentId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('اختر مقيماً أولاً', style: TextStyle(fontFamily: 'Cairo')),
+        content:
+            Text('اختر مقيماً أولاً', style: TextStyle(fontFamily: 'Cairo')),
       ));
       return;
     }
@@ -82,7 +83,11 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
     final o2 = _asInt(_o2.text);
     final glucose = _asInt(_glucose.text);
 
-    if (hr == null && sys == null && temp == null && o2 == null && glucose == null) {
+    if (hr == null &&
+        sys == null &&
+        temp == null &&
+        o2 == null &&
+        glucose == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('أدخل قراءة واحدة على الأقل',
             style: TextStyle(fontFamily: 'Cairo')),
@@ -118,8 +123,8 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Colors.redAccent,
-        content:
-            Text('فشل: ${e.message}', style: const TextStyle(fontFamily: 'Cairo')),
+        content: Text('فشل: ${e.message}',
+            style: const TextStyle(fontFamily: 'Cairo')),
       ));
     } catch (e) {
       if (!mounted) return;

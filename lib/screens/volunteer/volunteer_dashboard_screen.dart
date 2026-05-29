@@ -342,8 +342,8 @@ class _VolunteerDashboardScreenState
                           horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.08),
-                          border:
-                              Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12)),
                           borderRadius: BorderRadius.circular(16)),
                       child: Row(
                         children: [
@@ -409,7 +409,9 @@ class _VolunteerDashboardScreenState
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.15),
+                color: isActive
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -494,6 +496,7 @@ class _VolunteerDashboardScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildNavTabs() {
     return Container(
       height: 60,
@@ -930,13 +933,13 @@ class RingPainter extends CustomPainter {
 
 // --- تأثير الجزيئات المتطايرة الجديد ---
 
-class _VolunteerDustParticle {
+class VolunteerDustParticle {
   Offset position;
   double speed;
   double radius;
   Color color;
-  
-  _VolunteerDustParticle({
+
+  VolunteerDustParticle({
     required this.position,
     required this.speed,
     required this.radius,
@@ -951,23 +954,27 @@ class VolunteerDustAnimation extends StatefulWidget {
   State<VolunteerDustAnimation> createState() => _VolunteerDustAnimationState();
 }
 
-class _VolunteerDustAnimationState extends State<VolunteerDustAnimation> with SingleTickerProviderStateMixin {
+class _VolunteerDustAnimationState extends State<VolunteerDustAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<_VolunteerDustParticle> _dust;
+  late List<VolunteerDustParticle> _dust;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat();
-    
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 15))
+          ..repeat();
+
     final random = Random();
     final colors = [
       const Color(0xFF4ade80).withValues(alpha: 0.6), // أخضر فاتح
       const Color(0xFFfacc15).withValues(alpha: 0.6), // أصفر ذهبي
     ];
-    
-    _dust = List.generate(200, (index) { // كثرناها لـ 200 بناء على طلب المستخدم
-      return _VolunteerDustParticle(
+
+    _dust = List.generate(200, (index) {
+      // كثرناها لـ 200 بناء على طلب المستخدم
+      return VolunteerDustParticle(
         position: Offset(random.nextDouble(), random.nextDouble()),
         speed: random.nextDouble() * 0.04 + 0.01,
         radius: random.nextDouble() * 2.0 + 0.5,
@@ -989,7 +996,8 @@ class _VolunteerDustAnimationState extends State<VolunteerDustAnimation> with Si
         animation: _controller,
         builder: (context, child) {
           return CustomPaint(
-            painter: VolunteerDustPainter(dust: _dust, animationValue: _controller.value),
+            painter: VolunteerDustPainter(
+                dust: _dust, animationValue: _controller.value),
           );
         },
       ),
@@ -998,7 +1006,7 @@ class _VolunteerDustAnimationState extends State<VolunteerDustAnimation> with Si
 }
 
 class VolunteerDustPainter extends CustomPainter {
-  final List<_VolunteerDustParticle> dust;
+  final List<VolunteerDustParticle> dust;
   final double animationValue;
 
   VolunteerDustPainter({required this.dust, required this.animationValue});
@@ -1009,16 +1017,18 @@ class VolunteerDustPainter extends CustomPainter {
 
     for (var i = 0; i < dust.length; i++) {
       final p = dust[i];
-      
-      double dy = (p.position.dy * size.height) - (animationValue * p.speed * size.height);
+
+      double dy = (p.position.dy * size.height) -
+          (animationValue * p.speed * size.height);
       if (dy < 0) dy += size.height;
 
-      double dx = p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
+      double dx =
+          p.position.dx * size.width + sin(animationValue * 2 * pi + i) * 5;
 
       final currentPos = Offset(dx, dy);
 
       double opacity = (sin(animationValue * 2 * pi * 2 + i) + 1) / 2;
-      paint.color = p.color.withValues(alpha: p.color.opacity * opacity);
+      paint.color = p.color.withValues(alpha: p.color.a * opacity);
 
       canvas.drawCircle(currentPos, p.radius, paint);
     }

@@ -22,7 +22,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
   late AnimationController _floatController;
   String _selectedType = 'تقرير يومي';
   final Map<String, bool> _activeRecipients = {
-    'د. أحمد': true,
+    'الطبيب المشرف': true,
     'الإدارة': true,
     'الأخصائي': true,
     'الأسر': false,
@@ -65,7 +65,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     super.dispose();
   }
 
-  void _showSendSimulation(String reportType) {
+  void _sendReport(String reportType) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
@@ -101,8 +101,8 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
         ),
       ),
     );
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!context.mounted) return;
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (!mounted) return;
       Navigator.pop(context);
 
       final provider = ref.read(appRiverpod);
@@ -111,7 +111,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
       if (reportType == 'تنبيه حرج') icon = '🚨';
       if (reportType == 'تقرير أدوية') icon = '💊';
 
-      provider.addSentReport(SentReport(
+      await provider.addSentReport(SentReport(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         icon: icon,
         title: '$reportType — ${DateTime.now().day} مايو',
@@ -120,14 +120,28 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
         date: DateTime.now().toIso8601String(),
       ));
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('تم إرسال $reportType بنجاح'),
-        backgroundColor: const Color(0xFF10B981),
+        content:
+            Text(provider.backendSyncError ?? 'تم إرسال $reportType بنجاح'),
+        backgroundColor: provider.backendSyncError == null
+            ? const Color(0xFF10B981)
+            : const Color(0xFFef4444),
       ));
     });
   }
 
   Future<void> _generatePDF(String reportType) async {
+    final provider = ref.read(appRiverpod);
+    final facility =
+        provider.facilityName.isEmpty ? 'المنشأة' : provider.facilityName;
+    final nurseName = provider.currentAccount?.name ?? 'فريق التمريض';
+    final residentName = provider.residentFiles.isNotEmpty
+        ? provider.residentFiles.first.name
+        : 'لا توجد بيانات مقيمين';
+    final residentsCount = provider.residentFiles.length;
+    final compliance = provider.compliancePercentage;
+    final criticalCount = provider.criticalResidentsCount;
     final fontData = await rootBundle.load('assets/fonts/Cairo-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
     final fontBoldData = await rootBundle.load('assets/fonts/Cairo-Bold.ttf');
@@ -150,16 +164,33 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('تطبيق ونس', style: pw.TextStyle(font: ttfBold, fontSize: 18, color: PdfColors.blue600)),
-                      pw.Text('دار الأمل لرعاية كبار السن', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey700)),
+                      pw.Text('تطبيق ونس',
+                          style: pw.TextStyle(
+                              font: ttfBold,
+                              fontSize: 18,
+                              color: PdfColors.blue600)),
+                      pw.Text(facility,
+                          style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 12,
+                              color: PdfColors.grey700)),
                     ],
                   ),
                   pw.SizedBox(height: 5),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('الممرض: أ. منى', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey700)),
-                      pw.Text('التاريخ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}  الوقت: ${DateTime.now().hour}:${DateTime.now().minute}', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey700)),
+                      pw.Text('الممرض: $nurseName',
+                          style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 12,
+                              color: PdfColors.grey700)),
+                      pw.Text(
+                          'التاريخ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}  الوقت: ${DateTime.now().hour}:${DateTime.now().minute}',
+                          style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 12,
+                              color: PdfColors.grey700)),
                     ],
                   ),
                   pw.SizedBox(height: 10),
@@ -176,7 +207,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   ),
                   pw.SizedBox(height: 30),
 
-                  // Content (Mock data based on type)
+                  // Content from the AWS-backed app state.
                   pw.Text('تفاصيل التقرير:',
                       style: pw.TextStyle(
                           font: ttfBold,
@@ -185,17 +216,19 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   pw.SizedBox(height: 15),
 
                   if (reportType == 'تقرير أسبوعي') ...[
-                    _pdfRow(ttf, ttfBold, 'الأسبوع الحالي', '١٩ - ٢٦ أبريل'),
-                    _pdfRow(ttf, ttfBold, 'نسبة الرضا العام', '٩٨٪'),
-                    _pdfRow(ttf, ttfBold, 'متوسط الالتزام', '٩٥٪'),
+                    _pdfRow(ttf, ttfBold, 'الأسبوع الحالي', 'آخر ٧ أيام'),
+                    _pdfRow(ttf, ttfBold, 'عدد المقيمين', '$residentsCount'),
+                    _pdfRow(ttf, ttfBold, 'متوسط الالتزام', '$compliance٪'),
                   ] else if (reportType == 'تنبيه حرج') ...[
-                    _pdfRow(ttf, ttfBold, 'المقيم', 'الحاج محمود'),
-                    _pdfRow(ttf, ttfBold, 'الحالة', 'ارتفاع مفاجئ في ضغط الدم'),
-                    _pdfRow(ttf, ttfBold, 'القياس', '١٦٠/١٠٠'),
+                    _pdfRow(ttf, ttfBold, 'المقيم', residentName),
+                    _pdfRow(ttf, ttfBold, 'الحالات الحرجة', '$criticalCount'),
+                    _pdfRow(ttf, ttfBold, 'مصدر البيانات', 'AWS'),
                   ] else ...[
-                    _pdfRow(ttf, ttfBold, 'حالة الوردية', 'مستقرة'),
-                    _pdfRow(ttf, ttfBold, 'عدد المقيمين المتابعين', '٢٤'),
-                    _pdfRow(ttf, ttfBold, 'نسبة اكتمال المهام', '٩٠٪'),
+                    _pdfRow(ttf, ttfBold, 'حالة الوردية', _getShiftName()),
+                    _pdfRow(ttf, ttfBold, 'عدد المقيمين المتابعين',
+                        '$residentsCount'),
+                    _pdfRow(
+                        ttf, ttfBold, 'نسبة الالتزام الدوائي', '$compliance٪'),
                   ],
 
                   pw.Spacer(),
@@ -206,10 +239,21 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.center,
                       children: [
-                        pw.Container(width: 120, child: pw.Divider(color: PdfColors.grey400, thickness: 1)),
+                        pw.Container(
+                            width: 120,
+                            child: pw.Divider(
+                                color: PdfColors.grey400, thickness: 1)),
                         pw.SizedBox(height: 4),
-                        pw.Text('توقيع الممرض', style: pw.TextStyle(font: ttfBold, fontSize: 12, color: PdfColors.grey800)),
-                        pw.Text('أ. منى', style: pw.TextStyle(font: ttf, fontSize: 11, color: PdfColors.grey600)),
+                        pw.Text('توقيع الممرض',
+                            style: pw.TextStyle(
+                                font: ttfBold,
+                                fontSize: 12,
+                                color: PdfColors.grey800)),
+                        pw.Text(nurseName,
+                            style: pw.TextStyle(
+                                font: ttf,
+                                fontSize: 11,
+                                color: PdfColors.grey600)),
                       ],
                     ),
                   ),
@@ -260,21 +304,30 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     Widget content;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final provider = ref.read(appRiverpod);
+    final residentName = provider.residentFiles.isNotEmpty
+        ? provider.residentFiles.first.name
+        : 'لا توجد بيانات مقيمين';
+    final residentsCount = provider.residentFiles.length;
+    final compliance = provider.compliancePercentage;
+    final totalDoses = provider.medications.length;
+    final doneDoses = provider.medications.where((m) => m.isTaken).length;
+    final pendingDoses = totalDoses - doneDoses;
     if (type == 'تقرير أسبوعي') {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _previewRow('الأسبوع الحالي', '١٩ - ٢٦ أبريل'),
-          _previewRow('نسبة الرضا العام', '٩٨٪'),
-          _previewRow('متوسط الالتزام', '٩٥٪'),
+          _previewRow('الأسبوع الحالي', 'آخر ٧ أيام'),
+          _previewRow('عدد المقيمين', '$residentsCount'),
+          _previewRow('متوسط الالتزام', '$compliance٪'),
           Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
           Text('تقرير الاتجاهات:',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: isDark ? Colors.white : Colors.black87)),
-          Text('• تحسن ملحوظ في النشاط الجماعي للمقيمين.',
+          Text('• البيانات المعروضة محملة من AWS حسب آخر مزامنة.',
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 11,
@@ -292,9 +345,9 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   fontWeight: FontWeight.bold,
                   fontSize: 12)),
           const SizedBox(height: 12),
-          _previewRow('المقيم', 'الحاج محمود سالم'),
-          _previewRow('نوع الحالة', 'ارتفاع ضغط مفاجئ'),
-          _previewRow('القراءة', '١٦٠/١٠٠'),
+          _previewRow('المقيم', residentName),
+          _previewRow('الحالات الحرجة', '${provider.criticalResidentsCount}'),
+          _previewRow('مصدر البيانات', 'AWS'),
         ],
       );
     } else if (type == 'تقرير أدوية') {
@@ -302,16 +355,16 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _previewRow('إجمالي الجرعات اليوم', '٧٢ جرعة'),
-          _previewRow('جرعات منفذة', '٦٨ جرعة'),
-          _previewRow('جرعات متبقية', '٤ جرعات'),
+          _previewRow('إجمالي الجرعات اليوم', '$totalDoses جرعة'),
+          _previewRow('جرعات منفذة', '$doneDoses جرعة'),
+          _previewRow('جرعات متبقية', '$pendingDoses جرعة'),
           Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
           Text('تفاصيل الجرعات المعلقة:',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: isDark ? Colors.white : Colors.black87)),
-          Text('• بانادول اكسترا (عند اللزوم).',
+          Text('• راجع جدول الأدوية المحمل من AWS للتفاصيل.',
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 11,
@@ -324,17 +377,18 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _previewRow('تاريخ التقرير', '٢٦ أبريل ٢٠٢٤'),
-          _previewRow('عدد المقيمين', '٢٤ مقيم'),
-          _previewRow('حالات حرجة', '٢ حالة'),
-          _previewRow('الالتزام بالأدوية', '٩٢٪'),
+          _previewRow('تاريخ التقرير',
+              DateTime.now().toIso8601String().split('T').first),
+          _previewRow('عدد المقيمين', '$residentsCount مقيم'),
+          _previewRow('حالات حرجة', '${provider.criticalResidentsCount} حالة'),
+          _previewRow('الالتزام بالأدوية', '$compliance٪'),
           Divider(height: 24, color: isDark ? Colors.white10 : Colors.black12),
           Text('أهم الملاحظات:',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: isDark ? Colors.white : Colors.black87)),
-          Text('• استقرار حالة الحاج محمود بعد تعديل الجرعة.',
+          Text('• أهم الملاحظات ستظهر حسب بيانات AWS المتاحة.',
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 11,
@@ -365,7 +419,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                 ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    _showSendSimulation(type);
+                    _sendReport(type);
                   },
                   style: ElevatedButton.styleFrom(
                       backgroundColor: type == 'تنبيه حرج'
@@ -403,7 +457,8 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   onPressed: () => Navigator.pop(context),
                   child: Text('إلغاء',
                       style: TextStyle(
-                          color: isDark ? Colors.white38 : const Color(0xFF64748B),
+                          color:
+                              isDark ? Colors.white38 : const Color(0xFF64748B),
                           fontFamily: 'Cairo')),
                 ),
               ],
@@ -469,6 +524,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
   }
 
   Widget _buildHero() {
+    final provider = ref.watch(appRiverpod);
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -498,7 +554,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'أ. منى — ${_getShiftName()}',
+                      '${provider.currentAccount?.name ?? 'فريق التمريض'} — ${_getShiftName()}',
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                     const SizedBox(height: 8),
@@ -542,6 +598,10 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
   }
 
   Widget _buildQuickSendCard() {
+    final provider = ref.watch(appRiverpod);
+    final residentsCount = provider.residentFiles.length;
+    final criticalCount = provider.criticalResidentsCount;
+    final compliance = provider.compliancePercentage;
     return AnimatedBuilder(
       animation: _floatController,
       builder: (context, child) {
@@ -625,7 +685,8 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
                       const SizedBox(height: 2),
-                      Text('٢٤ مقيم · ٢ حالة حرجة · ٩٢٪ التزام بالأدوية',
+                      Text(
+                          '$residentsCount مقيم · $criticalCount حالة حرجة · $compliance٪ التزام بالأدوية',
                           style: TextStyle(
                               fontSize: 13,
                               color: Colors.white.withValues(alpha: 0.9))),
@@ -661,8 +722,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () =>
-                                  _showSendSimulation('التقرير اليومي'),
+                              onTap: () => _sendReport('التقرير اليومي'),
                               child: Container(
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 8),
@@ -700,6 +760,14 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
   }
 
   Widget _buildCriticalNotif() {
+    final provider = ref.watch(appRiverpod);
+    final criticalResident = provider.residentFiles
+        .where((resident) =>
+            resident.status.toLowerCase().contains('critical') ||
+            resident.status.contains('حرج'))
+        .toList();
+    if (criticalResident.isEmpty) return const SizedBox.shrink();
+    final resident = criticalResident.first;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Container(
@@ -721,19 +789,20 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('إرسال تنبيه حرج — الحاج محمود',
-                      style: TextStyle(
+                  Text('إرسال تنبيه حرج — ${resident.name}',
+                      style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.white)),
                   const SizedBox(height: 1),
-                  Text('ضغط ١٦٠/١٠٠ · تجاوز الحد منذ ٢٣ د',
-                      style: TextStyle(fontSize: 12, color: Colors.white)),
+                  Text('غرفة ${resident.room} · الحالة من AWS',
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.white)),
                 ],
               ),
             ),
             GestureDetector(
-              onTap: () => _showSendSimulation('التنبيه الحرج'),
+              onTap: () => _sendReport('التنبيه الحرج'),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -930,7 +999,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
           children: [
             _sectionHeader('المستلمون', const Color(0xFF7C3AED)),
             _recRow('د.أ', const Color(0xFFDBEAFE), const Color(0xFF1E40AF),
-                'د. أحمد — الطبيب المشرف', 'يستلم: الحرجة + اليومي', 'د. أحمد'),
+                'الطبيب المشرف', 'يستلم: الحرجة + اليومي', 'الطبيب المشرف'),
             Divider(
                 color: isDark ? Colors.white10 : const Color(0xFFF0F9FF),
                 height: 12),
@@ -1380,12 +1449,12 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
 
   Widget _buildSentReportCard(SentReport report) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // 1. Determine category colors and icons
     Color categoryColor = const Color(0xFF10B981); // Emerald (Daily)
     IconData cardIcon = Icons.assignment_turned_in_rounded;
     IconData metaIcon = Icons.info_outline_rounded;
-    
+
     if (report.title.contains('حرج') || report.icon == '🚨') {
       categoryColor = const Color(0xFFEF4444); // Red (Critical Alert)
       cardIcon = Icons.emergency_rounded;
@@ -1399,7 +1468,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
       cardIcon = Icons.calendar_today_rounded;
       metaIcon = Icons.schedule_rounded;
     }
-    
+
     // Dynamic meta icon override
     if (report.meta.contains('تلقائياً')) {
       metaIcon = Icons.autorenew_rounded;
@@ -1463,11 +1532,12 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                 width: 5,
                 color: categoryColor,
               ),
-              
+
               // Card content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   child: Row(
                     children: [
                       // 5. Styled Glowing Icon Container
@@ -1475,10 +1545,12 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: categoryColor.withValues(alpha: isDark ? 0.15 : 0.08),
+                          color: categoryColor.withValues(
+                              alpha: isDark ? 0.15 : 0.08),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: categoryColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                            color: categoryColor.withValues(
+                                alpha: isDark ? 0.25 : 0.15),
                             width: 1.5,
                           ),
                         ),
@@ -1491,7 +1563,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       // 6. Report info (Title & Meta)
                       Expanded(
                         child: Column(
@@ -1507,7 +1579,9 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                                     fontFamily: 'Cairo',
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A),
                                   ),
                                 ),
                                 if (subtitle.isNotEmpty) ...[
@@ -1519,7 +1593,9 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                                         fontFamily: 'Cairo',
                                         fontSize: 11,
                                         fontWeight: FontWeight.w500,
-                                        color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                        color: isDark
+                                            ? Colors.white60
+                                            : const Color(0xFF64748B),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -1534,7 +1610,9 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                                 Icon(
                                   metaIcon,
                                   size: 13,
-                                  color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                  color: isDark
+                                      ? Colors.white38
+                                      : const Color(0xFF94A3B8),
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
@@ -1543,7 +1621,9 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                                     style: TextStyle(
                                       fontFamily: 'Cairo',
                                       fontSize: 11,
-                                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                      color: isDark
+                                          ? Colors.white60
+                                          : const Color(0xFF64748B),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1555,10 +1635,11 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      
+
                       // 7. Dynamic Status Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(8),

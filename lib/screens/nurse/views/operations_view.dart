@@ -314,7 +314,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                   controller: residentController,
                   decoration: const InputDecoration(
                     labelText: 'اسم المسن',
-                    hintText: 'مثلاً: الحاج محمود سالم',
+                    hintText: 'اسم المقيم كما يظهر من AWS',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1082,7 +1082,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                   controller: doctorController,
                   decoration: const InputDecoration(
                     labelText: 'اسم الطبيب',
-                    hintText: 'مثلاً: د. أحمد محمد',
+                    hintText: 'اسم الطبيب من بيانات AWS',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1137,7 +1137,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                     controller: residentController,
                     decoration: const InputDecoration(
                       labelText: 'اسم المقيم',
-                      hintText: 'مثلاً: الحاج محمود سالم',
+                      hintText: 'اسم المقيم كما يظهر من AWS',
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -1158,7 +1158,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                       onChanged: (val) {
                         setModalState(() => isCompleted = val);
                       },
-                      activeColor: const Color(0xFF0369A1),
+                      activeThumbColor: const Color(0xFF0369A1),
                     ),
                   ],
                 ),
@@ -1260,7 +1260,8 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: Text('الخطة الغذائية لـ ${plan.residentName}',
+                            child: Text(
+                                'الخطة الغذائية لـ ${plan.residentName}',
                                 textAlign: TextAlign.right,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1293,6 +1294,34 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                     _mealRow('وجبة الغداء 🍲', plan.lunch),
                     const Divider(height: 24, color: Color(0xFFF1F5F9)),
                     _mealRow('وجبة العشاء 🥛', plan.dinner),
+                    if (plan.isAiGenerated) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFDF4FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFF0ABFC)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.auto_awesome, color: Color(0xFFC026D3), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('توصية الذكاء الاصطناعي', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF86198F))),
+                                  const SizedBox(height: 4),
+                                  Text(plan.aiRationale ?? '', style: const TextStyle(fontSize: 11, color: Color(0xFF701A75))),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     if (plan.specialInstructions.isNotEmpty) ...[
                       const SizedBox(height: 24),
                       Container(
@@ -1331,21 +1360,132 @@ class _OperationsViewState extends ConsumerState<OperationsView>
   Widget _buildAddMealPlanButton(AppRiverpod provider) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      child: ElevatedButton.icon(
-        onPressed: () => _showAddMealPlanModal(provider),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF0F9FF),
-          foregroundColor: const Color(0xFF0369A1),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Color(0xFFBAE6FD))),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          elevation: 0,
-        ),
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text('إضافة خطة غذائية',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+      child: Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showGenerateAiDietModal(provider),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFDF4FF),
+                foregroundColor: const Color(0xFFC026D3),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFF0ABFC))),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.auto_awesome, size: 20),
+              label: const Text('✨ توليد خطة ذكية بالـ AI',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showAddMealPlanModal(provider),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF0F9FF),
+                foregroundColor: const Color(0xFF0369A1),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFBAE6FD))),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text('إضافة خطة غذائية يدوياً',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _showGenerateAiDietModal(AppRiverpod provider) {
+    final residentController = TextEditingController();
+    bool isGenerating = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              top: 24,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                    child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(10)))),
+                const SizedBox(height: 24),
+                const Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Color(0xFFC026D3)),
+                    SizedBox(width: 8),
+                    Text('توليد خطة غذائية بالـ AI',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF86198F))),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: residentController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم المقيم',
+                    hintText: 'أدخل اسم المقيم',
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isGenerating ? null : () async {
+                      if (residentController.text.isNotEmpty) {
+                        setModalState(() => isGenerating = true);
+                        await provider.generateAndSaveMealPlan(residentController.text);
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFC026D3),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: isGenerating 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('✨ توليد وحفظ',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
     );
   }
 
@@ -1395,7 +1535,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                   controller: residentController,
                   decoration: const InputDecoration(
                     labelText: 'اسم المقيم',
-                    hintText: 'مثلاً: الحاج محمود سالم',
+                    hintText: 'اسم المقيم كما يظهر من AWS',
                   ),
                 ),
                 const SizedBox(height: 12),

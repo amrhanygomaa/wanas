@@ -13,7 +13,7 @@ import 'views/admin_volunteer_view.dart'; // واجهة إدارة التطوع 
 import '../common/profile_screen.dart'; // شاشة الملف الشخصي العامة
 // القائمة الجانبية الموحدة
 import '../../widgets/taptaba_scaffold.dart'; // الهيكل الموحد للتطبيق
-import 'package:lottie/lottie.dart'; // مكتبة الأنيميشن
+// مكتبة الأنيميشن
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   // شاشة لوحة تحكم المدير العام
@@ -127,25 +127,29 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
             Positioned(
               top: 50 + (50 * sin(_floatController.value * pi)),
               right: -100 + (30 * cos(_floatController.value * pi)),
-              child: _buildBlob(400, const Color(0xFF0ea5e9).withOpacity(0.15)),
+              child: _buildBlob(
+                  400, const Color(0xFF0ea5e9).withValues(alpha: 0.15)),
             ),
             // 2. بقعة بنفسجية سفلية يسار
             Positioned(
               bottom: 100 + (60 * cos(_floatController.value * pi)),
               left: -120 + (40 * sin(_floatController.value * pi)),
-              child: _buildBlob(500, const Color(0xFF6366f1).withOpacity(0.12)),
+              child: _buildBlob(
+                  500, const Color(0xFF6366f1).withValues(alpha: 0.12)),
             ),
             // 3. بقعة وردية في المنتصف تتحرك بشكل مختلف
             Positioned(
               top: 300 + (40 * sin(_floatController.value * 2 * pi)),
               left: 100 + (30 * cos(_floatController.value * 2 * pi)),
-              child: _buildBlob(300, const Color(0xFFf43f5e).withOpacity(0.08)),
+              child: _buildBlob(
+                  300, const Color(0xFFf43f5e).withValues(alpha: 0.08)),
             ),
             // 4. بقعة سماوية هادئة
             Positioned(
               bottom: 400 + (50 * sin(_floatController.value * pi)),
               right: 20 + (20 * cos(_floatController.value * pi)),
-              child: _buildBlob(350, const Color(0xFF22d3ee).withOpacity(0.1)),
+              child: _buildBlob(
+                  350, const Color(0xFF22d3ee).withValues(alpha: 0.1)),
             ),
           ],
         );
@@ -162,7 +166,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         gradient: RadialGradient(
           colors: [
             color,
-            color.withOpacity(0.01),
+            color.withValues(alpha: 0.01),
             Colors.transparent,
           ],
         ),
@@ -311,7 +315,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                                   child: MarqueeText(
                                       text: provider
                                               .currentAccount?.facilityName ??
-                                          'دار ونس للرعاية',
+                                          (provider.facilityName.isEmpty
+                                              ? 'المنشأة'
+                                              : provider.facilityName),
                                       style: const TextStyle(
                                           color: Color(0xFF94a3b8),
                                           fontSize: 18,
@@ -348,6 +354,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildAnimatedBadge() {
     // بناء شارة المدير مع أنيميشن الطفو
     return AnimatedBuilder(
@@ -386,11 +393,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Expanded(
-              child: _buildNavItem(0, Icons.analytics_outlined, 'نظرة عامة', activeIndex)),
+              child: _buildNavItem(
+                  0, Icons.analytics_outlined, 'نظرة عامة', activeIndex)),
           Expanded(
-              child: _buildNavItem(2, 'assets/icons/calendar.png', 'الزيارات', activeIndex)),
+              child: _buildNavItem(
+                  2, 'assets/icons/calendar.png', 'الزيارات', activeIndex)),
           Expanded(
-              child: _buildNavItem(3, Icons.error_outline_rounded, 'الشكاوى', activeIndex)),
+              child: _buildNavItem(
+                  3, Icons.error_outline_rounded, 'الشكاوى', activeIndex)),
           Expanded(
               child: _buildNavItem(
                   6, Icons.volunteer_activism_outlined, 'التطوع', activeIndex)),

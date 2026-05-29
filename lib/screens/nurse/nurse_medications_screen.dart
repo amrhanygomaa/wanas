@@ -53,6 +53,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
       barrierDismissible: false,
       builder: (context) {
         Future.delayed(const Duration(seconds: 2), () {
+          if (!context.mounted) return;
           if (Navigator.canPop(context)) {
             Navigator.pop(context);
           }
@@ -341,8 +342,11 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
           ...groupedMeds.entries.map((entry) {
             final name = entry.key;
             final meds = entry.value;
-            final isCritical =
-                name.contains('محمود'); // محاكاة الأولوية للحالات الحرجة
+            final matchedResidents = provider.residentFiles
+                .where((resident) => resident.name == name);
+            final isCritical = matchedResidents.any((resident) =>
+                resident.status.toLowerCase().contains('critical') ||
+                resident.status.contains('حرج'));
             return _buildResidentCard(name, meds, isCritical);
           }),
           const SizedBox(height: 10),
@@ -514,8 +518,10 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
 
   Widget _done() =>
       _circ('✓', const Color(0xFFD1FAE5), const Color(0xFF065F46));
+  // ignore: unused_element
   Widget _miss() =>
       _circ('!', const Color(0xFFFEE2E2), const Color(0xFFEF4444), blink: true);
+  // ignore: unused_element
   Widget _pend() =>
       _circ('○', const Color(0xFFF1F5F9), const Color(0xFF94A3B8));
 
@@ -543,6 +549,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
 
   Widget _na() =>
       const Text('—', style: TextStyle(fontSize: 12, color: Color(0xFFCBD5E1)));
+  // ignore: unused_element
   Widget _now() {
     return Container(
       width: 30,
@@ -593,6 +600,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _actionFooter(List<Widget> btns, {bool isExpanded = true}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
@@ -609,6 +617,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _btn(String txt, Color bg, Color fg, Color borderC,
       {bool isGrad = false}) {
     return Container(
