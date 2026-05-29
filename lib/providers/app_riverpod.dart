@@ -4715,9 +4715,10 @@ class AppRiverpod extends ChangeNotifier {
     // For demo purposes, we fetch a random result or start a new game session result.
     await Future.delayed(const Duration(seconds: 1));
     _cognitiveGameResult = CognitiveGameResult(
-      gameType: "لعبة الكلمات المتقاطعة",
-      score: "8/10",
-      analysis: "ذاكرة قوية وانتباه جيد.",
+      id: 'mock_game_1',
+      residentId: backendResidentId ?? 'unknown',
+      score: 8,
+      feedback: "ذاكرة قوية وانتباه جيد. (لعبة الكلمات المتقاطعة)",
       date: DateTime.now(),
     );
     notifyListeners();

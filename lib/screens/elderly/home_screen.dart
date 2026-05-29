@@ -775,12 +775,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('نتيجة آخر جلسة (${provider.cognitiveGameResult!.gameType}):',
+                    Text('نتيجة آخر جلسة:',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                     const SizedBox(height: 8),
-                    Text('النتيجة: ${provider.cognitiveGameResult!.score}',
+                    Text('النتيجة: ${provider.cognitiveGameResult!.score}/10',
                         style: const TextStyle(color: Color(0xFF1D4ED8))),
-                    Text('التحليل: ${provider.cognitiveGameResult!.analysis}',
+                    Text('التحليل: ${provider.cognitiveGameResult!.feedback}',
                         style: const TextStyle(color: Color(0xFF1D4ED8))),
                     const SizedBox(height: 12),
                     SizedBox(
