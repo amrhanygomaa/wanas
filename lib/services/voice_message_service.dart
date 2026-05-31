@@ -1,8 +1,7 @@
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
-
 import 'api_client.dart';
+import 's3_upload_helper.dart';
 
 class BackendVoiceMessageUpload {
   final Map<String, dynamic> message;
@@ -45,18 +44,12 @@ class VoiceMessageService {
 
     if (filePath != null && upload.uploadUrl != null) {
       final bytes = await File(filePath).readAsBytes();
-      final put = await http.put(
-        Uri.parse(upload.uploadUrl!),
-        headers: {'Content-Type': contentType ?? 'audio/mpeg'},
-        body: bytes,
+      await s3Put(
+        uploadUrl: upload.uploadUrl!,
+        bytes: bytes,
+        contentType: contentType ?? 'audio/mpeg',
+        label: _fileName(filePath),
       );
-      if (put.statusCode < 200 || put.statusCode >= 300) {
-        throw ApiException(
-          put.statusCode,
-          'فشل رفع الرسالة الصوتية إلى S3',
-          put.body,
-        );
-      }
     }
 
     return upload;

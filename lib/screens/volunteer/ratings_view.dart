@@ -165,7 +165,14 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   }
 
   Widget _buildTabSelector() {
-    final tabs = ['أقيّم (١)', 'تقييماتي (١٢)', 'ملخص أدائي'];
+    final provider = ref.watch(appRiverpod);
+    final pendingCount = provider.volunteerReviews.where((r) => r.isPending).length;
+    final ratingsCount = provider.volunteerRatings.length;
+    final tabs = [
+      'أقيّم${pendingCount > 0 ? ' ($pendingCount)' : ''}',
+      'تقييماتي${ratingsCount > 0 ? ' ($ratingsCount)' : ''}',
+      'ملخص أدائي',
+    ];
     return Container(
       height: 45,
       decoration: const BoxDecoration(
@@ -204,18 +211,39 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   }
 
   List<Widget> _buildRateSection(AppRiverpod provider) {
-    final pending =
-        provider.volunteerReviews.where((r) => r.isPending).toList();
+    final pending = provider.volunteerReviews.where((r) => r.isPending).toList();
+    final done = provider.volunteerReviews.where((r) => !r.isPending).toList();
     return [
       _buildSectionLabel('تقييمات بانتظار الإرسال', const Color(0xFF10b981), 0),
       const SizedBox(height: 12),
-      ...pending.map((r) => _buildInteractiveRatingCard(r)),
+      if (pending.isEmpty)
+        _buildEmptyRateCard('لا توجد تقييمات بانتظار الإرسال')
+      else
+        ...pending.map((r) => _buildInteractiveRatingCard(r)),
       const SizedBox(height: 24),
       _buildSectionLabel('تاريخ تقييماتي للمقيمين', const Color(0xFF10b981), 1),
       const SizedBox(height: 12),
-      _buildRatingsHistory(
-          provider.volunteerReviews.where((r) => !r.isPending).toList()),
+      if (done.isEmpty)
+        _buildEmptyRateCard('لم تقيّم أي جلسة بعد')
+      else
+        _buildRatingsHistory(done),
     ];
+  }
+
+  Widget _buildEmptyRateCard(String message) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFd1fae5))),
+      child: Center(
+        child: Text(message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 13, color: Color(0xFF94a3b8))),
+      ),
+    );
   }
 
   Widget _buildInteractiveRatingCard(VolunteerReview review) {
@@ -499,34 +527,48 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
       _buildSectionLabel(
           'تفصيل تقييمات المقيمين لي', const Color(0xFFfbbf24), 0),
       const SizedBox(height: 12),
-      _buildDetailedBreakdown(provider),
+      if (provider.volunteerRatings.isNotEmpty)
+        _buildDetailedBreakdown(provider)
+      else
+        _buildEmptyRateCard('لا توجد تقييمات بعد'),
       const SizedBox(height: 24),
       _buildSectionLabel(
           'آخر ما قاله عنك المقيمون', const Color(0xFF10b981), 1),
       const SizedBox(height: 12),
-      ...provider.volunteerRatings.map((r) => _buildReviewCard(r)),
+      if (provider.volunteerRatings.isEmpty)
+        _buildEmptyRateCard('لا توجد تقييمات حتى الآن')
+      else
+        ...provider.volunteerRatings.map((r) => _buildReviewCard(r)),
     ];
   }
 
   Widget _buildDetailedBreakdown(AppRiverpod provider) {
-    final criteria = [
-      {
-        'label': 'التعامل والاحترام',
-        'score': 5.0,
-        'color': const Color(0xFF10b981)
-      },
-      {
-        'label': 'الالتزام بالمواعيد',
-        'score': 5.0,
-        'color': const Color(0xFF10b981)
-      },
-      {'label': 'جودة التحضير', 'score': 4.0, 'color': const Color(0xFF10b981)},
-      {
-        'label': 'الإبداع في الجلسة',
-        'score': 4.7,
-        'color': const Color(0xFF10b981)
-      },
-    ];
+    // Compute average criteria scores from real ratings.
+    final totals = <String, double>{};
+    final counts = <String, int>{};
+    for (final rating in provider.volunteerRatings) {
+      for (final entry in rating.criteriaScores.entries) {
+        totals[entry.key] = (totals[entry.key] ?? 0) + entry.value;
+        counts[entry.key] = (counts[entry.key] ?? 0) + 1;
+      }
+    }
+    final List<Map<String, dynamic>> criteria;
+    if (totals.isNotEmpty) {
+      criteria = totals.entries.map((e) {
+        final avg = e.value / counts[e.key]!;
+        return {
+          'label': e.key,
+          'score': avg,
+          'color': const Color(0xFF10b981),
+        };
+      }).toList();
+    } else {
+      // Fallback labels if backend sends no criteria breakdown.
+      criteria = [
+        {'label': 'التعامل والاحترام', 'score': provider.averageRating, 'color': const Color(0xFF10b981)},
+        {'label': 'الالتزام بالمواعيد', 'score': provider.averageRating, 'color': const Color(0xFF10b981)},
+      ];
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),

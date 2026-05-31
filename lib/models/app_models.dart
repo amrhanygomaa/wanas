@@ -1,5 +1,22 @@
 import 'package:flutter/material.dart';
 
+/// Removes UUID-like patterns from AI-generated text to prevent internal IDs
+/// from being shown to users.
+final _uuidPattern = RegExp(
+  r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+);
+
+/// Returns true if [text] is entirely (or nearly entirely) a UUID.
+bool isUuid(String text) {
+  final trimmed = text.trim();
+  return _uuidPattern.hasMatch(trimmed) && trimmed.length <= 36;
+}
+
+/// Strips UUID patterns from [text], collapsing any double-spaces left behind.
+String stripUuids(String text) {
+  return text.replaceAll(_uuidPattern, '').replaceAll(RegExp(r'  +'), ' ').trim();
+}
+
 // نموذج يمثل بيانات المستخدم (المسن) ونظام النقاط التحفيزي
 class User {
   String name; // اسم المستخدم
@@ -29,6 +46,7 @@ class Medication {
   final String dayTag; // تصنيف اليوم: 'أمس', 'اليوم', 'غداً'
   final String? residentName; // اسم المقيم (يستخدم في واجهة الممرض)
   final DateTime? scheduledTime; // الوقت المحدد للجرعة بدقة
+  final String? mealRelation; // 'before_breakfast', 'after_breakfast', 'after_lunch', 'after_dinner', 'empty_stomach'
 
   Medication({
     required this.id,
@@ -43,7 +61,19 @@ class Medication {
     this.dayTag = 'اليوم',
     this.residentName,
     this.scheduledTime,
+    this.mealRelation,
   });
+
+  String get mealRelationArabic {
+    switch (mealRelation) {
+      case 'before_breakfast': return 'قبل الإفطار';
+      case 'after_breakfast': return 'بعد الإفطار';
+      case 'after_lunch': return 'بعد الغذاء';
+      case 'after_dinner': return 'بعد العشاء';
+      case 'empty_stomach': return 'على معدة فارغة';
+      default: return '';
+    }
+  }
 
   // التحقق مما إذا كانت الجرعة قد فاتت موعدها ولم تؤخذ
   bool get isMissed {
@@ -63,6 +93,7 @@ class FamilyMember {
   String? zoomLink; // رابط زووم للمكالمات المرئية
   bool isAvailable; // هل القريب متاح حالياً للمكالمة؟
   bool isPinned; // هل تم اختياره ليظهر في الشاشة الرئيسية؟
+  String? userId; // Cognito sub — used as recipientId for messages API
 
   FamilyMember({
     required this.id,
@@ -73,7 +104,8 @@ class FamilyMember {
     required this.phoneNumber,
     this.zoomLink,
     this.isAvailable = false,
-    this.isPinned = true, // افتراضياً سنعتبرهم مختارين حتى يغير المستخدم
+    this.isPinned = true,
+    this.userId,
   });
 }
 
@@ -480,8 +512,10 @@ class FamilyVisit {
   final String date;
   final String time;
   final String visitorName;
-  final String status; // 'upcoming', 'completed', 'cancelled'
+  final String status; // 'pending', 'upcoming', 'completed', 'cancelled'
   final String type; // 'physical', 'video'
+  final DateTime? scheduledAt; // actual DateTime for backend submission
+  final String? zoomLink; // populated by backend for video visits
 
   FamilyVisit({
     required this.id,
@@ -490,6 +524,8 @@ class FamilyVisit {
     required this.visitorName,
     required this.status,
     required this.type,
+    this.scheduledAt,
+    this.zoomLink,
   });
 
   FamilyVisit copyWith({
@@ -499,6 +535,8 @@ class FamilyVisit {
     String? visitorName,
     String? status,
     String? type,
+    DateTime? scheduledAt,
+    String? zoomLink,
   }) {
     return FamilyVisit(
       id: id ?? this.id,
@@ -507,6 +545,8 @@ class FamilyVisit {
       visitorName: visitorName ?? this.visitorName,
       status: status ?? this.status,
       type: type ?? this.type,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      zoomLink: zoomLink ?? this.zoomLink,
     );
   }
 }
@@ -1043,6 +1083,7 @@ class ActivitySession {
 class AIInsight {
   final String id;
   final String residentName;
+  final String? roomNumber;
   final String summary;
   final String rationale;
   final DateTime generationDate;
@@ -1052,12 +1093,51 @@ class AIInsight {
   AIInsight({
     required this.id,
     required this.residentName,
+    this.roomNumber,
     required this.summary,
     required this.rationale,
     required this.generationDate,
     this.confidenceScore = 0.85,
     this.type = 'recommendation',
   });
+
+  /// Human-readable resident label safe for display (never exposes UUIDs).
+  String get residentLabel {
+    final safeName = isUuid(residentName) ? '' : residentName.trim();
+    if (safeName.isEmpty) return 'مشكلة عامة في النظام / الدار';
+    final room = roomNumber?.trim();
+    if (room != null && room.isNotEmpty) return 'المقيم: $safeName — الغرفة $room';
+    return safeName;
+  }
+}
+
+/// ملاحظات الذكاء الاصطناعي الخاصة بمقيم معين
+class ResidentAINotes {
+  final String residentId;
+  final String? summary;
+  final String? recommendations;
+  final String? warnings;
+  final String? moodInsights;
+  final String? source;
+  final String? status;
+  final String? lastUpdated;
+
+  ResidentAINotes({
+    required this.residentId,
+    this.summary,
+    this.recommendations,
+    this.warnings,
+    this.moodInsights,
+    this.source,
+    this.status,
+    this.lastUpdated,
+  });
+
+  bool get isEmpty =>
+      (summary?.isEmpty ?? true) &&
+      (recommendations?.isEmpty ?? true) &&
+      (warnings?.isEmpty ?? true) &&
+      (moodInsights?.isEmpty ?? true);
 }
 
 class CompanionMessage {

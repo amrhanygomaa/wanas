@@ -113,6 +113,16 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
     );
   }
 
+  /// Converts "HH:MM" to "HH:MM ص" or "HH:MM م" for clear Arabic display.
+  String _arabicTime(String time) {
+    final parts = time.split(':');
+    if (parts.length < 2) return time;
+    final hour = int.tryParse(parts[0]);
+    if (hour == null) return time;
+    final suffix = hour < 12 ? 'ص' : 'م';
+    return '$time $suffix';
+  }
+
   // ─── Header ──────────────────────────────────────────────────────────
   Widget _buildHeader(AppRiverpod provider, int points, double progress) {
     return AnimatedBuilder(
@@ -390,7 +400,7 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                     Icon(Icons.access_time_rounded,
                         size: 16, color: Colors.grey.shade500),
                     const SizedBox(width: 6),
-                    Text(act.time,
+                    Text(_arabicTime(act.time),
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
@@ -758,32 +768,41 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
       }).join();
     }
 
-    final rows = residents.isNotEmpty
-        ? residents.take(3).toList().asMap().entries.map((entry) {
-            final i = entry.key;
-            final r = entry.value;
+    // Build full list: current user gets real points, all others start at 0.
+    // Sort descending by points so top scorers appear first.
+    final allRows = residents.isNotEmpty
+        ? (residents.map((r) {
             final isMe = r.name == currentName;
             return {
-              'rank': toArabicDigit(i + 1),
               'ini': r.initials,
               'name': r.name,
-              'pts': isMe
-                  ? toArabicDigit(provider.currentUser.points)
-                  : toArabicDigit(max(310, 370 - (i * 30)).toInt()),
+              'pts': isMe ? provider.currentUser.points : 0,
               'me': isMe,
             };
           }).toList()
+          ..sort((a, b) => (b['pts'] as int).compareTo(a['pts'] as int)))
         : currentName.trim().isEmpty
             ? <Map<String, Object>>[]
             : [
                 {
-                  'rank': toArabicDigit(1),
                   'ini': String.fromCharCode(currentName.runes.first),
                   'name': currentName,
-                  'pts': toArabicDigit(provider.currentUser.points),
+                  'pts': provider.currentUser.points,
                   'me': true,
                 },
               ];
+
+    final rows = allRows.asMap().entries.map((e) {
+      final r = e.value;
+      return {
+        'rank': toArabicDigit(e.key + 1),
+        'ini': r['ini'],
+        'name': r['name'],
+        'pts': toArabicDigit(r['pts'] as int),
+        'me': r['me'],
+      };
+    }).toList();
+
     final rankColors = [
       const Color(0xFFD97706),
       const Color(0xFF64748B),
@@ -815,7 +834,9 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
           ...rows.asMap().entries.map((e) {
             final r = e.value;
             final isMe = r['me'] as bool;
-            final color = rankColors[e.key];
+            final color = e.key < rankColors.length
+                ? rankColors[e.key]
+                : const Color(0xFF94A3B8);
             return Column(
               children: [
                 if (e.key > 0) Divider(color: Colors.grey.shade100, height: 1),

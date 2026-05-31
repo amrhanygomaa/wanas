@@ -1,7 +1,7 @@
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import 'api_client.dart';
+import 's3_upload_helper.dart';
 
 class UploadedProfileImage {
   final String imageUrl;
@@ -53,18 +53,12 @@ class ProfileImageService {
     }
 
     final bytes = await image.readAsBytes();
-    final uploaded = await http.put(
-      Uri.parse(uploadUrl),
-      headers: {'Content-Type': contentType},
-      body: bytes,
+    await s3Put(
+      uploadUrl: uploadUrl,
+      bytes: bytes,
+      contentType: contentType,
+      label: image.name,
     );
-    if (uploaded.statusCode < 200 || uploaded.statusCode >= 300) {
-      throw ApiException(
-        uploaded.statusCode,
-        'S3 profile upload failed',
-        uploaded.body,
-      );
-    }
 
     final confirmed = await ApiClient.instance.patch(confirmPath, body: {
       's3Key': s3Key,

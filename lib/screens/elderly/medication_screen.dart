@@ -685,6 +685,18 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
                                 fontSize: 16,
                                 color: Colors.white.withValues(alpha: 0.85))),
                       ),
+                      if (med.mealRelationArabic.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '🍽 ${med.mealRelationArabic}',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.8)),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,

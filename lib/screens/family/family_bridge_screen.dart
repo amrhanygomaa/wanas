@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
+import '../../services/family_media_service.dart';
 import '../../widgets/taptaba_scaffold.dart';
 
 // شاشة "جسر العائلة" - تتيح للأقارب التواصل مع المقيم عبر الصور والرسائل الصوتية
@@ -72,17 +73,27 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
 
     if (residentId == null || residentId.isEmpty) {
       provider.backendSyncError = 'لا يوجد مقيم مربوط من AWS';
-    } else if (type == 'صورة') {
-      setState(() => _uploadProgress = 0.4);
-      await provider.addMemoryMoment(MemoryMoment(
-        id: 'm${DateTime.now().millisecondsSinceEpoch}',
-        residentId: residentId,
-        residentName: residentName,
-        imageUrl: imagePath ?? '',
-        activityTitle: title,
-        date: 'الآن',
-        appreciations: 0,
-      ));
+    } else if (type == 'صورة' && imagePath != null) {
+      setState(() => _uploadProgress = 0.3);
+      try {
+        final uploaded = await FamilyMediaService.instance.uploadImage(
+          residentId: residentId,
+          image: XFile(imagePath),
+          caption: title,
+        );
+        setState(() => _uploadProgress = 0.7);
+        await provider.addMemoryMoment(MemoryMoment(
+          id: 'm${DateTime.now().millisecondsSinceEpoch}',
+          residentId: residentId,
+          residentName: residentName,
+          imageUrl: uploaded.mediaUrl ?? '',
+          activityTitle: title,
+          date: 'الآن',
+          appreciations: 0,
+        ));
+      } catch (e) {
+        provider.backendSyncError = e.toString();
+      }
     } else {
       setState(() => _uploadProgress = 0.4);
       await provider.sendVoiceMessageFromFamily(

@@ -38,6 +38,8 @@ dependencies:
   http: any
   firebase_messaging: any
   socket_io_client: any
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
 dependency_overrides:
   file_picker: 8.1.7
   firebase_core: ^3.6.0

@@ -1,9 +1,8 @@
-import 'dart:async'; // مكتبة المؤقتات والعمليات غير المتزامنة
-import 'dart:math'; // مكتبة العمليات الرياضية
-import 'package:flutter/material.dart'; // مكتبة فلاتر الأساسية للواجهات
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // مكتبة إدارة الحالة
-// مكتبة فتح الروابط
-import '../../providers/app_riverpod.dart'; // مزود الحالة الرئيسي للتطبيق
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/app_riverpod.dart';
+import 'cognitive_games_screen.dart';
 import '../../models/app_models.dart'; // نماذج البيانات (Medication, User, etc.)
 import 'package:lottie/lottie.dart';
 // ويدجت رفيق الذكاء الاصطناعي
@@ -29,8 +28,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   bool _showSuccessAnimation = false;
   String _successMessage = '';
-  int remainingSeconds = 22 * 60; // الوقت المتبقي للدواء (22 دقيقة افتراضياً)
-  Timer? _timer; // مؤقت للعد التنازلي
 
   @override
   void initState() {
@@ -67,31 +64,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       duration: const Duration(milliseconds: 2500),
     )..repeat(reverse: true);
 
-    // بدء مؤقت العد التنازلي كل ثانية
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (remainingSeconds > 0) {
-        setState(() => remainingSeconds--); // تحديث الواجهة عند نقصان الثواني
-      }
-    });
   }
 
   @override
   void dispose() {
-    // تنظيف الموارد وإغلاق المؤقتات عند إغلاق الشاشة
     _bgController.dispose();
     _pillController.dispose();
     _ringController.dispose();
     _starController.dispose();
     _glowController.dispose();
-    _timer?.cancel();
     super.dispose();
-  }
-
-  String formatTime(int seconds) {
-    // دالة لتحويل الثواني إلى صيغة نصية عربية
-    final m = seconds ~/ 60;
-    final s = seconds % 60;
-    return m > 0 ? '$m دقيقة' : '$s ثانية';
   }
 
   @override
@@ -107,32 +89,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               // قسم الترحيب العلوي (Hero)
               _buildHero(provider),
-              if (provider.currentMood.isEmpty)
-                _buildMoodTracker(
-                    provider), // إظهار متعقب المزاج إذا لم يحدد بعد
+              // تظهر بطاقة المزاج فقط مساءً (18:00–23:59) وإذا لم يسجّل بعد
+              if (provider.currentMood.isEmpty && DateTime.now().hour >= 18)
+                _buildMoodTracker(provider),
 
               // قسم البطاقات الرئيسية
               Padding(
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   children: [
-                    _buildMedicineCard(provider), // بطاقة الدواء
+                    _buildMedicineCard(provider),
                     const SizedBox(height: 12),
-                    _buildCognitiveGamesCard(provider, context), // الألعاب المعرفية بالذكاء الاصطناعي
+                    _buildCognitiveGamesCard(provider, context),
                     const SizedBox(height: 12),
-                    _buildFamilyCard(
-                        provider, context), // بطاقة التواصل مع العائلة
+                    _buildPointsCard(provider), // نقاط تظهر أولاً فوق جهات الاتصال
                     const SizedBox(height: 12),
-                    _buildPointsCard(provider), // بطاقة إجمالي النقاط
+                    _buildFamilyCard(provider, context),
                     const SizedBox(height: 12),
-                    _buildVolunteerRatingCard(
-                        provider, context), // بطاقة تقييم المتطوع
-                    const SizedBox(height: 12),
-                    _buildServiceRatingCard(
-                        provider, context), // بطاقة تقييم الخدمات
-                    const SizedBox(height: 12),
-                    _buildComplaintCard(
-                        provider, context), // بطاقة طلب المساعدة
+                    _buildComplaintCard(provider, context),
                   ],
                 ),
               ),
@@ -251,23 +225,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ),
 
-                    // شرائح إحصائية سريعة (أدوية، نقاط، نشاطات)
+                    // أزرار الإجراء السريع (أدوية + نشاطات)
                     Padding(
                       padding: const EdgeInsets.only(
                           left: 16, right: 16, top: 8, bottom: 24),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _buildChip('${provider.todayMedications.length}',
-                              'أدوية', 1), // عدد الأدوية اليوم
-                          const SizedBox(width: 8),
-                          _buildChip('${provider.currentUser.points}', 'نقاطي',
-                              2), // إجمالي النقاط
-                          const SizedBox(width: 8),
-                          _buildChip(
-                              '${provider.currentUser.completedActivities}',
-                              'نشاطات',
-                              3), // عدد النشاطات المكتملة
+                          _buildQuickAction(
+                            context,
+                            icon: Icons.medication_rounded,
+                            label: 'دوائي اليوم',
+                            count: provider.todayMedications.length,
+                            color: const Color(0xFF6C63FF),
+                            onTap: () =>
+                                ref.read(appRiverpod).setElderlyTabIndex(1),
+                          ),
+                          const SizedBox(width: 10),
+                          _buildQuickAction(
+                            context,
+                            icon: Icons.self_improvement_rounded,
+                            label: 'نشاط اليوم',
+                            count: provider.activities
+                                .where((a) => a.dayTag == 'اليوم')
+                                .length,
+                            color: const Color(0xFF3B82F6),
+                            onTap: () =>
+                                ref.read(appRiverpod).setElderlyTabIndex(4),
+                          ),
                         ],
                       ),
                     ),
@@ -377,80 +361,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildChip(String value, String label, int index) {
-    Color chipColor;
-    Color borderColor;
-
-    switch (index) {
-      case 1: // أدوية
-        chipColor =
-            const Color(0xFF6C63FF).withValues(alpha: 0.15); // بنفسجي أساسي
-        borderColor = const Color(0xFF6C63FF).withValues(alpha: 0.3);
-        break;
-      case 2: // نقاطي
-        chipColor =
-            const Color(0xFF8B5CF6).withValues(alpha: 0.15); // بنفسجي فاتح
-        borderColor = const Color(0xFF8B5CF6).withValues(alpha: 0.3);
-        break;
-      case 3: // نشاطات
-        chipColor = const Color(0xFF3B82F6).withValues(alpha: 0.15); // أزرق
-        borderColor = const Color(0xFF3B82F6).withValues(alpha: 0.3);
-        break;
-      default:
-        chipColor = Colors.white.withValues(alpha: 0.14);
-        borderColor = Colors.white.withValues(alpha: 0.12);
-    }
-
+  Widget _buildQuickAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required int count,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
-      child: TweenAnimationBuilder(
-        tween: Tween<double>(begin: 0.6, end: 1),
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.elasticOut,
-        builder: (context, scale, child) {
-          return Transform.scale(
-            scale: scale,
-            child: child!,
-          );
-        },
+      child: GestureDetector(
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: chipColor,
+            color: color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: borderColor.withValues(alpha: 0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(value,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold)),
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('$count',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(label,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500)),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(label,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold)),
-              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_ios_rounded,
+                  color: Colors.white70, size: 11),
             ],
           ),
         ),
@@ -460,199 +420,157 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildMedicineCard(AppRiverpod provider) {
     final nextMed = provider.nextMedication;
-    final remainingSeconds = provider.remainingSecondsToNextMed;
 
-    return AnimatedBuilder(
-      animation: Listenable.merge([_bgController, _glowController]),
-      builder: (context, child) {
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF6366F1),
-                Color(0xFF8B5CF6),
-                Color(0xFFA855F7),
-              ],
+    // All doses confirmed by nurse — nothing left to show.
+    if (nextMed == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+          ],
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 26),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'تم أخذ جميع أدوية اليوم ✓',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('الجرعة القادمة ',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold)),
-                        Lottie.asset(
-                          'assets/animations/pickups.json',
-                          width: 45,
-                          height: 45,
-                          fit: BoxFit.contain,
-                          repeat: true,
-                          animate: true,
-                        ),
-                      ],
-                    ),
-                    const SizedBox.shrink(),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nextMed != null
-                                ? nextMed.name
-                                : 'كل الأدوية تم أخذها',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                height: 1.1),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            nextMed != null ? nextMed.dosage : '',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            nextMed != null ? 'بعد الغداء' : 'ممتاز!',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () {
-                        if (nextMed != null) {
-                          provider.elderlyConfirmMedication(nextMed.id);
-
-                          // Show central animation
-                          setState(() {
-                            _successMessage = 'تم أخذ الدواء بنجاح';
-                            _showSuccessAnimation = true;
-                          });
-
-                          // Automatically hides based on onLoaded in _buildCentralSuccessAnimation
-                        }
-                      },
-                      child: _buildHandIcon(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('⏱️', style: TextStyle(fontSize: 18)),
-                          const SizedBox(width: 8),
-                          Text(
-                            formatTime(remainingSeconds),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (nextMed != null)
-                  _buildTakeMedButton(provider, nextMed, context),
-              ],
             ),
-          ),
-        );
-      },
-    );
-  }
+          ],
+        ),
+      );
+    }
 
-  Widget _buildHandIcon() {
-    return SizedBox(
-      width: 76,
-      height: 76,
-      child: Stack(
-        children: [
-          Center(
-            child: AnimatedBuilder(
-              animation: _ringController,
-              builder: (context, child) {
-                return Container(
-                  width: 76,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white
-                          .withValues(alpha: 0.4 * (1 - _ringController.value)),
-                      width: 5 * _ringController.value,
-                    ),
+    // Resident confirmed but nurse hasn't verified yet.
+    if (nextMed.isElderlyConfirmed && !nextMed.isTaken) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0EA5E9), Color(0xFF38BDF8)],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0EA5E9).withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                  color: Colors.white, strokeWidth: 2.5),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nextMed.name,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
                   ),
-                );
-              },
-            ),
-          ),
-          Center(
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 4))
+                  const SizedBox(height: 4),
+                  const Text(
+                    'في انتظار تأكيد الممرض...',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
                 ],
               ),
-              child: const Center(
-                child:
-                    Icon(Icons.touch_app, color: Color(0xFF6366F1), size: 32),
-              ),
             ),
+          ],
+        ),
+      );
+    }
+
+    // Upcoming dose — resident hasn't confirmed yet.
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFA855F7)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('الجرعة القادمة 💊',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 10),
+            Text(
+              nextMed.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              nextMed.dosage,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              nextMed.timeDescription.isNotEmpty
+                  ? nextMed.timeDescription
+                  : 'بعد الغداء',
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75), fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            _buildTakeMedButton(provider, nextMed, context),
+          ],
+        ),
       ),
     );
   }
@@ -662,14 +580,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return GestureDetector(
       onTap: () {
         provider.elderlyConfirmMedication(nextMed.id);
-
-        // Show central animation
         setState(() {
-          _successMessage = 'تم أخذ الدواء بنجاح';
+          _successMessage = 'تم تسجيل أخذ الدواء';
           _showSuccessAnimation = true;
         });
-
-        // Automatically hides based on onLoaded in _buildCentralSuccessAnimation
       },
       child: Container(
         width: double.infinity,
@@ -744,66 +658,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 16),
-            if (provider.cognitiveGameResult == null)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    provider.fetchCognitiveGame();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('جارِ جلب لعبة ذهنية بالذكاء الاصطناعي...')),
-                    );
-                  },
-                  icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                  label: const Text('ابدأ اللعب', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                ),
-              )
-            else
+            if (provider.cognitiveGameResult != null)
               Container(
-                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFBFDBFE)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text('نتيجة آخر جلسة:',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                    const SizedBox(height: 8),
-                    Text('النتيجة: ${provider.cognitiveGameResult!.score}/10',
-                        style: const TextStyle(color: Color(0xFF1D4ED8))),
-                    Text('التحليل: ${provider.cognitiveGameResult!.feedback}',
-                        style: const TextStyle(color: Color(0xFF1D4ED8))),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          provider.fetchCognitiveGame();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('جارِ بدء لعبة جديدة...')),
-                          );
-                        },
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('لعب مرة أخرى'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF3B82F6),
-                          side: const BorderSide(color: Color(0xFF3B82F6)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                    const Text('🏆', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'آخر نتيجة: ${provider.cognitiveGameResult!.score}/10',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E3A8A),
+                                fontSize: 14),
+                          ),
+                          Text(
+                            provider.cognitiveGameResult!.feedback,
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF3B82F6)),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const CognitiveGamesScreen()),
+                ),
+                icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                label: Text(
+                  provider.cognitiveGameResult == null
+                      ? 'ابدأ اللعب'
+                      : 'العب مرة أخرى',
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1378,424 +1292,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildVolunteerRatingCard(AppRiverpod provider, BuildContext context) {
-    bool hc = provider.isHighContrast;
-    return GestureDetector(
-      onTap: () => _showVolunteerRatingSheet(provider, context),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: hc ? const Color(0xFF1E1E1E) : const Color(0xFFF0FDF4),
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [
-            BoxShadow(
-                color:
-                    const Color(0xFF22C55E).withValues(alpha: hc ? 0.2 : 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 4))
-          ],
-          border: Border.all(
-              color: hc ? const Color(0xFF052e16) : const Color(0xFFBBF7D0),
-              width: 1.5),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF86EFAC),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.volunteer_activism_rounded,
-                    color: Color(0xFF15803D), size: 32),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('كيف كانت جلستك التطوعية؟',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF166534))),
-                    Text('أخبرنا برأيك في المتطوع الذي زارك مؤخراً.',
-                        style:
-                            TextStyle(fontSize: 14, color: Color(0xFF15803D))),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showVolunteerRatingSheet(AppRiverpod provider, BuildContext context) {
-    int selectedRating = 0; // 3 = happy, 2 = normal, 1 = sad
-    final commentController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20,
-                right: 20,
-                top: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Center(
-                  child: Container(
-                      width: 50,
-                      height: 5,
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFE2E8F0),
-                          borderRadius: BorderRadius.circular(4))),
-                ),
-                const SizedBox(height: 24),
-                const Text('تقييم زيارة التطوع 🌟',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A))),
-                const SizedBox(height: 12),
-                Text(
-                    'كيف كان وقتك مع ${provider.volunteerBookings.isNotEmpty ? provider.volunteerBookings.first.title : 'آخر جلسة تطوع'}؟',
-                    style: const TextStyle(
-                        fontSize: 18, color: Color(0xFF475569))),
-                const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildRatingEmoji('☹️', 'غير سعيد', 1, selectedRating, () {
-                      setModalState(() => selectedRating = 1);
-                    }),
-                    _buildRatingEmoji('😐', 'عادي', 2, selectedRating, () {
-                      setModalState(() => selectedRating = 2);
-                    }),
-                    _buildRatingEmoji('😊', 'سعيد', 3, selectedRating, () {
-                      setModalState(() => selectedRating = 3);
-                    }),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: commentController,
-                  maxLines: 2,
-                  style: const TextStyle(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: 'اكتب رأيك هنا (اختياري)...',
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: selectedRating == 0
-                        ? null
-                        : () {
-                            provider.rateVolunteerSession(
-                                'v_123', selectedRating,
-                                comment: commentController.text);
-                            Navigator.pop(context);
-
-                            // Show central animation
-                            setState(() {
-                              _successMessage =
-                                  'شكراً لتقييمك! نحن سعداء بخدمتك';
-                              _showSuccessAnimation = true;
-                            });
-
-                            // Automatically hides based on onLoaded in _buildCentralSuccessAnimation
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF22C55E),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                      disabledBackgroundColor: const Color(0xFFE2E8F0),
-                    ),
-                    child: const Text('إرسال التقييم',
-                        style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
-                  ),
-                ),
-                const SizedBox(height: 32),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildRatingEmoji(String emoji, String label, int value,
-      int selectedValue, VoidCallback onTap) {
-    bool isSelected = value == selectedValue;
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFDCFCE7)
-                  : const Color(0xFFF1F5F9),
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color:
-                      isSelected ? const Color(0xFF22C55E) : Colors.transparent,
-                  width: 3),
-            ),
-            child:
-                Text(emoji, style: TextStyle(fontSize: isSelected ? 48 : 36)),
-          ),
-          const SizedBox(height: 12),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected
-                      ? const Color(0xFF166534)
-                      : const Color(0xFF64748B))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceRatingCard(AppRiverpod provider, BuildContext context) {
-    bool hc = provider.isHighContrast;
-    return GestureDetector(
-      onTap: () => _showServiceRatingSheet(provider, context),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: hc ? const Color(0xFF1E1E1E) : const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [
-            BoxShadow(
-                color:
-                    const Color(0xFF3B82F6).withValues(alpha: hc ? 0.2 : 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 4))
-          ],
-          border: Border.all(
-              color: hc ? const Color(0xFF1E3A8A) : const Color(0xFFBFDBFE),
-              width: 1.5),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF93C5FD),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.star_rounded,
-                    color: Color(0xFF1D4ED8), size: 32),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('تقييم جودة الخدمة',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E40AF))),
-                    Text('رأيك يهمنا في الدار والممرض والأخصائي.',
-                        style:
-                            TextStyle(fontSize: 14, color: Color(0xFF1D4ED8))),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showServiceRatingSheet(AppRiverpod provider, BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(4))),
-            ),
-            const SizedBox(height: 24),
-            const Text('ماذا تريد أن تقيم اليوم؟ ⭐',
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A))),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                    child: _elderlyReviewButton('الأخصائي', () {
-                  Navigator.pop(context);
-                  _showElderlyReviewDialog('specialist');
-                })),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: _elderlyReviewButton('الممرض', () {
-                  Navigator.pop(context);
-                  _showElderlyReviewDialog('nurse');
-                })),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: _elderlyReviewButton('الدار', () {
-                  Navigator.pop(context);
-                  _showElderlyReviewDialog('home');
-                })),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _elderlyReviewButton(String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF3B82F6),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-      ),
-      child: Text(label,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-    );
-  }
-
-  void _showElderlyReviewDialog(String toRole) {
-    int selectedRating = 0;
-    final commentController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(
-              'تقييم ${toRole == 'specialist' ? 'الأخصائي' : toRole == 'nurse' ? 'الممرض' : 'الدار'}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'Cairo')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildRatingEmoji('☹️', 'غير سعيد', 1, selectedRating, () {
-                      setState(() => selectedRating = 1);
-                    }),
-                    _buildRatingEmoji('😐', 'عادي', 2, selectedRating, () {
-                      setState(() => selectedRating = 2);
-                    }),
-                    _buildRatingEmoji('😊', 'سعيد', 3, selectedRating, () {
-                      setState(() => selectedRating = 3);
-                    }),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: commentController,
-                maxLines: 2,
-                style: const TextStyle(fontSize: 16),
-                decoration: InputDecoration(
-                  hintText: 'اكتب رأيك هنا (اختياري)...',
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء')),
-            ElevatedButton(
-              onPressed: selectedRating == 0
-                  ? null
-                  : () {
-                      final provider = ref.read(appRiverpod);
-                      provider.addReview(Review(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        fromRole: 'elderly',
-                        fromName: provider.currentUser.name,
-                        toRole: toRole,
-                        rating: selectedRating.toDouble(),
-                        comment: commentController.text,
-                        date: DateTime.now().toString(),
-                      ));
-                      Navigator.pop(context);
-
-                      // Show central animation
-                      setState(() {
-                        _successMessage = 'شكراً لتقييمك! نحن سعداء بخدمتك';
-                        _showSuccessAnimation = true;
-                      });
-
-                      // Automatically hides based on onLoaded in _buildCentralSuccessAnimation
-                    },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E)),
-              child: const Text('إرسال', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
       ),
     );
   }

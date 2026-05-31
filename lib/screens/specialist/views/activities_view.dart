@@ -850,20 +850,144 @@ class _SpecialistActivitiesViewState
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF334155))),
                       const SizedBox(height: 8),
-                      TextField(
-                        controller: supervisorController,
-                        decoration: InputDecoration(
-                          hintText: 'اسم المشرف من بيانات AWS',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFe2e8f0))),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFe2e8f0))),
+                      GestureDetector(
+                        onTap: () async {
+                          final staff = ref
+                              .read(appRiverpod)
+                              .staffPerformanceList;
+                          if (staff.isEmpty) {
+                            // No staff loaded — fall back to free text
+                            return;
+                          }
+                          final query = ValueNotifier('');
+                          final picked =
+                              await showModalBottomSheet<String>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => StatefulBuilder(
+                              builder: (ctx, setSS) {
+                                final filtered = staff
+                                    .where((s) => s.name
+                                        .contains(query.value))
+                                    .toList();
+                                return Container(
+                                  height: MediaQuery.of(ctx)
+                                          .size
+                                          .height *
+                                      0.6,
+                                  padding:
+                                      const EdgeInsets.fromLTRB(
+                                          20, 16, 20, 20),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius:
+                                        BorderRadius.vertical(
+                                            top:
+                                                Radius.circular(24)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                          width: 40,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                              color: const Color(
+                                                  0xFFE2E8F0),
+                                              borderRadius:
+                                                  BorderRadius
+                                                      .circular(4))),
+                                      const SizedBox(height: 12),
+                                      TextField(
+                                        autofocus: true,
+                                        textAlign: TextAlign.right,
+                                        decoration:
+                                            InputDecoration(
+                                          hintText: 'ابحث بالاسم...',
+                                          prefixIcon: const Icon(
+                                              Icons.search),
+                                          border:
+                                              OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius
+                                                          .circular(
+                                                              12)),
+                                        ),
+                                        onChanged: (v) => setSS(
+                                            () => query.value = v),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: filtered.length,
+                                          itemBuilder: (_, i) {
+                                            final s = filtered[i];
+                                            return ListTile(
+                                              leading: CircleAvatar(
+                                                backgroundColor:
+                                                    const Color(
+                                                        0xFFEDE9FE),
+                                                child: Text(
+                                                  s.name.isNotEmpty
+                                                      ? s.name[0]
+                                                      : '؟',
+                                                  style: const TextStyle(
+                                                      color: Color(
+                                                          0xFF7C3AED)),
+                                                ),
+                                              ),
+                                              title: Text(s.name),
+                                              subtitle:
+                                                  Text(s.role),
+                                              onTap: () =>
+                                                  Navigator.pop(
+                                                      ctx, s.name),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                          if (picked != null) {
+                            supervisorController.text = picked;
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: const Color(0xFFe2e8f0)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.person_search_rounded,
+                                  color: Color(0xFF94a3b8), size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  supervisorController.text.isNotEmpty
+                                      ? supervisorController.text
+                                      : 'اختر المشرف المسؤول',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: supervisorController
+                                            .text.isNotEmpty
+                                        ? const Color(0xFF1e293b)
+                                        : const Color(0xFF94a3b8),
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.arrow_drop_down,
+                                  color: Color(0xFF94a3b8)),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -1021,6 +1145,11 @@ class _SpecialistActivitiesViewState
                               badges: selectedType,
                               pointsReward: 30,
                               dayTag: 'اليوم',
+                              supervisor: supervisorController.text
+                                      .trim()
+                                      .isNotEmpty
+                                  ? supervisorController.text.trim()
+                                  : null,
                             );
                             if (editActivity != null) {
                               await ref

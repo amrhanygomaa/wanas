@@ -12,15 +12,17 @@ class ShiftHandoffScreen extends ConsumerStatefulWidget {
 }
 
 class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
-  bool _isConfirmed = false; // حالة إقرار الممرض بصحة البيانات المسلمة
-  final TextEditingController _incomingNurseName =
-      TextEditingController(); // متحكم اسم الممرض المستلم
+  bool _isConfirmed = false;
+  final TextEditingController _incomingNurseName = TextEditingController();
+  final TextEditingController _manualNotes = TextEditingController();
   bool _isGeneratingSummary = false;
   String? _aiSummary;
+  bool _aiSummaryFailed = false;
 
   @override
   void dispose() {
     _incomingNurseName.dispose();
+    _manualNotes.dispose();
     super.dispose();
   }
 
@@ -202,38 +204,110 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
               children: [
                 Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6), size: 20),
                 SizedBox(width: 8),
-                Text('ملخص الذكاء الاصطناعي للشيفت', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D28D9))),
+                Text('ملخص الذكاء الاصطناعي للشيفت',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Color(0xFF6D28D9))),
               ],
             ),
             const SizedBox(height: 8),
-            Text(_aiSummary!, style: const TextStyle(fontSize: 13, color: Color(0xFF4C1D95), height: 1.5)),
+            Text(_aiSummary!,
+                style: const TextStyle(
+                    fontSize: 13, color: Color(0xFF4C1D95), height: 1.5)),
           ],
         ),
       );
     }
-    
+
+    if (_aiSummaryFailed) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          border: Border.all(color: const Color(0xFFFDBA74)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded,
+                color: Color(0xFFF97316), size: 18),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'تعذر توليد ملخص الذكاء الاصطناعي، يمكنك المتابعة بدون الملخص.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                setState(() {
+                  _aiSummaryFailed = false;
+                  _isGeneratingSummary = true;
+                });
+                try {
+                  final summary =
+                      await provider.generateShiftSummary('الكل');
+                  setState(() {
+                    _aiSummary = summary;
+                    _isGeneratingSummary = false;
+                  });
+                } catch (_) {
+                  setState(() {
+                    _aiSummaryFailed = true;
+                    _isGeneratingSummary = false;
+                  });
+                }
+              },
+              child: const Text('إعادة المحاولة',
+                  style:
+                      TextStyle(fontSize: 11, color: Color(0xFFF97316))),
+            ),
+          ],
+        ),
+      );
+    }
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         icon: _isGeneratingSummary
-            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2))
             : const Icon(Icons.auto_awesome, size: 18),
-        label: Text(_isGeneratingSummary ? 'جاري التلخيص...' : '✨ تلخيص الشيفت بالذكاء الاصطناعي'),
+        label: Text(_isGeneratingSummary
+            ? 'جاري التلخيص...'
+            : '✨ تلخيص الشيفت بالذكاء الاصطناعي'),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF8B5CF6),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
-        onPressed: _isGeneratingSummary ? null : () async {
-          setState(() => _isGeneratingSummary = true);
-          final summary = await provider.generateShiftSummary('الكل');
-          setState(() {
-            _aiSummary = summary;
-            _isGeneratingSummary = false;
-          });
-        },
+        onPressed: _isGeneratingSummary
+            ? null
+            : () async {
+                setState(() {
+                  _isGeneratingSummary = true;
+                  _aiSummaryFailed = false;
+                });
+                try {
+                  final summary =
+                      await provider.generateShiftSummary('الكل');
+                  setState(() {
+                    _aiSummary = summary;
+                    _isGeneratingSummary = false;
+                  });
+                } catch (_) {
+                  setState(() {
+                    _aiSummaryFailed = true;
+                    _isGeneratingSummary = false;
+                  });
+                }
+              },
       ),
     );
   }
@@ -264,6 +338,28 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
               hintText: 'اسم الممرض المستلم',
               hintStyle:
                   const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _manualNotes,
+            textAlign: TextAlign.right,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'اكتب ملخصًا اختياريًا عن الوردية',
+              labelText: 'ملاحظات تسليم الوردية (اختياري)',
+              hintStyle:
+                  const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+              labelStyle:
+                  const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -340,10 +436,12 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
             resident.status.contains('حرج'))
         .map((resident) => resident.name)
         .toList();
+    final baseNote = 'تم تسليم الوردية بنجاح إلى ${_incomingNurseName.text}';
+    final extraNotes = _manualNotes.text.trim();
     await provider.submitHandoff(ShiftHandoff(
       nurseName: provider.currentAccount?.name ?? 'فريق التمريض',
       shiftType: _currentShiftName(),
-      notes: 'تم تسليم الوردية بنجاح إلى ${_incomingNurseName.text}',
+      notes: extraNotes.isNotEmpty ? '$baseNote\n$extraNotes' : baseNote,
       timestamp: DateTime.now(),
       criticalCases: criticalCases,
     ));

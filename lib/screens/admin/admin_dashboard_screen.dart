@@ -289,14 +289,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               ),
               // المحتوى الأساسي للـ Hero
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Expanded(
                       child: InkWell(
                         onTap: () {
-                          // الانتقال لصفحة البروفايل عند الضغط على الهيدر لتعديل البيانات
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -320,11 +319,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                                               : provider.facilityName),
                                       style: const TextStyle(
                                           color: Color(0xFF94a3b8),
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold)),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 2),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
@@ -335,11 +335,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 32,
+                                          fontSize: 20,
                                           fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 2),
+                            Text('مدير الدار',
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.55),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500)),
                           ],
                         ),
                       ),

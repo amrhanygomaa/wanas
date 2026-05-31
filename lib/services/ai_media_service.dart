@@ -1,8 +1,7 @@
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
-
 import 'api_client.dart';
+import 's3_upload_helper.dart';
 
 class AiMediaUpload {
   final String id;
@@ -55,14 +54,12 @@ class AiMediaService {
     }
 
     final bytes = await File(filePath).readAsBytes();
-    final put = await http.put(
-      Uri.parse(upload.uploadUrl!),
-      headers: {'Content-Type': contentType},
-      body: bytes,
+    await s3Put(
+      uploadUrl: upload.uploadUrl!,
+      bytes: bytes,
+      contentType: contentType,
+      label: fileName,
     );
-    if (put.statusCode < 200 || put.statusCode >= 300) {
-      throw ApiException(put.statusCode, 'فشل رفع ملف AI إلى S3', put.body);
-    }
 
     final confirmed = await ApiClient.instance.patch(
       '/ai/media/${upload.id}/confirm',

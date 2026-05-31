@@ -900,9 +900,11 @@ class SpecialistAssessmentView extends ConsumerWidget {
         final Color statusColor = r['color'] as Color;
         return GestureDetector(
           onTap: () {
-            final score = provider.filteredResidentScores
-                .firstWhere((s) => s.id == r['id']);
-            _showResidentAssessmentOptions(context, score);
+            final matches = provider.filteredResidentScores
+                .where((s) => s.id == r['id'])
+                .toList();
+            if (matches.isEmpty) return;
+            _showResidentAssessmentOptions(context, matches.first);
           },
           child: Container(
             decoration: BoxDecoration(

@@ -22,6 +22,12 @@ import 'services/notification_service.dart'; // خدمة التنبيهات
  */
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // تهيئة النظام
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    debugPrint('[Flutter Error] ${details.exceptionAsString()}');
+    debugPrint(details.stack.toString());
+  };
+
   SystemChrome.setPreferredOrientations([
     // تثبيت وضع الشاشة
     DeviceOrientation.portraitUp,

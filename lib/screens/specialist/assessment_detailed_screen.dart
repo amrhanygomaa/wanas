@@ -125,9 +125,11 @@ class _AssessmentDetailedScreenState
                   _buildHistoryComparison(
                       provider), // مقارنة مع التقييمات السابقة
                   const SizedBox(height: 20),
-                  _buildSpecialistNotes(), // حقل ملاحظات الأخصائي
+                  _buildSpecialistNotes(),
                   const SizedBox(height: 20),
-                  _buildInterventionToggle(), // تفعيل طلب التدخل
+                  _buildAiRecommendationsCard(provider),
+                  const SizedBox(height: 20),
+                  _buildInterventionToggle(),
                   const SizedBox(height: 30),
                 ],
               ),
@@ -672,6 +674,9 @@ class _AssessmentDetailedScreenState
 
   // بناء منطقة الأسئلة وتوليد التقارير
   Widget _buildQuestionnaire(AppRiverpod provider) {
+    if (widget.tool == null && provider.socialAssessmentTools.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final tool = widget.tool ?? provider.socialAssessmentTools[0];
     return FadeTransition(
       opacity: _fadeAnimations[3],
@@ -1437,6 +1442,148 @@ class _AssessmentDetailedScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAiRecommendationsCard(AppRiverpod provider) {
+    final residentId = widget.resident.id;
+    final insights = provider.aiInsights
+        .where((i) =>
+            i.residentName.contains(widget.resident.name.split(' ').first))
+        .toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.25), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                      color: Color(0xFFEEF2FF), shape: BoxShape.circle),
+                  child: const Icon(Icons.auto_awesome_rounded,
+                      color: Color(0xFF6366F1), size: 18),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('توصيات الذكاء الاصطناعي',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1e293b))),
+                ),
+                if (provider.isLoadingAiInsight)
+                  const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Color(0xFF6366F1)))
+                else
+                  GestureDetector(
+                    onTap: () => provider.refreshAiInsightFromBackend(
+                        residentId: residentId),
+                    child: const Icon(Icons.refresh_rounded,
+                        color: Color(0xFF6366F1), size: 20),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 20),
+          if (insights.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Color(0xFF94a3b8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      provider.isLoadingAiInsight
+                          ? 'جاري تحميل التوصيات...'
+                          : 'اضغط على أيقونة التحديث لجلب توصيات الذكاء الاصطناعي',
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF94a3b8)),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: insights.map((insight) {
+                  final isCritical = insight.type == 'predictive_alert';
+                  final color = isCritical
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF6366F1);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: color.withValues(alpha: 0.2), width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              isCritical
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.lightbulb_outline_rounded,
+                              color: color,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(isCritical ? 'تنبيه حرج' : 'توصية',
+                                style: TextStyle(
+                                    color: color,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(stripUuids(insight.summary),
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF374151),
+                                height: 1.5)),
+                        if (stripUuids(insight.rationale).isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(stripUuids(insight.rationale),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF64748b),
+                                  height: 1.4)),
+                        ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
       ),
     );
   }

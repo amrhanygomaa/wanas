@@ -39,6 +39,54 @@ class _AICompanionChatState extends ConsumerState<AICompanionChat> {
         Future.delayed(const Duration(milliseconds: 250), _scrollToBottom);
       }
     });
+    // Inject proactive greeting once when the chat is first opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeGreet();
+    });
+  }
+
+  void _maybeGreet() {
+    final provider = ref.read(appRiverpod);
+    // Only greet if chat history is empty or last message is old (> 2 hours)
+    final history = provider.companionChatHistory;
+    final lastMsg = history.lastOrNull;
+    final isStale = lastMsg == null ||
+        DateTime.now().difference(lastMsg.timestamp).inHours >= 2;
+    if (!isStale) return;
+
+    final firstName =
+        (provider.currentAccount?.name ?? '').split(' ').first;
+    final title =
+        firstName.isNotEmpty ? 'أستاذ $firstName' : 'صديقي';
+    final missed = provider.medications
+        .where((m) => m.isMissed && m.dayTag == 'اليوم')
+        .toList();
+    final upcoming = provider.activities
+        .where((a) => a.status == 'coming')
+        .take(1)
+        .toList();
+
+    String greeting;
+    if (missed.isNotEmpty) {
+      final names = missed.map((m) => m.name).take(2).join(' و');
+      greeting = 'مرحباً $title 😊 لاحظت أنك لم تأخذ '
+          '${missed.length == 1 ? 'دواء $names' : '${missed.length} أدوية'}. '
+          'هل أنت بخير؟ هل تحتاج مساعدة؟';
+    } else if (upcoming.isNotEmpty) {
+      greeting = 'مرحباً $title! عندك نشاط "${upcoming.first.name}" '
+          'الساعة ${upcoming.first.time}. كيف حالك اليوم؟';
+    } else {
+      greeting = 'مرحباً $title 😊 كيف تمر عليك اليوم؟ أنا هنا لأي شيء تحتاجه.';
+    }
+
+    provider.companionChatHistory.add(CompanionMessage(
+      id: 'greet_${DateTime.now().millisecondsSinceEpoch}',
+      text: greeting,
+      isFromAI: true,
+      timestamp: DateTime.now(),
+    ));
+    provider.refreshState();
+    _scrollToBottom();
   }
 
   @override
@@ -733,6 +781,11 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
   static const _colorIdle = Color(0xFF4A6FE3);
   static const _colorError = Color(0xFFEF4444);
 
+  bool get _isMicPermissionError =>
+      _errorMessage.contains('ميكروفون') ||
+      _errorMessage.contains('صلاحية') ||
+      _errorMessage.contains('permission');
+
   Color get _stateColor {
     if (_errorMessage.isNotEmpty) return _colorError;
     switch (_state) {
@@ -749,19 +802,44 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
     }
   }
 
+  /// Main state label — uses the plan's specified Arabic copy.
   String get _stateLabel {
+    if (_errorMessage.isNotEmpty) {
+      return _isMicPermissionError
+          ? 'تعذّر الوصول للميكروفون'
+          : 'حدث خطأ';
+    }
+    switch (_state) {
+      case _VoiceState.idle:
+        return 'اضغط على الميكروفون وابدأ الحديث';
+      case _VoiceState.listening:
+        return 'أنا أستمع إليك الآن...';
+      case _VoiceState.thinking:
+        return 'جاري فهم طلبك...';
+      case _VoiceState.speaking:
+        return 'ونس يرد عليك...';
+      case _VoiceState.done:
+        return 'اضغط على الميكروفون وابدأ الحديث';
+    }
+  }
+
+  /// Sub-label shown beneath the main state label.
+  String get _subLabel {
+    if (_isMicPermissionError) {
+      return 'يرجى السماح باستخدام الميكروفون لتتمكن من التحدث مع ونس';
+    }
     if (_errorMessage.isNotEmpty) return _errorMessage;
     switch (_state) {
       case _VoiceState.idle:
-        return _sessionActive ? 'جاهز للاستماع' : 'اضغط للبدء';
+        return 'تحدث بحرية — ونس يستمع ويساعدك';
       case _VoiceState.listening:
-        return 'بسمعك...';
+        return 'استمر في الحديث...';
       case _VoiceState.thinking:
-        return 'بفكر...';
+        return 'يعالج ونس ما قلته...';
       case _VoiceState.speaking:
-        return 'برد عليك...';
+        return 'انتظر حتى ينهي ونس ردّه، أو اضغط للمقاطعة';
       case _VoiceState.done:
-        return 'جاهز للاستماع';
+        return 'تحدث بحرية — ونس يستمع ويساعدك';
     }
   }
 
@@ -1112,42 +1190,65 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
   // ── الهيدر ─────────────────────────────────────────────────────────
   Widget _buildElderlyHeader() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // أيقونة وناس مع توهج بنفسجي
         Container(
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: _colorIdle.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(14),
+            gradient: const RadialGradient(
+              colors: [Color(0xFF818CF8), Color(0xFF6366F1)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: const Icon(
-            Icons.headset_mic_rounded,
-            color: Color(0xFF4A6FE3),
-            size: 28,
-          ),
+          child: const Icon(Icons.auto_awesome_rounded,
+              color: Colors.white, size: 26),
         ),
-        const SizedBox(width: 12),
-        const Text(
-          'وناس',
-          style: TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontFamily: 'Cairo',
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-          ),
+        const SizedBox(width: 14),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'وناس',
+              style: TextStyle(
+                color: Color(0xFF1A1A2E),
+                fontFamily: 'Cairo',
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              'مساعدك الذكي • دائماً معك',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontFamily: 'Cairo',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
         const Spacer(),
         GestureDetector(
           onTap: _close,
           child: Container(
-            width: 56,
-            height: 56,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
-                Icons.close_rounded, color: Color(0xFF6B7280), size: 28),
+                Icons.close_rounded, color: Color(0xFF6B7280), size: 22),
           ),
         ),
       ],
@@ -1156,20 +1257,76 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
 
   // ── نص الحالة الكبير ───────────────────────────────────────────────
   Widget _buildStateLabel() {
+    final isError = _errorMessage.isNotEmpty;
+    final mainColor = isError ? _colorError : const Color(0xFF1A1A2E);
+    final subColor = isError ? _colorError : const Color(0xFF7C3AED);
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
-      child: Text(
-        _stateLabel,
+      child: Column(
         key: ValueKey(_stateLabel),
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color:
-              _errorMessage.isNotEmpty ? _colorError : const Color(0xFF1A1A2E),
-          fontFamily: 'Cairo',
-          fontSize: 28,
-          fontWeight: FontWeight.w800,
-          height: 1.3,
-        ),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _stateLabel,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: mainColor,
+              fontFamily: 'Cairo',
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _subLabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: subColor.withValues(alpha: 0.85),
+                fontFamily: 'Cairo',
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── بانر خطأ الصلاحية ─────────────────────────────────────────────
+  Widget _buildPermissionBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFCA5A5), width: 1.5),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.mic_off_rounded,
+              color: Color(0xFFDC2626), size: 28),
+          SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'يرجى السماح باستخدام الميكروفون لتتمكن من التحدث مع ونس',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: Color(0xFF991B1B),
+                fontFamily: 'Cairo',
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1393,34 +1550,46 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
             : Icons.mic_rounded;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFBFF),
+      backgroundColor: const Color(0xFFF5F3FF),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFAFBFF), Color(0xFFEEF3FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF0EEFF),
+              Color(0xFFEDE9FE),
+              Color(0xFFF5F3FF),
+            ],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(
               children: [
                 _buildElderlyHeader(),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 _buildStateLabel(),
-                const SizedBox(height: 36),
+                if (_isMicPermissionError) ...[
+                  const SizedBox(height: 16),
+                  _buildPermissionBanner(),
+                ],
+                const SizedBox(height: 24),
                 _buildMicButton(active, actionIcon),
-                const SizedBox(height: 20),
-                AnimatedOpacity(
-                  opacity: active ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: SizedBox(height: 44, child: _buildWaveform()),
+                const SizedBox(height: 16),
+                // موجة صوتية تظهر عند الاستماع أو التحدث
+                SizedBox(
+                  height: 48,
+                  child: AnimatedOpacity(
+                    opacity: active ? 1.0 : 0.3,
+                    duration: const Duration(milliseconds: 400),
+                    child: _buildWaveform(),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Expanded(child: _buildConversationArea()),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildCloseButton(),
               ],
             ),

@@ -34,22 +34,6 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
           const SizedBox(height: 8),
           _sectionHeader('المظهر والعرض'),
           _buildCard([
-            _switchTile(
-              icon: Icons.dark_mode_rounded,
-              label: 'الوضع الليلي',
-              subtitle: 'تغيير ألوان التطبيق للوضع المظلم',
-              value: provider.isDarkMode,
-              onChanged: (_) => provider.toggleDarkMode(),
-            ),
-            _divider(),
-            _switchTile(
-              icon: Icons.contrast_rounded,
-              label: 'التباين العالي',
-              subtitle: 'تعزيز الألوان لسهولة الرؤية',
-              value: provider.isHighContrast,
-              onChanged: (_) => provider.toggleHighContrast(),
-            ),
-            _divider(),
             _fontScaleTile(provider),
           ]),
           const SizedBox(height: 20),
@@ -81,24 +65,6 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
               subtitle: 'مواعيد الجرعات اليومية',
               value: true,
               onChanged: (_) => _showComingSoon(context),
-            ),
-          ]),
-          const SizedBox(height: 20),
-          _sectionHeader('البيانات'),
-          _buildCard([
-            _navTile(
-              icon: Icons.download_outlined,
-              label: 'تصدير بياناتي',
-              subtitle: 'تنزيل نسخة من بياناتك الشخصية',
-              onTap: () => _showComingSoon(context),
-            ),
-            _divider(),
-            _navTile(
-              icon: Icons.delete_outline_rounded,
-              label: 'حذف الحساب',
-              subtitle: 'حذف جميع البيانات نهائياً',
-              color: Colors.red,
-              onTap: () => _showDeleteAccountDialog(context),
             ),
           ]),
           const SizedBox(height: 40),
@@ -536,45 +502,4 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('حذف الحساب',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-        content: const Text(
-            'هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بياناتك نهائياً.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Color(0xFF475569))),
-        actionsPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        actions: [
-          Row(children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                child: const Text('إلغاء'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                child: const Text('حذف', style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          ]),
-        ],
-      ),
-    );
-  }
 }

@@ -102,7 +102,6 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
             provider.memoryMoments.length;
     int videoCount =
         provider.memoriesList.where((m) => m.type == 'video').length;
-    int voiceCount = provider.voiceMessages.length;
     return AnimatedBuilder(
       animation: _bgController,
       builder: (context, child) {
@@ -163,8 +162,6 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                           _buildHeroChip('$photoCount', 'صورة', 0),
                           const SizedBox(width: 8),
                           _buildHeroChip(' $videoCount', 'فيديو', 1),
-                          const SizedBox(width: 8),
-                          _buildHeroChip(' $voiceCount', 'رسالة', 2),
                         ],
                       ),
                     ),
@@ -660,24 +657,62 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
           ),
         ),
         const SizedBox(height: 20),
-        GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.9,
+        if (albums.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.photo_library_rounded,
+                        color: Color(0xFF8B5CF6), size: 34),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'لا توجد صور مرفوعة حتى الآن',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF64748b)),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'ابدأ بإنشاء ألبوم وإضافة صور ذكرياتك',
+                    textAlign: TextAlign.center,
+                    style:
+                        TextStyle(fontSize: 12, color: Color(0xFF94a3b8)),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.9,
+            ),
+            itemCount: albums.length,
+            itemBuilder: (context, index) {
+              final albumName = albums[index];
+              final itemsCount =
+                  provider.getMemoriesByCategory(albumName).length;
+              return _buildAlbumCell(
+                  context, provider, index, albumName, itemsCount, hc);
+            },
           ),
-          itemCount: albums.length,
-          itemBuilder: (context, index) {
-            final albumName = albums[index];
-            final itemsCount = provider.getMemoriesByCategory(albumName).length;
-
-            return _buildAlbumCell(
-                context, provider, index, albumName, itemsCount, hc);
-          },
-        ),
       ],
     );
   }

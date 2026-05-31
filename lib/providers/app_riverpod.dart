@@ -39,6 +39,7 @@ import '../services/health_service.dart';
 import '../services/user_preferences_service.dart';
 import '../services/complaints_service.dart';
 import '../services/ai_media_service.dart';
+import '../services/messages_service.dart';
 
 final appRiverpod = ChangeNotifierProvider((ref) => AppRiverpod());
 
@@ -609,6 +610,40 @@ class AppRiverpod extends ChangeNotifier {
   bool isBackendSyncing = false;
   DateTime? lastBackendSyncAt;
   String? backendSyncError;
+
+  // Messages inbox — loaded on demand for Family and Resident roles
+  List<BackendMessageThreadSummary> messageInbox = [];
+  bool isLoadingInbox = false;
+
+  Future<void> loadMessageInbox() async {
+    if (isLoadingInbox) return;
+    isLoadingInbox = true;
+    notifyListeners();
+    try {
+      messageInbox = await MessagesService.instance.inbox();
+    } catch (_) {
+      // silently fail — inbox is non-critical
+    } finally {
+      isLoadingInbox = false;
+      notifyListeners();
+    }
+  }
+
+  // Upload progress state — used by any screen that uploads files to S3
+  bool isUploadingFile = false;
+  double uploadProgress = 0.0;
+  String? uploadError;
+
+  void setUploadState({
+    required bool uploading,
+    double progress = 0.0,
+    String? error,
+  }) {
+    isUploadingFile = uploading;
+    uploadProgress = progress;
+    uploadError = error;
+    notifyListeners();
+  }
   Future<void>? _backendSyncFuture;
   Map<String, String> mealPlanIdsByResidentName = {};
 
@@ -871,6 +906,9 @@ class AppRiverpod extends ChangeNotifier {
     if (currentRole == 'مسن' || currentRole == 'أسرة') {
       unawaited(refreshActiveVideoCalls());
     }
+    if (currentRole == 'مسن') {
+      unawaited(checkMedicationAdherence());
+    }
     if (currentRole == 'ممرض' ||
         currentRole == 'إدارة' ||
         currentRole == 'أخصائي اجتماعي') {
@@ -910,7 +948,11 @@ class AppRiverpod extends ChangeNotifier {
     }
 
     if (snapshot.residentFiles != null) {
-      residentFiles = snapshot.residentFiles!;
+      // Deduplicate by id — backend may return duplicate rows
+      final seen = <String>{};
+      residentFiles = snapshot.residentFiles!
+          .where((r) => r.id.isNotEmpty && seen.add(r.id))
+          .toList();
     }
     if (snapshot.medications != null) {
       medications = snapshot.medications!;
@@ -994,7 +1036,10 @@ class AppRiverpod extends ChangeNotifier {
       socialAssessmentTools = snapshot.socialAssessmentTools!;
     }
     if (snapshot.socialResidentScores != null) {
-      socialResidentScores = snapshot.socialResidentScores!;
+      final seenScores = <String>{};
+      socialResidentScores = snapshot.socialResidentScores!
+          .where((s) => s.id.isNotEmpty && seenScores.add(s.id))
+          .toList();
     }
     if (snapshot.staffPerformance != null) {
       staffPerformanceList = snapshot.staffPerformance!;
@@ -1655,22 +1700,37 @@ class AppRiverpod extends ChangeNotifier {
     try {
       final rec =
           await AiService.instance.getRecommendations(resolvedResidentId);
+
+      // Resolve human-readable name and room from the residents list.
+      final residentFile = residentFiles
+          .where((r) => r.id == resolvedResidentId)
+          .firstOrNull;
+      final safeName = residentFile?.name.isNotEmpty == true
+          ? residentFile!.name
+          : (currentUser.name.isNotEmpty ? currentUser.name : 'مقيم');
+      final roomNumber = residentFile?.room;
+
+      // Strip any UUID patterns the backend may have included in text fields.
+      final safeSummary = stripUuids(rec.summary);
+      final safeRationale = stripUuids(rec.rationale);
+
       if (aiInsights.isNotEmpty) {
         aiInsights[0] = AIInsight(
           id: aiInsights[0].id,
           residentName: aiInsights[0].residentName,
-          summary: rec.summary,
-          rationale: rec.rationale,
+          roomNumber: aiInsights[0].roomNumber ?? roomNumber,
+          summary: safeSummary,
+          rationale: safeRationale,
           generationDate: DateTime.tryParse(rec.generatedAt) ?? DateTime.now(),
           confidenceScore: 0.85,
         );
       } else {
         aiInsights.add(AIInsight(
           id: 'ai_${DateTime.now().millisecondsSinceEpoch}',
-          residentName:
-              currentUser.name.isEmpty ? resolvedResidentId : currentUser.name,
-          summary: rec.summary,
-          rationale: rec.rationale,
+          residentName: safeName,
+          roomNumber: roomNumber,
+          summary: safeSummary,
+          rationale: safeRationale,
           generationDate: DateTime.tryParse(rec.generatedAt) ?? DateTime.now(),
         ));
       }
@@ -1686,6 +1746,17 @@ class AppRiverpod extends ChangeNotifier {
   }
 
   List<AIInsight> aiInsights = [];
+
+  // خريطة لتخزين ملاحظات الذكاء الاصطناعي لكل مقيم (residentId → notes)
+  final Map<String, ResidentAINotes> _residentAINotesMap = {};
+
+  ResidentAINotes? getResidentAINotes(String residentId) =>
+      _residentAINotesMap[residentId];
+
+  void setResidentAINotes(ResidentAINotes notes) {
+    _residentAINotesMap[notes.residentId] = notes;
+    notifyListeners();
+  }
 
   bool isAICompanionEnabled = true;
   List<CompanionMessage> companionChatHistory = [];
@@ -2373,6 +2444,55 @@ class AppRiverpod extends ChangeNotifier {
   bool isAiThinking = false;
   String lastAiMode = 'bedrock';
 
+  // Checks for missed medications and triggers alerts for the resident and
+  // the nursing team. Called automatically after each sync for resident role.
+  Future<void> checkMedicationAdherence() async {
+    final missed = medications
+        .where((m) => m.isMissed && m.dayTag == 'اليوم')
+        .toList();
+    if (missed.isEmpty) return;
+
+    final names = missed.map((m) => m.name).join('، ');
+    final count = missed.length;
+
+    // Proactive in-app notification for the resident
+    triggerNotification(
+      title: 'تذكير بالأدوية 💊',
+      body: 'لم تأخذ ${count == 1 ? 'دواء' : '$count أدوية'} حتى الآن: $names',
+      type: 'health',
+      targetRole: 'مسن',
+    );
+
+    // Alert nursing team
+    triggerNotification(
+      title: 'تنبيه التزام الدواء',
+      body: 'المقيم ${currentAccount?.name ?? ''} لم يأخذ: $names',
+      type: 'health',
+      targetRole: 'ممرض',
+    );
+
+    // Add proactive AI message to companion chat if it's empty or old
+    final lastAiMsg = companionChatHistory
+        .where((m) => m.isFromAI)
+        .lastOrNull;
+    final isRecent = lastAiMsg != null &&
+        DateTime.now().difference(lastAiMsg.timestamp).inMinutes < 30;
+    if (!isRecent) {
+      final residentTitle = (currentAccount?.name ?? '').isNotEmpty
+          ? 'أستاذ ${currentAccount!.name.split(' ').first}'
+          : 'صديقي';
+      companionChatHistory.add(CompanionMessage(
+        id: 'ai_med_${DateTime.now().millisecondsSinceEpoch}',
+        text: 'مرحباً $residentTitle 😊 حان وقت دوائك! '
+            '${count == 1 ? 'دواء $names' : '$count أدوية: $names'}. '
+            'هل تحتاج مساعدة؟',
+        isFromAI: true,
+        timestamp: DateTime.now(),
+      ));
+      notifyListeners();
+    }
+  }
+
   Future<String?> sendCompanionMessage(String text,
       {String? mediaPath, String? mediaType, bool voiceMode = false}) async {
     if (text.isEmpty && mediaPath == null) return null;
@@ -2414,14 +2534,35 @@ class AppRiverpod extends ChangeNotifier {
           : uploadedMedia == null
               ? ''
               : 'تم رفع ملف للمراجعة باسم ${uploadedMedia.fileName} ونوعه ${uploadedMedia.contentType}. رجاءً أعطني ملاحظة داعمة وآمنة عنه بدون تشخيص طبي.';
+
+      // Build resident context block to include in every message
+      final firstName = (currentAccount?.name ?? '').split(' ').first;
+      final title = firstName.isNotEmpty ? 'أستاذ $firstName' : 'صديقي';
+      final missedMeds = medications
+          .where((m) => m.isMissed && m.dayTag == 'اليوم')
+          .map((m) => m.name)
+          .toList();
+      final todayActivities = activities
+          .where((a) => a.status == 'coming')
+          .take(2)
+          .map((a) => '${a.name} الساعة ${a.time}')
+          .toList();
+      final contextParts = <String>[
+        'ناد المقيم دائماً بـ "$title" — لا تستخدم أسماء أكثر ألفة.',
+        'أسلوبك: دافئ، محترم، لطيف، لا تبالغ في الألفة.',
+        'لو السؤال طبي، دواء، أو تشخيص — وجّه بهدوء للممرضة أو الطبيب.',
+        if (missedMeds.isNotEmpty)
+          'تنبيه: المقيم لم يأخذ هذه الأدوية اليوم: ${missedMeds.join('، ')}. ذكّره بلطف.',
+        if (todayActivities.isNotEmpty)
+          'نشاطات اليوم القادمة: ${todayActivities.join(' / ')}.',
+      ];
+      final contextBlock = contextParts.join(' ');
+
       final messageForAi = voiceMode
-          ? 'أنت مساعد صوتي حي بأسلوب Ray/JARVIS لكن مناسب لكبار السن. '
-              'شخصيتك هادئة، واثقة، دافئة، وسريعة في الرد. '
-              'رد كأنك في محادثة صوتية مباشرة: جملة إلى ثلاث جمل، بدون قوائم أو تنسيق إلا لو المستخدم طلب. '
-              'اتكلم بالمصري الطبيعي، وماتقولش إنك نموذج ذكاء اصطناعي. '
-              'لو السؤال طبي أو عن جرعات أو تشخيص، وجّه المستخدم بهدوء للممرضة أو فريق الرعاية. '
+          ? '$contextBlock '
+              'أنت مساعد صوتي حي، ردّ بجملة إلى ثلاث جمل بدون قوائم. '
               'كلام المستخدم: $effectiveMessage'
-          : effectiveMessage;
+          : '$contextBlock\n\nكلام المقيم: $effectiveMessage';
 
       final response = await AiService.instance.sendChat(
         message: messageForAi,
@@ -2438,6 +2579,18 @@ class AppRiverpod extends ChangeNotifier {
         isFromAI: true,
         timestamp: DateTime.now(),
       ));
+
+      // Alert nursing team if sentiment indicates distress
+      if (response.sentiment == 'negative' || response.sentiment == 'sad') {
+        triggerNotification(
+          title: 'تنبيه المساعد الذكي',
+          body: 'المقيم ${currentAccount?.name ?? ''} قد يحتاج انتباهاً — '
+              'المشاعر المرصودة: ${response.sentiment}',
+          type: 'health',
+          targetRole: 'ممرض',
+        );
+      }
+
       notifyListeners();
       return response.reply;
     } catch (e) {
@@ -3601,22 +3754,31 @@ class AppRiverpod extends ChangeNotifier {
   List<MemoryMoment> memoryMoments = [];
 
   Future<void> addMemoryMoment(MemoryMoment moment) async {
+    setUploadState(uploading: true, progress: 0.1);
     final residentId = _looksLikeBackendId(moment.residentId)
         ? moment.residentId
         : _residentIdForName(moment.residentName);
     if (residentId == null) {
-      backendSyncError =
-          'لا يوجد residentId من AWS لإضافة ذكرى لـ ${moment.residentName}';
+      setUploadState(
+        uploading: false,
+        error: 'لا يوجد residentId من AWS لإضافة ذكرى لـ ${moment.residentName}',
+      );
+      backendSyncError = uploadError;
       notifyListeners();
       return;
     }
+    setUploadState(uploading: true, progress: 0.6);
     final synced = await _runBackendMutation(() {
       return BackendMutationService.instance.createMemory(
         residentId: residentId,
         moment: moment,
       );
     });
-    if (!synced) return;
+    if (!synced) {
+      setUploadState(uploading: false, error: backendSyncError);
+      return;
+    }
+    setUploadState(uploading: false, progress: 1.0);
     memoryMoments.insert(0, moment);
 
     triggerNotification(
@@ -4712,15 +4874,20 @@ class AppRiverpod extends ChangeNotifier {
   CognitiveGameResult? get cognitiveGameResult => _cognitiveGameResult;
 
   Future<void> fetchCognitiveGame() async {
-    // For demo purposes, we fetch a random result or start a new game session result.
     await Future.delayed(const Duration(seconds: 1));
     _cognitiveGameResult = CognitiveGameResult(
       id: 'mock_game_1',
       residentId: backendResidentId ?? 'unknown',
       score: 8,
-      feedback: "ذاكرة قوية وانتباه جيد. (لعبة الكلمات المتقاطعة)",
+      feedback: "ذاكرة قوية وانتباه جيد.",
       date: DateTime.now(),
     );
+    notifyListeners();
+  }
+
+  void saveCognitiveGameResult(CognitiveGameResult result) {
+    _cognitiveGameResult = result;
+    cognitiveScores.add(result);
     notifyListeners();
   }
 

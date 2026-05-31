@@ -35,7 +35,7 @@ class _NurseResidentDetailScreenState
   void initState() {
     // دالة التهيئة الأولية
     super.initState();
-    _tabController = TabController(length: 2, vsync: this); // إعداد تبويبين
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -97,8 +97,9 @@ class _NurseResidentDetailScreenState
                     medicalInfo,
                     provider.specialistRecommendations
                         .where((r) => r.residentName == widget.residentName)
-                        .toList()), // واجهة الملف الطبي
-                _buildNotesTab(residentNotes), // واجهة الملاحظات التمريضية
+                        .toList()),
+                _buildNotesTab(residentNotes),
+                _buildAiTab(provider),
               ],
             ),
           ),
@@ -179,8 +180,9 @@ class _NurseResidentDetailScreenState
         labelStyle: const TextStyle(
             fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Cairo'),
         tabs: const [
-          Tab(text: 'الملف الطبي'), // التبويب الأول
-          Tab(text: 'الملاحظات'), // التبويب الثاني
+          Tab(text: 'الملف الطبي'),
+          Tab(text: 'الملاحظات'),
+          Tab(text: 'ذكاء اصطناعي'),
         ],
       ),
     );
@@ -655,6 +657,135 @@ class _NurseResidentDetailScreenState
             child: const Text('إضافة', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAiTab(AppRiverpod provider) {
+    final insights = provider.aiInsights
+        .where((i) =>
+            i.residentName.contains(widget.residentName) ||
+            widget.residentName.contains(i.residentName.split(' ').first))
+        .toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: RefreshIndicator(
+        onRefresh: () {
+          final residentId = provider.residentFiles
+              .where((r) => r.name.contains(widget.residentName))
+              .map((r) => r.id)
+              .firstOrNull;
+          return provider.refreshAiInsightFromBackend(
+              residentId: residentId);
+        },
+        child: provider.isLoadingAiInsight
+            ? const Center(child: CircularProgressIndicator())
+            : insights.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 60),
+                      Column(
+                        children: [
+                          Icon(Icons.auto_awesome_rounded,
+                              size: 56, color: Color(0xFF6366F1)),
+                          SizedBox(height: 16),
+                          Text(
+                            'لا توجد توصيات بعد',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF475569)),
+                          ),
+                          SizedBox(height: 8),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              'اسحب للأسفل لتحديث توصيات الذكاء الاصطناعي',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 13, color: Color(0xFF94a3b8)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: insights.length,
+                    itemBuilder: (_, i) {
+                      final insight = insights[i];
+                      final isCritical =
+                          insight.type == 'predictive_alert';
+                      final color = isCritical
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF6366F1);
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color: color.withValues(alpha: 0.25),
+                              width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                                color: color.withValues(alpha: 0.06),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3)),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                      color: color.withValues(alpha: 0.1),
+                                      borderRadius:
+                                          BorderRadius.circular(8)),
+                                  child: Text(
+                                    isCritical ? 'تنبيه حرج' : 'توصية',
+                                    style: TextStyle(
+                                        color: color,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${insight.generationDate.day}/${insight.generationDate.month}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF94a3b8)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(stripUuids(insight.summary),
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF374151),
+                                    height: 1.5)),
+                            if (stripUuids(insight.rationale).isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(stripUuids(insight.rationale),
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748b),
+                                      height: 1.4)),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
       ),
     );
   }

@@ -199,9 +199,11 @@ class _MedicalAdminViewState extends ConsumerState<MedicalAdminView> {
                       if (val == null) return;
                       setState(() {
                         _selectedResident = val;
-                        _searchResident.text = residents
-                            .firstWhere((resident) => resident.name == val)
-                            .room;
+                        final matched = residents
+                            .where((resident) => resident.name == val)
+                            .toList();
+                        _searchResident.text =
+                            matched.isNotEmpty ? matched.first.room : '';
                       });
                     },
                   ),

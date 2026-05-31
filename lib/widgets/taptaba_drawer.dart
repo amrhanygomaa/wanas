@@ -6,6 +6,8 @@ import '../providers/app_riverpod.dart'; // مزود الحالة الرئيسي
 import '../screens/common/profile_screen.dart'; // شاشة الملف الشخصي العامة
 import '../screens/nurse/nurse_profile_screen.dart'; // شاشة الملف الشخصي للممرض
 import 'accessibility_dialog.dart'; // حوار إعدادات سهولة الوصول
+import '../screens/admin/views/ai_warnings_view.dart'; // صفحة توصيات الذكاء الاصطناعي
+import '../screens/common/about_wanas_screen.dart';
 
 class TaptabaDrawer extends ConsumerWidget {
   // فئة القائمة الجانبية الموحدة
@@ -133,8 +135,23 @@ class TaptabaDrawer extends ConsumerWidget {
                           Icons.account_balance_outlined,
                           'التقارير الإدارية والمالية',
                           () {
-                            Navigator.pop(context); // إغلاق القائمة
+                            Navigator.pop(context);
                             ref.read(appRiverpod).setAdminTabIndex(5);
+                          },
+                          themeColor,
+                          hc,
+                        ),
+                        _buildPremiumMenuItem(
+                          context,
+                          Icons.auto_awesome_rounded,
+                          'توصيات وتحذيرات الذكاء الاصطناعي',
+                          () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const AIWarningsView()),
+                            );
                           },
                           themeColor,
                           hc,
@@ -167,11 +184,17 @@ class TaptabaDrawer extends ConsumerWidget {
                         hc,
                       ),
                       _buildPremiumMenuItem(
-                        // معلومات
                         context,
                         Icons.info_outline_rounded,
                         'عن ونس',
-                        () {},
+                        () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const AboutWanasScreen()),
+                          );
+                        },
                         themeColor,
                         hc,
                       ),

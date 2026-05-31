@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
+import '../../services/ai_media_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'full_screen_image_screen.dart';
 
@@ -96,8 +97,29 @@ class AlbumDetailsScreen extends ConsumerWidget {
           final ImagePicker picker = ImagePicker();
           final XFile? image =
               await picker.pickImage(source: ImageSource.gallery);
-          if (image != null) {
-            ref.read(appRiverpod).addPhotoToAlbum(albumName, image.path);
+          if (image == null) return;
+
+          final provider = ref.read(appRiverpod);
+          final residentId = provider.backendResidentId ??
+              (provider.residentFiles.isNotEmpty
+                  ? provider.residentFiles.first.id
+                  : null);
+          try {
+            final uploaded = await AiMediaService.instance.uploadFile(
+              filePath: image.path,
+              residentId: residentId,
+            );
+            final s3Url = uploaded.mediaUrl ?? image.path;
+            provider.addPhotoToAlbum(albumName, s3Url);
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('فشل رفع الصورة: $e'),
+                  backgroundColor: Colors.red.shade700,
+                ),
+              );
+            }
           }
         },
         backgroundColor: const Color(0xFF6C63FF),

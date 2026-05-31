@@ -908,34 +908,40 @@ class SpecialistHomeView extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...provider.predictiveAlerts.map((alert) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('• ',
-                        style: TextStyle(
-                            color: Color(0xFFDC2626),
-                            fontWeight: FontWeight.bold)),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${alert.residentName}: ${alert.summary}',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF7F1D1D))),
+          ...provider.predictiveAlerts.map((alert) {
+            final safeSummary = stripUuids(alert.summary);
+            final safeRationale = stripUuids(alert.rationale);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('• ',
+                      style: TextStyle(
+                          color: Color(0xFFDC2626),
+                          fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${alert.residentLabel}: $safeSummary',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF7F1D1D))),
+                        if (safeRationale.isNotEmpty) ...[
                           const SizedBox(height: 2),
-                          Text(alert.rationale,
+                          Text(safeRationale,
                               style: const TextStyle(
                                   fontSize: 11, color: Color(0xFF991B1B))),
                         ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

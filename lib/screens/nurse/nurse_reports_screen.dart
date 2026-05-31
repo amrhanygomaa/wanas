@@ -33,6 +33,27 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
   bool _isCriticalAlertOn = true;
   bool _isMissedMedAlertOn = true;
 
+  /// Returns a human-readable "last sent" label derived from [sentReports].
+  String _lastSentLabel(List<SentReport> sentReports) {
+    if (sentReports.isEmpty) return 'لم يُرسل بعد';
+    DateTime? latestTime;
+    for (final r in sentReports) {
+      final dt = DateTime.tryParse(r.date);
+      if (dt != null && (latestTime == null || dt.isAfter(latestTime))) {
+        latestTime = dt;
+      }
+    }
+    if (latestTime == null) return 'تم الإرسال';
+    if (latestTime.hour != 0 || latestTime.minute != 0) {
+      final h = latestTime.hour;
+      final m = latestTime.minute.toString().padLeft(2, '0');
+      final period = h < 12 ? 'ص' : 'م';
+      final displayH = h > 12 ? h - 12 : (h == 0 ? 12 : h);
+      return 'آخر إرسال $displayH:$m $period';
+    }
+    return 'آخر إرسال ${latestTime.day}/${latestTime.month}';
+  }
+
   String _getShiftName() {
     int hour = DateTime.now().hour;
     if (hour >= 6 && hour < 14) return 'الوردية الصباحية (٦ ص - ٢ ظ)';
@@ -579,8 +600,8 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                             ),
                           ),
                           const SizedBox(width: 5),
-                          const Text('إرسال تلقائي يومي ٨:٠٠ ص — مفعّل',
-                              style: TextStyle(
+                          Text('إرسال تلقائي يومي $_dailyTime — مفعّل',
+                              style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold)),
@@ -660,16 +681,16 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                                     )
                                   ],
                                 ),
-                                child: const Row(
+                                child: Row(
                                   children: [
-                                    Text('✓',
+                                    const Text('✓',
                                         style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold)),
-                                    SizedBox(width: 4),
-                                    Text('آخر إرسال ٨:٠٠ ص',
-                                        style: TextStyle(
+                                    const SizedBox(width: 4),
+                                    Text(_lastSentLabel(provider.sentReports),
+                                        style: const TextStyle(
                                             color: Colors.white, fontSize: 12)),
                                   ],
                                 ),
@@ -1431,9 +1452,9 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   curve: Curves.easeOutBack,
                   builder: (context, value, child) {
                     return Transform.translate(
-                      offset: Offset(0.0, 20.0 * (1.0 - value)),
+                      offset: Offset(0.0, 20.0 * (1.0 - value).clamp(-1.0, 1.0)),
                       child: Opacity(
-                        opacity: value,
+                        opacity: value.clamp(0.0, 1.0),
                         child: child,
                       ),
                     );

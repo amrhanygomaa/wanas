@@ -39,6 +39,15 @@ class _VolunteerCertificatesViewState
     final provider = ref.watch(appRiverpod);
     final earnedCerts =
         provider.volunteerCertificates.where((c) => !c.isLocked).toList();
+
+    if (earnedCerts.isEmpty) {
+      return VolunteerAnimatedBackground(child: _buildEmptyState());
+    }
+
+    // Clamp index in case the list shrank after data refresh.
+    if (_selectedCertIndex >= earnedCerts.length) {
+      _selectedCertIndex = 0;
+    }
     final activeCert = earnedCerts[_selectedCertIndex];
 
     return VolunteerAnimatedBackground(
@@ -67,6 +76,44 @@ class _VolunteerCertificatesViewState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: const Color(0xFF059669).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.workspace_premium_rounded,
+                  color: Color(0xFF059669), size: 40),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'لا توجد شهادات حتى الآن',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0f172a)),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'أكمل جلسات التطوع لتحصل على شهادات تقدير رقمية',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748b), height: 1.5),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -323,8 +370,14 @@ class _VolunteerCertificatesViewState
               child: _buildStatColumn(
                   '${provider.volunteerHours}', 'ساعة تطوعية',
                   isShimmer: true)),
-          Expanded(child: _buildStatColumn('١٢', 'جلسة مكتملة')),
-          Expanded(child: _buildStatColumn('٤.٧', 'متوسط التقييم')),
+          Expanded(
+              child: _buildStatColumn(
+                  '${provider.volunteerBookings.where((b) => b.status == 'done').length}',
+                  'جلسة مكتملة')),
+          Expanded(
+              child: _buildStatColumn(
+                  provider.averageRating.toStringAsFixed(1),
+                  'متوسط التقييم')),
         ],
       ),
     );
@@ -834,7 +887,10 @@ class _VolunteerCertificatesViewState
                                 height: 18,
                                 color: PdfColor.fromHex('#e8e2d5')),
                             pw.SizedBox(width: 16),
-                            _buildPdfStatItem(ttfBold, ttfRegular, '١٢ جلسة',
+                            _buildPdfStatItem(
+                                ttfBold,
+                                ttfRegular,
+                                '${provider.volunteerBookings.where((b) => b.status == 'done').length} جلسة',
                                 'الرعاية المكتملة'),
                             pw.SizedBox(width: 16),
                             pw.Container(
@@ -842,7 +898,10 @@ class _VolunteerCertificatesViewState
                                 height: 18,
                                 color: PdfColor.fromHex('#e8e2d5')),
                             pw.SizedBox(width: 16),
-                            _buildPdfStatItem(ttfBold, ttfRegular, '٤.٧ / ٥.٠',
+                            _buildPdfStatItem(
+                                ttfBold,
+                                ttfRegular,
+                                '${provider.averageRating.toStringAsFixed(1)} / ٥.٠',
                                 'تقييم الأثر'),
                           ],
                         ),
@@ -1029,6 +1088,10 @@ class _CertificatesTickerState extends State<_CertificatesTicker> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.certificates.isEmpty) {
+      return const SizedBox(height: 110);
+    }
+
     final infiniteItems = [
       ...widget.certificates,
       ...widget.certificates,

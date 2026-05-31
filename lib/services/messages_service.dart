@@ -132,10 +132,14 @@ class MessagesService {
   Future<BackendRoleMessage> send({
     required String recipientId,
     required String body,
+    String? mediaUrl,
+    String? mediaType,
   }) async {
     final res = await ApiClient.instance.post('/messages', body: {
       'recipientId': recipientId,
       'body': body,
+      if (mediaUrl != null && mediaUrl.isNotEmpty) 'mediaUrl': mediaUrl,
+      if (mediaType != null && mediaType.isNotEmpty) 'mediaType': mediaType,
     });
     return BackendRoleMessage.fromJson(Map<String, dynamic>.from(res as Map));
   }

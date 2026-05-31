@@ -151,8 +151,11 @@ class _VolunteerDashboardScreenState
     final isRatingTab = _selectedTab == 4;
     final opportunitiesCount = provider.volunteerOpportunities.length;
     final bookingsSummary = '${provider.volunteerBookings.length} حجوزات مقبلة';
-    const certsCount = '٣';
-    const ratingSummary = '⭐ ٤.٩';
+    final certsCount =
+        '${provider.volunteerCertificates.where((c) => !c.isLocked).length}';
+    final ratingSummary = provider.averageRating > 0
+        ? '⭐ ${provider.averageRating.toStringAsFixed(1)}'
+        : '⭐ —';
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -186,7 +189,7 @@ class _VolunteerDashboardScreenState
           const VolunteerDustAnimation(), // إضافة تأثير الجزيئات المتطايرة
           Padding(
             padding: EdgeInsets.fromLTRB(
-                24, isRatingTab ? 45 : 60, 24, isRatingTab ? 45 : 30),
+                24, isRatingTab ? 32 : 40, 24, isRatingTab ? 20 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -226,21 +229,20 @@ class _VolunteerDashboardScreenState
                               textAlign: TextAlign.right,
                               style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 32,
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
-                    if (isCertTab || isRatingTab)
+                    if (isCertTab)
                       GestureDetector(
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(isCertTab
-                                ? 'مشاركة سجل الشهادات والإنجازات... 🏆'
-                                : 'مشاركة ملخص تقييماتك وأدائك... ⭐'),
-                            backgroundColor: const Color(0xFF059669),
-                          ));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('مشاركة سجل الشهادات والإنجازات... 🏆'),
+                              backgroundColor: Color(0xFF059669),
+                            ));
                         },
                         child: Container(
                           width: 40,

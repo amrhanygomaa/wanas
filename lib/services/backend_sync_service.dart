@@ -136,7 +136,9 @@ class BackendSyncService {
       return condition ? _map(path) : Future.value(null);
     }
 
-    final residentsJson = loadResidentCore ? await _list('/residents') : null;
+    final residentsJson = loadResidentCore
+        ? await _list('/residents', query: {'status': 'active'})
+        : null;
     final residentMap = _residentNameMap(residentsJson);
     final linkedFamilyMembersJson =
         requireResidentScope && _s(preferredResidentId).isEmpty
@@ -157,11 +159,17 @@ class BackendSyncService {
       requestedResidentId,
       requireResidentScope: requireResidentScope,
     );
-    final scopedResidentsJson = primaryResidentId == null
-        ? (requireResidentScope ? <Map<String, dynamic>>[] : residentsJson)
-        : residentsJson
+    // Admin, nurse, and specialist need the full resident list for their
+    // management screens. Only family/resident roles scope to a single resident.
+    final shouldScopeList = primaryResidentId != null &&
+        (isResident || isFamily || requireResidentScope);
+    final scopedResidentsJson = shouldScopeList
+        ? residentsJson
             ?.where((item) => _s(item['id']) == primaryResidentId)
-            .toList();
+            .toList()
+        : requireResidentScope
+            ? <Map<String, dynamic>>[]
+            : residentsJson;
     final scopedResidentQuery =
         primaryResidentId == null ? null : {'residentId': primaryResidentId};
 
@@ -185,9 +193,11 @@ class BackendSyncService {
             query: {'residentId': primaryResidentId},
           );
     final medicationSchedulesFuture =
-        listWhen(loadMedicationData, '/medications/schedules');
+        listWhen(loadMedicationData, '/medications/schedules',
+            query: (isResident || isFamily) ? scopedResidentQuery : null);
     final overdueDosesFuture =
-        listWhen(loadMedicationData, '/medications/overdue');
+        listWhen(loadMedicationData, '/medications/overdue',
+            query: (isResident || isFamily) ? scopedResidentQuery : null);
     final activitiesFuture = listWhen(loadActivitiesData, '/activities');
     final complaintsFuture = listWhen(loadSocialData || isAdmin, '/complaints');
     final visitsFuture = noScopedResident
@@ -379,6 +389,10 @@ class BackendSyncService {
     return FamilyMember(
       id: _s(j['id']),
       name: name,
+      userId: () {
+        final v = _s(j['userId'] ?? j['cognitoSub'] ?? j['user_id']);
+        return v.isEmpty ? null : v;
+      }(),
       relation: switch (relation.toLowerCase()) {
         'son' => 'ابن',
         'daughter' => 'ابنة',
@@ -576,6 +590,10 @@ class BackendSyncService {
           residentName: residentMap[_s(row['residentId'])],
           scheduledTime: _todayAt(time),
           dayTag: 'اليوم',
+          mealRelation: () {
+            final v = _s(row['mealRelation'] ?? row['meal_relation'] ?? row['instructions']);
+            return v.isEmpty ? null : v;
+          }(),
         ));
       }
     }
@@ -606,7 +624,10 @@ class BackendSyncService {
       status: start.isBefore(DateTime.now()) ? 'done' : 'coming',
       badges: 'AWS',
       pointsReward: 10,
-      supervisor: _s(j['createdBy'], fallback: ''),
+      supervisor: _s(
+        j['createdByName'] ?? j['supervisorName'] ?? j['supervisor_name'],
+        fallback: '',
+      ),
       type: 'نشاط',
     );
   }
@@ -659,6 +680,12 @@ class BackendSyncService {
 
   FamilyVisit _familyVisitFromJson(Map<String, dynamic> j) {
     final status = _s(j['status'], fallback: 'pending');
+    final rawType = _s(j['visitType'] ?? j['type'] ?? j['notes']);
+    final isVideo = rawType.contains('video') ||
+        rawType.contains('virtual') ||
+        rawType.contains('zoom');
+    final zoomRaw = _s(j['zoomLink'] ?? j['zoom_link']);
+    final zoomLink = zoomRaw.isEmpty ? null : zoomRaw;
     return FamilyVisit(
       id: _s(j['id']),
       date: _dateLabel(_s(j['visitDate'])),
@@ -670,7 +697,9 @@ class BackendSyncService {
         'rejected' || 'cancelled' => 'cancelled',
         _ => 'pending',
       },
-      type: 'physical',
+      type: isVideo ? 'video' : 'physical',
+      scheduledAt: _dateTime(_s(j['visitDate'])),
+      zoomLink: zoomLink,
     );
   }
 
@@ -964,14 +993,20 @@ class BackendSyncService {
         _ => 'ملاحظة تمريض',
       },
       content: _s(j['content'], fallback: ''),
-      author: _s(j['authorId'], fallback: 'فريق التمريض'),
+      author: _s(
+        j['authorName'] ?? j['author_name'] ?? j['createdByName'],
+        fallback: 'فريق التمريض',
+      ),
       timestamp: _dateTime(_s(j['createdAt'])) ?? DateTime.now(),
     );
   }
 
   ShiftHandoff _handoffFromJson(Map<String, dynamic> j) {
     return ShiftHandoff(
-      nurseName: _s(j['outgoingNurseId'], fallback: 'ممرض'),
+      nurseName: _s(
+        j['outgoingNurseName'] ?? j['nurseName'] ?? j['nurse_name'],
+        fallback: 'ممرض',
+      ),
       shiftType: _s(j['shiftType'], fallback: 'morning'),
       notes: _s(j['summary'], fallback: ''),
       timestamp: _dateTime(_s(j['createdAt'])) ??
@@ -1003,14 +1038,19 @@ class BackendSyncService {
       subtitle: _s(j['subtitle'], fallback: ''),
       score: _s(j['score'], fallback: ''),
       status: _s(j['status'], fallback: ''),
-      icon: _s(j['icon'], fallback: 'assessment'),
+      icon: _resolveToolIcon(_s(j['icon'], fallback: 'assessment')),
     );
   }
 
   SocialSpecialistResidentScore _socialResidentScoreFromJson(
     Map<String, dynamic> j,
   ) {
-    final name = _s(j['name'], fallback: 'مقيم');
+    final firstName = _s(j['firstName'] ?? j['first_name']);
+    final lastName = _s(j['lastName'] ?? j['last_name']);
+    final fullName = firstName.isNotEmpty
+        ? '$firstName $lastName'.trim()
+        : _s(j['name']);
+    final name = fullName.isEmpty ? 'مقيم' : fullName;
     final lastAssessment = _dateTime(_s(j['lastAssessment'])) ?? DateTime.now();
     return SocialSpecialistResidentScore(
       id: _s(j['id']),
@@ -1038,14 +1078,48 @@ class BackendSyncService {
   }
 
   SentReport _sentReportFromJson(Map<String, dynamic> j) {
+    final rawType = _s(j['reportType'], fallback: '');
+    final dateStr = _dateLabel(_s(j['createdAt']));
+    final arabicTitle = _reportTypeArabic(rawType, dateStr);
+    final icon = _reportTypeIcon(rawType);
     return SentReport(
       id: _s(j['id']),
-      icon: '📋',
-      title: _s(j['reportType'], fallback: 'تقرير تمريضي'),
+      icon: icon,
+      title: arabicTitle,
       meta: _listOfStrings(j['recipients']).join(', '),
       status: _s(j['status'], fallback: ''),
-      date: _dateLabel(_s(j['createdAt'])),
+      date: dateStr,
     );
+  }
+
+  String _reportTypeArabic(String rawType, String date) {
+    switch (rawType.toLowerCase()) {
+      case 'daily':
+        return 'تقرير يومي لتاريخ $date';
+      case 'weekly':
+        return 'تقرير أسبوعي لتاريخ $date';
+      case 'medication':
+        return 'تقرير أدوية لتاريخ $date';
+      case 'critical':
+      case 'critical_alert':
+        return 'تنبيه حرج لتاريخ $date';
+      default:
+        return rawType.isNotEmpty ? '$rawType — $date' : 'تقرير تمريضي — $date';
+    }
+  }
+
+  String _reportTypeIcon(String rawType) {
+    switch (rawType.toLowerCase()) {
+      case 'weekly':
+        return '📊';
+      case 'medication':
+        return '💊';
+      case 'critical':
+      case 'critical_alert':
+        return '🚨';
+      default:
+        return '📋';
+    }
   }
 
   CareReport _careReportFromJson(Map<String, dynamic> j) {
@@ -1135,6 +1209,36 @@ class BackendSyncService {
         history: bpHistory,
       ),
     ];
+  }
+
+  // Converts backend icon name strings (e.g. 'family', 'psychology') to the
+  // emoji the assessment_view expects, preventing truncated text like "famil".
+  String _resolveToolIcon(String raw) {
+    if (raw.startsWith('🧠') ||
+        raw.startsWith('🤝') ||
+        raw.startsWith('🏃') ||
+        raw.startsWith('❤️')) {
+      return raw; // Already an emoji — pass through
+    }
+    final lower = raw.toLowerCase();
+    if (lower.contains('psych') || lower.contains('mental') ||
+        lower.contains('cogni') || lower.contains('brain')) {
+      return '🧠';
+    }
+    if (lower.contains('social') || lower.contains('group') ||
+        lower.contains('family') || lower.contains('relation')) {
+      return '🤝';
+    }
+    if (lower.contains('physic') || lower.contains('mobil') ||
+        lower.contains('activ') || lower.contains('sport') ||
+        lower.contains('exerc')) {
+      return '🏃';
+    }
+    if (lower.contains('health') || lower.contains('vital') ||
+        lower.contains('medical') || lower.contains('care')) {
+      return '❤️';
+    }
+    return '📋'; // Generic assessment fallback — renders cleanly
   }
 
   String _s(Object? value, {String fallback = ''}) {

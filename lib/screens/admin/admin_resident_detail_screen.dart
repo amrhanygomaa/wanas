@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
+import '../../services/backend_mutation_service.dart';
 import '../../widgets/taptaba_scaffold.dart';
 
 class AdminResidentDetailScreen extends ConsumerStatefulWidget {
@@ -20,11 +21,12 @@ class _AdminResidentDetailScreenState
   late TabController _tabController;
   bool _isEditMode = false;
   bool _isUploading = false;
+  String? _pendingFamilyEmail;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
   }
 
   @override
@@ -104,6 +106,7 @@ class _AdminResidentDetailScreenState
                 _buildSocialInfo(r),
                 _buildFamilyLinkInfo(r),
                 _buildDocumentsInfo(r),
+                _buildAINotesTab(r),
               ],
             ),
           ),
@@ -132,6 +135,7 @@ class _AdminResidentDetailScreenState
           Tab(text: 'الجانب الاجتماعي'),
           Tab(text: 'إدارة العائلة'),
           Tab(text: 'المستندات'),
+          Tab(text: 'ملاحظات الذكاء الاصطناعي'),
         ],
       ),
     );
@@ -424,6 +428,12 @@ class _AdminResidentDetailScreenState
   }
 
   Widget _buildFamilyLinkInfo(Resident r) {
+    final appData = ref.watch(appRiverpod);
+    final residentFile =
+        appData.residentFiles.where((rf) => rf.id == r.id).firstOrNull;
+    final linkedEmail = _pendingFamilyEmail ?? residentFile?.familyEmail;
+    final isPending = _pendingFamilyEmail != null;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -432,69 +442,190 @@ class _AdminResidentDetailScreenState
               'ربط المقيم بحساب أحد أفراد العائلة ليتمكن من متابعة التقارير اليومية والأدوية.',
               style: TextStyle(fontSize: 12, color: Color(0xFF64748b))),
           const SizedBox(height: 20),
-          _infoRow('البريد المرتبط حالياً', 'family.mahmoud@gmail.com',
-              Icons.alternate_email_rounded,
-              valColor: Colors.blueAccent),
-          const SizedBox(height: 10),
-          if (_isEditMode)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showLinkFamilyDialog(),
-                icon: const Icon(Icons.link_rounded, size: 18),
-                label: const Text('تغيير أو ربط فرد جديد'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0ea5e9),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
+          if (linkedEmail != null && linkedEmail.isNotEmpty) ...[
+            _infoRow('البريد المرتبط', linkedEmail,
+                Icons.alternate_email_rounded,
+                valColor: const Color(0xFF0ea5e9)),
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isPending
+                    ? const Color(0xFFFFF7ED)
+                    : const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isPending
+                      ? const Color(0xFFFDBA74)
+                      : const Color(0xFF6EE7B7),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isPending
+                        ? Icons.hourglass_top_rounded
+                        : Icons.verified_rounded,
+                    size: 16,
+                    color: isPending
+                        ? const Color(0xFFF97316)
+                        : const Color(0xFF059669),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isPending
+                        ? 'البريد الإلكتروني قيد التحقق'
+                        : 'البريد الإلكتروني مرتبط',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isPending
+                          ? const Color(0xFFF97316)
+                          : const Color(0xFF059669),
+                    ),
+                  ),
+                ],
               ),
             ),
+          ] else
+            _infoRow('البريد المرتبط', 'لا يوجد بريد مرتبط حالياً',
+                Icons.alternate_email_rounded,
+                valColor: const Color(0xFF94a3b8)),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showLinkFamilyDialog(r.id),
+              icon: const Icon(Icons.link_rounded, size: 18),
+              label: Text(linkedEmail != null && linkedEmail.isNotEmpty
+                  ? 'تغيير البريد المرتبط'
+                  : 'ربط فرد من العائلة'),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0ea5e9),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12))),
+            ),
+          ),
         ]),
       ],
     );
   }
 
-  void _showLinkFamilyDialog() {
+  void _showLinkFamilyDialog(String residentId) {
     final emailController = TextEditingController();
-    showDialog(
+    bool saving = false;
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ربط فرد من العائلة', textAlign: TextAlign.right),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-                'أدخل البريد الإلكتروني المسجل لفرد العائلة ليتم الربط التلقائي.',
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 12)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              textAlign: TextAlign.left,
-              decoration: InputDecoration(
-                  hintText: 'example@family.com',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12))),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(32)),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم إرسال طلب الربط بنجاح')));
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0ea5e9),
-                foregroundColor: Colors.white),
-            child: const Text('تأكيد الربط'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('ربط فرد من العائلة',
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text(
+                    'أدخل البريد الإلكتروني لفرد العائلة. سيصله بريد تأكيد للتحقق من الربط.',
+                    style: TextStyle(
+                        fontSize: 13, color: Color(0xFF64748b))),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: emailController,
+                  textAlign: TextAlign.left,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'example@family.com',
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFE2E8F0))),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0ea5e9),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14))),
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            final email = emailController.text.trim();
+                            if (email.isEmpty || !email.contains('@')) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'أدخل بريداً إلكترونياً صحيحاً')));
+                              return;
+                            }
+                            setSheetState(() => saving = true);
+                            try {
+                              await BackendMutationService.instance
+                                  .createFamilyMemberForEmail(
+                                residentId: residentId,
+                                email: email,
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                setState(
+                                    () => _pendingFamilyEmail = email);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'تم إرسال بريد التحقق بنجاح. البريد الإلكتروني قيد التحقق.'),
+                                      backgroundColor:
+                                          Color(0xFF0ea5e9)),
+                                );
+                              }
+                            } catch (e) {
+                              setSheetState(() => saving = false);
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                        content: Text('خطأ: $e'),
+                                        backgroundColor: Colors.red));
+                              }
+                            }
+                          },
+                    child: saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Text('إرسال بريد التحقق',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -615,42 +746,639 @@ class _AdminResidentDetailScreenState
   }
 
   void _editSection(String title) {
+    final appData = ref.read(appRiverpod);
+    final resident = appData.residentFiles.where((r) => r.id == widget.residentId).firstOrNull;
+    if (resident == null) return;
+
+    switch (title) {
+      case 'البيانات الشخصية الأساسية':
+        _showBasicInfoForm(resident);
+        break;
+      case 'بيانات الطوارئ والوصي':
+        _showEmergencyContactForm(resident);
+        break;
+      case 'الملف الطبي والتحذيرات':
+        _showMedicalInfoForm(resident);
+        break;
+      case 'الحالة الحركية والوظيفية':
+        _showMobilityForm(resident);
+        break;
+      case 'نظام الغذاء والتفضيلات':
+        _showDietForm(resident);
+        break;
+      case 'التأمين الطبي والجهة المعالجة':
+        _showInsuranceForm(resident);
+        break;
+      case 'التاريخ الاجتماعي والنشاطات':
+        _showSocialHistoryForm(resident);
+        break;
+      case 'إدارة ربط العائلة':
+        _showFamilyLinkForm(resident);
+        break;
+      default:
+        _showComingSoonSheet(title);
+    }
+  }
+
+  void _showBasicInfoForm(SpecialistResidentFile resident) {
+    final nameParts = resident.name.trim().split(RegExp(r'\s+'));
+    final firstCtrl = TextEditingController(
+        text: nameParts.isNotEmpty ? nameParts.first : '');
+    final lastCtrl = TextEditingController(
+        text: nameParts.length > 1 ? nameParts.skip(1).join(' ') : '');
+    final roomCtrl = TextEditingController(text: resident.room);
+    // Birth year derived from age (approximate)
+    final currentYear = DateTime.now().year;
+    final birthYearCtrl = TextEditingController(
+        text: resident.age != null
+            ? '${currentYear - resident.age!}'
+            : '');
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 24,
-            right: 24,
-            top: 24),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(32))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('تعديل البيانات الشخصية',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  _field('الاسم الأول', firstCtrl),
+                  const SizedBox(height: 12),
+                  _field('اسم العائلة', lastCtrl),
+                  const SizedBox(height: 12),
+                  _field('رقم الغرفة', roomCtrl,
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 12),
+                  _field('سنة الميلاد (مثال: 1950)', birthYearCtrl,
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0ea5e9),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15))),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setSheetState(() => saving = true);
+                              try {
+                                final birthYear =
+                                    int.tryParse(birthYearCtrl.text.trim());
+                                final updatedResident = resident.copyWith(
+                                  name:
+                                      '${firstCtrl.text.trim()} ${lastCtrl.text.trim()}'
+                                          .trim(),
+                                  room: roomCtrl.text.trim(),
+                                  age: birthYear != null
+                                      ? DateTime.now().year - birthYear
+                                      : resident.age,
+                                );
+                                await BackendMutationService.instance
+                                    .updateResident(updatedResident);
+                                if (birthYear != null) {
+                                  await BackendMutationService.instance
+                                      .updateDateOfBirth(
+                                    residentId: resident.id,
+                                    dateOfBirth: DateTime(birthYear, 1, 1),
+                                  );
+                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ref
+                                      .read(appRiverpod)
+                                      .syncBackendData();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'تم تحديث البيانات بنجاح')),
+                                  );
+                                }
+                              } catch (e) {
+                                setSheetState(() => saving = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                        content: Text('خطأ: $e'),
+                                        backgroundColor: Colors.red),
+                                  );
+                                }
+                              }
+                            },
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('حفظ التغييرات',
+                              style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMedicalInfoForm(SpecialistResidentFile resident) {
+    final allergiesCtrl = TextEditingController(
+        text: (resident.allergies ?? []).join('، '));
+    final diseasesCtrl = TextEditingController(
+        text: (resident.chronicDiseases ?? []).join('، '));
+
+    _showSimpleEditSheet(
+      title: 'تعديل الملف الطبي',
+      color: const Color(0xFFEF4444),
+      fields: [
+        _field('الأمراض المزمنة (مفصولة بفاصلة)', diseasesCtrl),
+        const SizedBox(height: 12),
+        _field('الحساسية (مفصولة بفاصلة)', allergiesCtrl),
+      ],
+      onSave: () async {
+        final diseases = _splitCSV(diseasesCtrl.text);
+        final allergies = _splitCSV(allergiesCtrl.text);
+        await BackendMutationService.instance.upsertMedicalInfo(
+          residentId: resident.id,
+          info: ResidentMedicalInfo(
+            residentName: resident.name,
+            chronicDiseases: diseases,
+            allergies: allergies,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMobilityForm(SpecialistResidentFile resident) {
+    final mobilityCtrl = TextEditingController(
+        text: resident.mobilityStatus ?? '');
+
+    _showSimpleEditSheet(
+      title: 'تعديل الحالة الحركية',
+      color: const Color(0xFF6366F1),
+      fields: [
+        _field('حالة الحركة (مثال: مستقل، كرسي متحرك)', mobilityCtrl),
+      ],
+      onSave: () => BackendMutationService.instance.updateMobilityAndCognitive(
+        residentId: resident.id,
+        mobilityStatus: mobilityCtrl.text.trim(),
+        cognitiveStatus: '',
+      ),
+    );
+  }
+
+  void _showDietForm(SpecialistResidentFile resident) {
+    final dietCtrl = TextEditingController(
+        text: resident.dietType ?? '');
+    final restrictionsCtrl = TextEditingController(text: '');
+
+    _showSimpleEditSheet(
+      title: 'تعديل النظام الغذائي',
+      color: const Color(0xFF10B981),
+      fields: [
+        _field('نوع النظام الغذائي (مثال: عادي، مهروس، سوائل)', dietCtrl),
+        const SizedBox(height: 12),
+        _field('الممنوعات الغذائية (مفصولة بفاصلة)', restrictionsCtrl),
+      ],
+      onSave: () => BackendMutationService.instance.updateDiet(
+        residentId: resident.id,
+        dietType: dietCtrl.text.trim(),
+        foodPreferences: '',
+        foodRestrictions: _splitCSV(restrictionsCtrl.text),
+      ),
+    );
+  }
+
+  List<String> _splitCSV(String raw) => raw
+      .split(RegExp(r'[،,]'))
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  void _showInsuranceForm(SpecialistResidentFile resident) {
+    final insuranceCtrl = TextEditingController(
+        text: resident.insuranceInfo ?? '');
+    final doctorCtrl = TextEditingController(text: '');
+
+    _showSimpleEditSheet(
+      title: 'تعديل التأمين والجهة المعالجة',
+      color: const Color(0xFF0369A1),
+      fields: [
+        _field('جهة التأمين الصحي', insuranceCtrl),
+        const SizedBox(height: 12),
+        _field('اسم الطبيب المتابع', doctorCtrl),
+      ],
+      onSave: () => BackendMutationService.instance.updateInsurance(
+        residentId: resident.id,
+        insuranceInfo: insuranceCtrl.text.trim(),
+        primaryDoctorName: doctorCtrl.text.trim(),
+      ),
+    );
+  }
+
+  void _showSocialHistoryForm(SpecialistResidentFile resident) {
+    final professionCtrl = TextEditingController(text: '');
+    final hobbiesCtrl = TextEditingController(text: '');
+    final statusCtrl = TextEditingController(text: '');
+
+    _showSimpleEditSheet(
+      title: 'تعديل التاريخ الاجتماعي',
+      color: const Color(0xFFD97706),
+      fields: [
+        _field('المهنة السابقة', professionCtrl),
+        const SizedBox(height: 12),
+        _field('الهوايات والنشاطات (مفصولة بفاصلة)', hobbiesCtrl),
+        const SizedBox(height: 12),
+        _field('الحالة الاجتماعية (مثال: متزوج، أرمل)', statusCtrl),
+      ],
+      onSave: () => BackendMutationService.instance.updateSocialHistory(
+        residentId: resident.id,
+        previousProfession: professionCtrl.text.trim(),
+        socialStatus: statusCtrl.text.trim(),
+        hobbies: _splitCSV(hobbiesCtrl.text),
+      ),
+    );
+  }
+
+  void _showSimpleEditSheet({
+    required String title,
+    required Color color,
+    required List<Widget> fields,
+    required Future<void> Function() onSave,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(32))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  ...fields,
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: color,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15))),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setSheetState(() => saving = true);
+                              try {
+                                await onSave();
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ref.read(appRiverpod).syncBackendData();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('تم تحديث البيانات بنجاح')),
+                                  );
+                                }
+                              } catch (e) {
+                                setSheetState(() => saving = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                        content: Text('خطأ: $e'),
+                                        backgroundColor: Colors.red),
+                                  );
+                                }
+                              }
+                            },
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('حفظ التغييرات',
+                              style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEmergencyContactForm(SpecialistResidentFile resident) {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final relationCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(32))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('تعديل بيانات الطوارئ والوصي',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  _field('اسم جهة الطوارئ', nameCtrl),
+                  const SizedBox(height: 12),
+                  _field('رقم الهاتف', phoneCtrl,
+                      keyboardType: TextInputType.phone),
+                  const SizedBox(height: 12),
+                  _field('صلة القرابة (مثال: ابن، ابنة)', relationCtrl),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFef4444),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15))),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final name = nameCtrl.text.trim();
+                              final phone = phoneCtrl.text.trim();
+                              final relation = relationCtrl.text.trim();
+                              if (name.isEmpty || phone.isEmpty) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'أدخل الاسم ورقم الهاتف على الأقل')));
+                                return;
+                              }
+                              setSheetState(() => saving = true);
+                              try {
+                                await BackendMutationService.instance
+                                    .updateEmergencyContact(
+                                  residentId: resident.id,
+                                  name: name,
+                                  phone: phone,
+                                  relation: relation,
+                                );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ref.read(appRiverpod).syncBackendData();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'تم تحديث بيانات الطوارئ بنجاح')),
+                                  );
+                                }
+                              } catch (e) {
+                                setSheetState(() => saving = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(
+                                          content: Text('خطأ: $e'),
+                                          backgroundColor: Colors.red));
+                                }
+                              }
+                            },
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('حفظ بيانات الطوارئ',
+                              style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFamilyLinkForm(SpecialistResidentFile resident) {
+    final emailCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(32))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('إضافة ربط عائلة',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text(
+                      'أدخل البريد الإلكتروني لأحد أفراد العائلة لمنحه صلاحية متابعة المقيم.',
+                      style: TextStyle(
+                          fontSize: 13, color: Color(0xFF64748b))),
+                  const SizedBox(height: 20),
+                  _field('البريد الإلكتروني', emailCtrl,
+                      keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15))),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final email = emailCtrl.text.trim();
+                              if (email.isEmpty || !email.contains('@')) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('أدخل بريداً إلكترونياً صحيحاً')),
+                                );
+                                return;
+                              }
+                              setSheetState(() => saving = true);
+                              try {
+                                await BackendMutationService.instance
+                                    .createFamilyMemberForEmail(
+                                  residentId: resident.id,
+                                  email: email,
+                                );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ref
+                                      .read(appRiverpod)
+                                      .syncBackendData();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'تم إرسال دعوة الربط بنجاح')),
+                                  );
+                                }
+                              } catch (e) {
+                                setSheetState(() => saving = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                        content: Text('خطأ: $e'),
+                                        backgroundColor: Colors.red),
+                                  );
+                                }
+                              }
+                            },
+                      child: saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('إرسال دعوة الربط',
+                              style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showComingSoonSheet(String title) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
         decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('تعديل قسم: $title',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            const Text('جاري فتح نموذج التعديل الشامل لهذا القسم...',
-                style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0ea5e9),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15))),
-              child: const Text('إغلاق', style: TextStyle(color: Colors.white)),
+            const Icon(Icons.construction_rounded,
+                size: 48, color: Color(0xFF94a3b8)),
+            const SizedBox(height: 16),
+            Text('تعديل: $title',
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'سيتوفر هذا النموذج في التحديث القادم.',
+              style: TextStyle(color: Color(0xFF64748b), fontSize: 13),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إغلاق'),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _field(String label, TextEditingController ctrl,
+      {TextInputType keyboardType = TextInputType.text}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF475569))),
+        const SizedBox(height: 6),
+        TextField(
+          controller: ctrl,
+          keyboardType: keyboardType,
+          textAlign: TextAlign.right,
+          decoration: InputDecoration(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFe2e8f0))),
+          ),
+        ),
+      ],
     );
   }
 
@@ -753,6 +1481,163 @@ class _AdminResidentDetailScreenState
             padding: const EdgeInsets.all(16),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15))),
+      ),
+    );
+  }
+
+  // ── تبويب ملاحظات وتوصيات الذكاء الاصطناعي ────────────────────────
+  Widget _buildAINotesTab(Resident r) {
+    final appData = ref.watch(appRiverpod);
+    // نبحث عن ملاحظات الذكاء الاصطناعي الخاصة بهذا المقيم
+    final aiNotes = appData.getResidentAINotes(r.id);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ترويسة التبويب
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ملاحظات وتوصيات الذكاء الاصطناعي',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold)),
+                      Text('تحليل مبني على المحادثات والسلوك والتفاعلات',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          if (aiNotes == null || aiNotes.isEmpty)
+            _buildAIEmptyState()
+          else ...[
+            if (aiNotes.summary?.isNotEmpty == true)
+              _buildAISection(
+                  'الملخص', stripUuids(aiNotes.summary!), Icons.summarize_rounded,
+                  const Color(0xFF6366F1)),
+            if (aiNotes.recommendations?.isNotEmpty == true)
+              _buildAISection('التوصيات', stripUuids(aiNotes.recommendations!),
+                  Icons.recommend_rounded, const Color(0xFF059669)),
+            if (aiNotes.warnings?.isNotEmpty == true)
+              _buildAISection('التحذيرات', stripUuids(aiNotes.warnings!),
+                  Icons.warning_amber_rounded, const Color(0xFFDC2626)),
+            if (aiNotes.moodInsights?.isNotEmpty == true)
+              _buildAISection('تحليل المزاج والحالة النفسية',
+                  stripUuids(aiNotes.moodInsights!), Icons.psychology_rounded,
+                  const Color(0xFF0EA5E9)),
+            const SizedBox(height: 8),
+            if (aiNotes.lastUpdated != null)
+              Text(
+                'آخر تحديث: ${aiNotes.lastUpdated}',
+                style: const TextStyle(
+                    fontSize: 11, color: Color(0xFF94a3b8)),
+                textAlign: TextAlign.end,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: Color(0xFF6366F1), size: 36),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'لا توجد ملاحظات أو توصيات\nمن الذكاء الاصطناعي حالياً',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF64748b),
+                  height: 1.5),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'ستظهر التوصيات بعد تراكم بيانات المحادثات والتفاعلات',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Color(0xFF94a3b8)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAISection(
+      String title, String content, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: color.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: color)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(content,
+              style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF374151),
+                  height: 1.6)),
+        ],
       ),
     );
   }

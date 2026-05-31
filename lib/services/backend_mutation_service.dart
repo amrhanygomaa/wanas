@@ -91,6 +91,76 @@ class BackendMutationService {
     });
   }
 
+  Future<void> updateMobilityAndCognitive({
+    required String residentId,
+    required String mobilityStatus,
+    required String cognitiveStatus,
+  }) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'mobilityStatus': mobilityStatus,
+      'cognitiveStatus': cognitiveStatus,
+    });
+  }
+
+  Future<void> updateDiet({
+    required String residentId,
+    required String dietType,
+    required String foodPreferences,
+    required List<String> foodRestrictions,
+  }) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'dietType': dietType,
+      'foodPreferences': foodPreferences,
+      'foodRestrictions': foodRestrictions,
+    });
+  }
+
+  Future<void> updateInsurance({
+    required String residentId,
+    required String insuranceInfo,
+    required String primaryDoctorName,
+  }) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'insuranceInfo': insuranceInfo,
+      'primaryDoctorName': primaryDoctorName,
+    });
+  }
+
+  Future<void> updateSocialHistory({
+    required String residentId,
+    required String previousProfession,
+    required String socialStatus,
+    required List<String> hobbies,
+  }) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'previousProfession': previousProfession,
+      'socialStatus': socialStatus,
+      'hobbies': hobbies,
+    });
+  }
+
+  Future<void> updateEmergencyContact({
+    required String residentId,
+    required String name,
+    required String phone,
+    required String relation,
+  }) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'emergencyContactName': name,
+      'emergencyContactPhone': phone,
+      'emergencyRelation': relation,
+    });
+  }
+
+  Future<void> updateDateOfBirth({
+    required String residentId,
+    required DateTime dateOfBirth,
+  }) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'dateOfBirth': _dateOnly(dateOfBirth),
+    });
+  }
+
   Future<void> upsertMedicalInfo({
     required String residentId,
     required ResidentMedicalInfo info,
@@ -194,15 +264,16 @@ class BackendMutationService {
     required String residentId,
     required FamilyVisit visit,
   }) {
+    final visitDate = visit.scheduledAt ?? DateTime.now();
     final start = _validTime(visit.time);
     return ApiClient.instance.post('/family-bridge/visits', body: {
       'residentId': residentId,
       'visitorName': visit.visitorName,
       'visitorRelationship': 'other',
-      'visitDate': _dateOnly(DateTime.now()),
+      'visitDate': _dateOnly(visitDate),
       'visitTimeStart': start,
       'visitTimeEnd': _plusOneHour(start),
-      'notes': visit.type,
+      'visitType': visit.type,
     });
   }
 
@@ -505,10 +576,21 @@ class BackendMutationService {
   }
 
   static String _validTime(String value) {
-    final match = RegExp(r'\d{1,2}:\d{2}').firstMatch(value);
+    // Normalize Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) to ASCII digits
+    final normalized = value
+        .replaceAll('٠', '0').replaceAll('١', '1').replaceAll('٢', '2')
+        .replaceAll('٣', '3').replaceAll('٤', '4').replaceAll('٥', '5')
+        .replaceAll('٦', '6').replaceAll('٧', '7').replaceAll('٨', '8')
+        .replaceAll('٩', '9');
+    final match = RegExp(r'\d{1,2}:\d{2}').firstMatch(normalized);
     if (match == null) return '09:00';
     final parts = match.group(0)!.split(':');
-    return '${parts[0].padLeft(2, '0')}:${parts[1]}';
+    var hour = int.parse(parts[0]);
+    final minute = parts[1];
+    // ص = AM, م = PM (Arabic abbreviations)
+    if (value.contains('م') && hour < 12) hour += 12;
+    if (value.contains('ص') && hour == 12) hour = 0;
+    return '${hour.toString().padLeft(2, '0')}:$minute';
   }
 
   static String _plusOneHour(String value) {

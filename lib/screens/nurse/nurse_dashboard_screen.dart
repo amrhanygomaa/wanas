@@ -1,5 +1,5 @@
-import 'dart:async'; // مكتبة التوقيت والعمليات غير المتزامنة
-import 'dart:math'; // مكتبة العمليات الرياضية
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart'; // مكتبة فلاتر للواجهات
 import 'package:lottie/lottie.dart'; // مكتبة الأنيميشن
 import 'nurse_reports_screen.dart'; // شاشة التقارير الخاصة بالتمريض
@@ -296,8 +296,139 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
     );
   }
 
+  /// Returns true if the nurse has already submitted a handoff in the current
+  /// shift window (morning 06-14, evening 14-22, night 22-06).
+  bool _hasSubmittedCurrentShift(AppRiverpod provider) {
+    final now = DateTime.now();
+    final shiftStart = _currentShiftStart(now);
+    return provider.handoffs
+        .any((h) => h.timestamp.isAfter(shiftStart) && !h.timestamp.isAfter(now));
+  }
+
+  DateTime _currentShiftStart(DateTime now) {
+    if (now.hour >= 6 && now.hour < 14) {
+      return DateTime(now.year, now.month, now.day, 6, 0);
+    } else if (now.hour >= 14 && now.hour < 22) {
+      return DateTime(now.year, now.month, now.day, 14, 0);
+    } else if (now.hour >= 22) {
+      return DateTime(now.year, now.month, now.day, 22, 0);
+    } else {
+      return DateTime(now.year, now.month, now.day - 1, 22, 0);
+    }
+  }
+
+  void _showPreviousHandoffs(AppRiverpod provider) {
+    final handoffs = provider.handoffs;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('سجلات التسليم السابقة',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A))),
+            const SizedBox(height: 16),
+            if (handoffs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: Text('لا توجد سجلات تسليم سابقة',
+                      style: TextStyle(
+                          fontSize: 14, color: Color(0xFF94A3B8))),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: handoffs.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  itemBuilder: (_, i) {
+                    final h = handoffs[i];
+                    final dt = h.timestamp;
+                    final dateLabel =
+                        '${dt.day}/${dt.month}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                                color: const Color(0xFFE0F2FE),
+                                borderRadius: BorderRadius.circular(10)),
+                            child: const Icon(Icons.swap_horiz_rounded,
+                                color: Color(0xFF0369A1), size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(h.nurseName,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0F172A))),
+                                const SizedBox(height: 2),
+                                Text(h.shiftType,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF0369A1))),
+                                if (h.notes.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(h.notes,
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF475569),
+                                          height: 1.4)),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Text(dateLabel,
+                              style: const TextStyle(
+                                  fontSize: 10, color: Color(0xFF94A3B8))),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildShiftHandoffCard(AppRiverpod provider) {
-    // بناء بطاقة إدارة تسليم الوردية
+    final alreadySubmitted = _hasSubmittedCurrentShift(provider);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Container(
@@ -317,34 +448,40 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
         ),
         child: Column(
           children: [
-            const Row(
+            Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('إدارة تسليم الوردية',
+                      const Text('إدارة تسليم الوردية',
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                               color: Color(0xFF0F172A))),
-                      Text('جاهز للتسليم؟ قم بتجهيز تقريرك الآن',
-                          style: TextStyle(
-                              fontSize: 11, color: Color(0xFF64748B))),
+                      Text(
+                        alreadySubmitted
+                            ? 'تم تسليم الوردية الحالية ✅'
+                            : 'جاهز للتسليم؟ قم بتجهيز تقريرك الآن',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: alreadySubmitted
+                                ? const Color(0xFF059669)
+                                : const Color(0xFF64748B)),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Divider(height: 1), // خط فاصل
+            const Divider(height: 1),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  // زر عرض السجلات السابقة
                   child: OutlinedButton(
-                    onPressed: () {},
+                    onPressed: () => _showPreviousHandoffs(provider),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -352,29 +489,37 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                           borderRadius: BorderRadius.circular(12)),
                     ),
                     child: const Text('السجلات السابقة',
-                        style:
-                            TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFF64748B))),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  // زر بدء عملية التسليم الحالية
                   child: ElevatedButton(
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ShiftHandoffScreen())),
+                    onPressed: alreadySubmitted
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ShiftHandoffScreen())),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0369A1),
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFE2E8F0),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
-                    child: const Text('بدء التسليم الآن',
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      alreadySubmitted ? 'تم التسليم' : 'بدء التسليم الآن',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: alreadySubmitted
+                              ? const Color(0xFF94A3B8)
+                              : Colors.white),
+                    ),
                   ),
                 ),
               ],
@@ -394,12 +539,11 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
   }
 
   Widget _buildHero() {
-    // بناء الجزء العلوي الجمالي للشاشة (Hero Section)
+    final provider = ref.watch(appRiverpod);
+    final nurseName = provider.currentAccount?.name ?? 'فريق التمريض';
     return Container(
-      padding: const EdgeInsets.only(top: 10, bottom: 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          // تدرج أزرق طبي
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFF0369A1), Color(0xFF0EA5E9), Color(0xFF38BDF8)],
@@ -407,98 +551,104 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
       ),
       child: Stack(
         children: [
-          // علامات شفاء (+) تتصاعد لأعلى كتأثير بصري
           const HealingParticles(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'لوحة المشرف',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      // معلومات الممرض والوردية
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const NurseProfileScreen())),
-                      child: Text(
-                        '${ref.watch(appRiverpod).currentAccount?.name ?? 'فريق التمريض'} — ${_getShiftName()}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'لوحة المشرف',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      // شارة التنبيه للحالات العاجلة
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(20),
+                      const SizedBox(height: 2),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const NurseProfileScreen())),
+                        child: Text(
+                          '$nurseName — ${_getShiftName()}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FadeTransition(
-                            // نبض ضوئي للتنبيه
-                            opacity: _pulseController,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFFFCA5A5),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FadeTransition(
+                              opacity: _pulseController,
+                              child: Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFFFCA5A5),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '٢ حالة تحتاج تدخل فوري',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(width: 6),
+                            const Flexible(
+                              child: Text(
+                                'حالات تحتاج تدخل فوري',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      // مؤقت نهاية الوردية
                       'الوردية تنتهي',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       '$_timerHours:${_timerMins.toString().padLeft(2, '0')}:${_timerSecs.toString().padLeft(2, '0')}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -1217,14 +1367,16 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
       onTap: () {
         // فتح نافذة التأكيد عند الضغط على الخلية
         final provider = ref.read(appRiverpod);
-        final med = provider.medications.firstWhere(
+        final residentMeds = provider.medications
+            .where((m) => m.residentName == resident)
+            .toList();
+        if (residentMeds.isEmpty) return;
+        final med = residentMeds.firstWhere(
           (m) =>
-              m.residentName == resident &&
-              ((st == '⏰' && !m.isTaken && !m.isSkipped) ||
-                  (st == '✓' && m.isTaken) ||
-                  (st == '!' && m.isMissed)),
-          orElse: () => provider.medications
-              .firstWhere((m) => m.residentName == resident),
+              (st == '⏰' && !m.isTaken && !m.isSkipped) ||
+              (st == '✓' && m.isTaken) ||
+              (st == '!' && m.isMissed),
+          orElse: () => residentMeds.first,
         );
 
         _showDoseConfirmation(med);

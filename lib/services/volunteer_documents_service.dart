@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart' as fp;
-import 'package:http/http.dart' as http;
 
 import 'api_client.dart';
+import 's3_upload_helper.dart';
 
 class VolunteerDocumentUpload {
   final String id;
@@ -72,14 +72,12 @@ class VolunteerDocumentsService {
       throw ApiException(400, 'تعذر قراءة الملف المحدد');
     }
 
-    final put = await http.put(
-      Uri.parse(uploadUrl),
-      headers: {'Content-Type': contentType},
-      body: bytes,
+    await s3Put(
+      uploadUrl: uploadUrl,
+      bytes: bytes,
+      contentType: contentType,
+      label: file.name,
     );
-    if (put.statusCode < 200 || put.statusCode >= 300) {
-      throw ApiException(put.statusCode, 'فشل رفع المستند إلى S3', put.body);
-    }
 
     final confirmed = await ApiClient.instance.patch(
       '/volunteers/documents/${upload.id}/confirm',

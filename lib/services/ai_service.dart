@@ -221,14 +221,19 @@ class AiService {
   Future<List<AIInsight>> getPredictiveHealthAlerts(String residentId) async {
     final res = await ApiClient.instance.get('/ai/predictive-alerts/$residentId', auth: true);
     if (res['alerts'] is List) {
-      return (res['alerts'] as List).map((e) => AIInsight(
-        id: e['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        residentName: e['residentName'] ?? 'مقيم',
-        summary: e['summary'] ?? '',
-        rationale: e['rationale'] ?? '',
-        generationDate: DateTime.now(),
-        type: 'predictive_alert',
-      )).toList();
+      return (res['alerts'] as List).map((e) {
+        final rawName = (e['residentName'] ?? '').toString();
+        final safeName = isUuid(rawName) ? 'مقيم' : rawName;
+        return AIInsight(
+          id: e['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          residentName: safeName.isEmpty ? 'مقيم' : safeName,
+          roomNumber: e['roomNumber']?.toString(),
+          summary: stripUuids((e['summary'] ?? '').toString()),
+          rationale: stripUuids((e['rationale'] ?? '').toString()),
+          generationDate: DateTime.now(),
+          type: 'predictive_alert',
+        );
+      }).toList();
     }
     return [];
   }

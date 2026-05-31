@@ -15,13 +15,42 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
     with TickerProviderStateMixin {
   late AnimationController _floatController;
   late AnimationController _rotationController;
-  int _selectedType = 0; // 0: Physical, 1: Video
+  int _selectedType = 0; // 0: Physical, 1: Video, 2: Chat
   int _selectedDay = DateTime.now().day;
   String? _selectedSlot;
   final DateTime _now = DateTime.now();
+  int _calendarYear = DateTime.now().year;
+  int _calendarMonth = DateTime.now().month;
 
-  int get _daysInMonth => DateTime(_now.year, _now.month + 1, 0).day;
-  String get _monthName => _arabicMonths[_now.month - 1];
+  int get _daysInCurrentCalMonth =>
+      DateTime(_calendarYear, _calendarMonth + 1, 0).day;
+  String get _monthName => _arabicMonths[_calendarMonth - 1];
+
+  void _prevMonth() {
+    setState(() {
+      if (_calendarMonth == 1) {
+        _calendarMonth = 12;
+        _calendarYear--;
+      } else {
+        _calendarMonth--;
+      }
+      _selectedDay = 1;
+      _selectedSlot = null;
+    });
+  }
+
+  void _nextMonth() {
+    setState(() {
+      if (_calendarMonth == 12) {
+        _calendarMonth = 1;
+        _calendarYear++;
+      } else {
+        _calendarMonth++;
+      }
+      _selectedDay = 1;
+      _selectedSlot = null;
+    });
+  }
 
   final List<String> _arabicMonths = [
     'يناير',
@@ -39,12 +68,22 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
   ];
 
   final List<String> _slots = [
+    '٠٩:٠٠ ص',
+    '٠٩:٣٠ ص',
     '١٠:٠٠ ص',
+    '١٠:٣٠ ص',
+    '١١:٠٠ ص',
     '١١:٣٠ ص',
+    '١٢:٠٠ م',
     '٠١:٠٠ م',
+    '٠٢:٠٠ م',
+    '٠٣:٠٠ م',
     '٠٤:٠٠ م',
+    '٠٤:٣٠ م',
+    '٠٥:٠٠ م',
     '٠٥:٣٠ م',
-    '٠٧:٠٠ م'
+    '٠٦:٠٠ م',
+    '٠٧:٠٠ م',
   ];
 
   @override
@@ -246,13 +285,22 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
   }
 
   Widget _buildVisitTypeTabs() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-            child: _buildTypeCard(1, 'مكالمة فيديو', Icons.videocam_rounded)),
-        const SizedBox(width: 16),
-        Expanded(
-            child: _buildTypeCard(0, 'لقاء مودة', Icons.people_alt_rounded)),
+        Row(
+          children: [
+            Expanded(
+                child:
+                    _buildTypeCard(0, 'لقاء مودة', Icons.people_alt_rounded)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildTypeCard(
+                    1, 'مكالمة فيديو', Icons.videocam_rounded)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildTypeCard(
+            2, 'محادثة شات مع المقيم', Icons.chat_bubble_outline_rounded),
       ],
     );
   }
@@ -315,13 +363,25 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.chevron_left, color: Color(0xFF94a3b8)),
-              Text('$_monthName ${_now.year}',
+              IconButton(
+                icon: const Icon(Icons.chevron_left,
+                    color: Color(0xFF94a3b8)),
+                onPressed: () {
+                  final isCurrentMonth = _calendarYear == _now.year &&
+                      _calendarMonth == _now.month;
+                  if (!isCurrentMonth) _prevMonth();
+                },
+              ),
+              Text('$_monthName $_calendarYear',
                   style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1e293b))),
-              const Icon(Icons.chevron_right, color: Color(0xFF94a3b8)),
+              IconButton(
+                icon: const Icon(Icons.chevron_right,
+                    color: Color(0xFF94a3b8)),
+                onPressed: _nextMonth,
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -330,11 +390,13 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7, childAspectRatio: 1),
-            itemCount: _daysInMonth,
+            itemCount: _daysInCurrentCalMonth,
             itemBuilder: (context, i) {
               int day = i + 1;
               bool isSelected = day == _selectedDay;
-              bool isPast = day < _now.day;
+              final isSameMonth = _calendarYear == _now.year &&
+                  _calendarMonth == _now.month;
+              bool isPast = isSameMonth && day < _now.day;
               return GestureDetector(
                 onTap: isPast ? null : () => setState(() => _selectedDay = day),
                 child: Container(
@@ -442,10 +504,16 @@ class _VisitBookingScreenState extends ConsumerState<VisitBookingScreen>
                 await provider.addFamilyVisit(FamilyVisit(
                   id: 'v${DateTime.now().millisecondsSinceEpoch}',
                   visitorName: provider.currentAccount?.name ?? 'فرد أسرة',
-                  date: '$_selectedDay $_monthName',
+                  date: '$_selectedDay $_monthName $_calendarYear',
                   time: _selectedSlot!,
-                  type: _selectedType == 0 ? 'physical' : 'video',
+                  type: _selectedType == 0
+                      ? 'physical'
+                      : _selectedType == 1
+                          ? 'video'
+                          : 'chat',
                   status: 'pending',
+                  scheduledAt: DateTime(
+                      _calendarYear, _calendarMonth, _selectedDay),
                 ));
                 if (!mounted) return;
                 if (provider.backendSyncError != null) {

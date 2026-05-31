@@ -1,8 +1,11 @@
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart' as file_picker_lib;
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
@@ -12,6 +15,7 @@ import 'resident_id_screen.dart';
 import 'family_bridge_screen.dart';
 import 'family_activities_screen.dart';
 import '../../widgets/taptaba_scaffold.dart';
+import '../chat/family_resident_chat_screen.dart';
 
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
@@ -24,7 +28,9 @@ class FamilyDashboardScreen extends ConsumerStatefulWidget {
 class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     with TickerProviderStateMixin {
   int _selectedIndex = 0;
-  bool _showMedicationDoneAnimation = false; // هل نعرض أنيميشن التذكير؟
+  bool _showMedicationDoneAnimation = false;
+  bool _isGeneratingUpdate = false;
+  bool _updateInsufficient = false;
   late AnimationController _fadeController;
   late AnimationController _pulseController;
   late AnimationController _rotationController;
@@ -56,6 +62,9 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     });
 
     _fadeController.forward();
+    // Load inbox once — not inside build() to avoid infinite rebuild loop.
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(appRiverpod).loadMessageInbox());
   }
 
   @override
@@ -76,7 +85,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
       titleColor: const Color(0xFFea580c),
       overrideRole: 'عائلة',
       useNestedScrollView: true,
-      sliverHeader: _buildHero(provider),
+      sliverHeader: _selectedIndex == 3 ? null : _buildHero(provider),
       bottomNavigationBar: _buildBottomNav(),
       body: Stack(
         children: [
@@ -546,7 +555,15 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         children: [
           _buildHealthMetricsGrid(provider),
           const SizedBox(height: 24),
-          _buildFamilyAIUpdateCard(provider),
+          _buildChatCard(provider)
+              .animate()
+              .fadeIn(duration: 350.ms)
+              .slideY(begin: 0.06, end: 0, duration: 350.ms, curve: Curves.easeOut),
+          const SizedBox(height: 24),
+          _buildFamilyAIUpdateCard(provider)
+              .animate(delay: 80.ms)
+              .fadeIn(duration: 350.ms)
+              .slideY(begin: 0.06, end: 0, duration: 350.ms, curve: Curves.easeOut),
           const SizedBox(height: 24),
           _buildGamificationCard(provider, context),
           const SizedBox(height: 24),
@@ -560,6 +577,143 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
           const SizedBox(height: 24),
           _buildReviewsCard(provider),
           const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatCard(AppRiverpod provider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFfed7aa), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFFea580c).withValues(alpha: 0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                      color: Color(0xFFfff7ed), shape: BoxShape.circle),
+                  child: const Icon(Icons.chat_bubble_outline_rounded,
+                      color: Color(0xFFea580c), size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('محادثات مع المقيم',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1e293b))),
+                ),
+                if (provider.isLoadingInbox)
+                  Shimmer.fromColors(
+                    baseColor: const Color(0xFFfed7aa),
+                    highlightColor: const Color(0xFFfff7ed),
+                    child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: const BoxDecoration(
+                            color: Color(0xFFfed7aa),
+                            shape: BoxShape.circle)),
+                  ),
+              ],
+            ),
+          ),
+          if (provider.messageInbox.isEmpty && !provider.isLoadingInbox)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                children: [
+                  Text(
+                    'لا توجد محادثات بعد.\nسيظهر هنا تاريخ المحادثة بمجرد بدء التواصل.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 13, color: Color(0xFF94a3b8), height: 1.6),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              itemCount: provider.messageInbox.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final thread = provider.messageInbox[i];
+                final unread = thread.unreadCount > 0;
+                return ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFfff7ed),
+                    child: Text(
+                      thread.otherUserName.isNotEmpty
+                          ? thread.otherUserName[0]
+                          : '?',
+                      style: const TextStyle(
+                          color: Color(0xFFea580c),
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  title: Text(
+                    thread.otherUserName,
+                    style: TextStyle(
+                        fontWeight: unread
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    thread.lastMessage.body,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: unread
+                            ? const Color(0xFF1e293b)
+                            : const Color(0xFF94a3b8)),
+                  ),
+                  trailing: unread
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFFea580c),
+                              borderRadius: BorderRadius.circular(12)),
+                          child: Text('${thread.unreadCount}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                        )
+                      : null,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FamilyResidentChatScreen(
+                        otherUserId: thread.otherUserId,
+                        otherUserName: thread.otherUserName,
+                        otherUserRole: thread.otherUserRole,
+                      ),
+                    ),
+                  ).then((_) => provider.loadMessageInbox()),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -612,34 +766,132 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             ],
           ),
           const SizedBox(height: 16),
-          if (provider.latestFamilyUpdate.isEmpty)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => provider.fetchFamilyUpdate(),
-                icon: const Icon(Icons.sync, size: 18),
-                label: const Text('توليد التحديث الأسبوعي بالذكاء الاصطناعي', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  elevation: 0,
+          if (_isGeneratingUpdate)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFF8B5CF6)),
+                    SizedBox(height: 10),
+                    Text('جارٍ توليد التحديث الأسبوعي...',
+                        style: TextStyle(
+                            fontSize: 13, color: Color(0xFF64748B))),
+                  ],
                 ),
               ),
             )
+          else if (provider.latestFamilyUpdate.isEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    setState(() {
+                      _isGeneratingUpdate = true;
+                      _updateInsufficient = false;
+                    });
+                    try {
+                      await provider.fetchFamilyUpdate();
+                      if (mounted && provider.latestFamilyUpdate.isEmpty) {
+                        setState(() => _updateInsufficient = true);
+                      }
+                    } catch (_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('فشل توليد التحديث، حاول مجدداً',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontFamily: 'Cairo')),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isGeneratingUpdate = false);
+                    }
+                  },
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text(
+                      'توليد التحديث الأسبوعي بالذكاء الاصطناعي',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                  ),
+                ),
+                if (_updateInsufficient) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFf0f9ff),
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: const Color(0xFF7dd3fc), width: 1),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            color: Color(0xFF0284c7), size: 18),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'نحتاج بيانات أكثر لإنشاء التحديث. '
+                            'ستظهر بعد تراكم المعلومات اليومية كالأدوية والأنشطة والملاحظات.',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF0369a1),
+                                height: 1.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            )
           else
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Text(
-                provider.latestFamilyUpdate,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.6),
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    provider.latestFamilyUpdate,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF334155),
+                        height: 1.6),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () async {
+                    setState(() => _isGeneratingUpdate = true);
+                    try {
+                      await provider.fetchFamilyUpdate();
+                    } finally {
+                      if (mounted) setState(() => _isGeneratingUpdate = false);
+                    }
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 14),
+                  label: const Text('تحديث مجدداً', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF8B5CF6)),
+                ),
+              ],
             ),
         ],
       ),
@@ -1897,7 +2149,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                   tabs: [
                     Tab(
                         child: Text(
-                            'الزيارات القادمة (${provider.familyVisits.where((v) => v.status == 'upcoming').length})',
+                            'الزيارات القادمة (${provider.familyVisits.where((v) => v.status == 'upcoming' || v.status == 'pending').length})',
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold))),
                     const Tab(
@@ -1908,12 +2160,22 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _buildVisitsList(provider.familyVisits
-                          .where((v) => v.status == 'upcoming')
-                          .toList()),
-                      _buildVisitsList(provider.familyVisits
-                          .where((v) => v.status != 'upcoming')
-                          .toList()),
+                      _buildVisitsList(
+                        provider.familyVisits
+                            .where((v) =>
+                                v.status == 'upcoming' ||
+                                v.status == 'pending')
+                            .toList(),
+                        isUpcoming: true,
+                      ),
+                      _buildVisitsList(
+                        provider.familyVisits
+                            .where((v) =>
+                                v.status != 'upcoming' &&
+                                v.status != 'pending')
+                            .toList(),
+                        isUpcoming: false,
+                      ),
                     ],
                   ),
                 ),
@@ -1974,17 +2236,65 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     );
   }
 
-  Widget _buildVisitsList(List<FamilyVisit> visits) {
+  Widget _buildVisitsList(List<FamilyVisit> visits,
+      {bool isUpcoming = true}) {
     if (visits.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset('assets/icons/calendar.png', width: 64, height: 64),
-            const SizedBox(height: 16),
-            const Text('لا توجد زيارات حالياً',
-                style: TextStyle(color: Color(0xFF94a3b8), fontSize: 16)),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFfff7ed),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: const Color(0xFFfed7aa), width: 2),
+                ),
+                child: const Icon(Icons.calendar_today_rounded,
+                    size: 40, color: Color(0xFFea580c)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                isUpcoming ? 'لا توجد زيارات قادمة' : 'لا توجد زيارات سابقة',
+                style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF475569)),
+              ),
+              const SizedBox(height: 8),
+              if (isUpcoming)
+                const Text(
+                  'جدّل زيارتك القادمة لأحبائك الآن',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 14, color: Color(0xFF94a3b8)),
+                ),
+              if (isUpcoming) ...[
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const VisitBookingScreen()),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('جدولة زيارة',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFea580c),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       );
     }
@@ -2067,6 +2377,31 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
             const SizedBox(height: 20),
             const Divider(color: Color(0xFFf1f5f9)),
             const SizedBox(height: 10),
+            if (v.type == 'video' && v.zoomLink != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563eb),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  icon: const Icon(Icons.videocam_rounded,
+                      color: Colors.white, size: 18),
+                  label: const Text('انضم للمكالمة',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    final uri = Uri.tryParse(v.zoomLink!);
+                    if (uri != null) {
+                      await launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 Expanded(
@@ -2149,16 +2484,19 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
   }
 
   Widget _buildBillingSummary(AppRiverpod provider) {
+    final amount = provider.unpaidBillsAmount;
+    final hasAmount = amount > 0;
+
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: const Color(0xFF0f172a),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFF0f172a).withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10))
+              color: const Color(0xFF0f172a).withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 8))
         ],
       ),
       child: Column(
@@ -2170,73 +2508,94 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
               Text('المستحقات الحالية',
                   style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900)),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800)),
               Icon(Icons.account_balance_wallet_rounded,
-                  color: Colors.white, size: 28),
+                  color: Colors.white, size: 26),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-              '${provider.unpaidBillsAmount.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")} ج.م',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 38,
-                  fontWeight: FontWeight.w900)),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                        colors: [Color(0xFFea580c), Color(0xFFf97316)]),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                          color: const Color(0xFFea580c).withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16))),
-                    onPressed: () => _showPaymentSheet(provider),
-                    child: const Text('ادفع الآن',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
+            hasAmount
+                ? '${amount.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")} ج.م'
+                : '٠ ج.م',
+            style: const TextStyle(
+                color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 16),
+          if (hasAmount) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFFea580c), Color(0xFFf97316)]),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                            color: const Color(0xFFea580c).withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3))
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14))),
+                      onPressed: () => _showPaymentSheet(provider),
+                      child: const Text('ادفع الآن',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('جاري تجهيز وتحميل الفاتورة بصيغة PDF...'),
                       backgroundColor: Color(0xFF1e293b),
                     ),
-                  );
-                },
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16)),
-                  child:
-                      const Icon(Icons.download_rounded, color: Colors.white),
+                  ),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14)),
+                    child: const Icon(Icons.download_rounded, color: Colors.white),
+                  ),
                 ),
+              ],
+            ),
+          ] else
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF059669).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: const Color(0xFF059669).withValues(alpha: 0.4)),
               ),
-            ],
-          ),
+              child: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded,
+                      color: Color(0xFF34D399), size: 20),
+                  SizedBox(width: 10),
+                  Text('لا توجد مستحقات للدفع',
+                      style: TextStyle(
+                          color: Color(0xFF34D399),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
         ],
       ),
     );

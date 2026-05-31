@@ -1,108 +1,126 @@
-import 'package:flutter/material.dart'; // مكتبة فلاتر الأساسية
+import 'package:flutter/material.dart';
 
 class BottomNavBar extends StatelessWidget {
-  // فئة شريط التنقل السفلي المخصص للمسن
-  final int currentIndex; // الفهرس الحالي المختار
-  final Function(int) onTap; // دالة المعالجة عند الضغط على أيقونة
+  final int currentIndex;
+  final Function(int) onTap;
+  final VoidCallback? onAiTap;
 
   const BottomNavBar({
-    // مشيد الفئة
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.onAiTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    // دالة بناء الواجهة
-    final isDark = Theme.of(context).brightness ==
-        Brightness.dark; // التحقق من نمط الألوان (ليلي/نهاري)
-    final items = [
-      // قائمة عناصر شريط التنقل
-      const BottomNavItem(
-          icon: Icons.home_rounded, label: 'الرئيسية', index: 0), // الرئيسية
-      const BottomNavItem(
-          icon: Icons.medication_rounded,
-          label: 'دواء',
-          index: 1), // تنبيهات الأدوية
-      const BottomNavItem(
-          icon: Icons.circle, label: '', index: -1), // مساحة فارغة للكرة
-      const BottomNavItem(
-          icon: Icons.people_rounded,
-          label: 'أسرة',
-          index: 2), // التواصل مع الأسرة
-      const BottomNavItem(
-          icon: Icons.photo_rounded, label: 'ذكريات', index: 3), // ألبوم الصور
-    ];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      // وعاء شريط التنقل
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      height: 70,
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E293B)
-            : Colors.white, // لون الخلفية حسب النمط
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         border: Border(
-            top: BorderSide(
-                color: isDark ? Colors.white12 : const Color(0xFFede9fe),
-                width: 1)), // إطار علوي خفيف
+          top: BorderSide(
+            color: isDark ? Colors.white12 : const Color(0xFFede9fe),
+            width: 1,
+          ),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 10,
+            offset: Offset(0, -3),
+          ),
+        ],
       ),
       child: Row(
-        // ترتيب العناصر أفقياً
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items
-            .map((item) => _buildNavItem(context, item))
-            .toList(), // تحويل القائمة لمكونات واجهة
-      ),
-    );
-  }
-
-  Widget _buildNavItem(BuildContext context, BottomNavItem item) {
-    // دالة بناء عنصر تنقل فردي
-    if (item.index == -1) {
-      return const SizedBox(width: 60); // المساحة الفارغة للكرة
-    }
-
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark; // النمط الحالي
-    final isActive = currentIndex == item.index; // هل هذا العنصر هو النشط؟
-    final color = isActive
-        ? const Color(0xFF6C63FF)
-        : (isDark
-            ? Colors.white38
-            : const Color(0xFF9ca3af)); // اللون بناءً على الحالة
-
-    return GestureDetector(
-      // كاشف للمسات
-      onTap: () => onTap(item.index), // تنفيذ دالة التنقل عند الضغط
-      child: Column(
-        // ترتيب أيقونة + نص
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(item.icon, color: color, size: 24), // أيقونة العنصر
-          const SizedBox(height: 4),
-          Text(item.label, // نص العنصر (عربي)
-              style: TextStyle(
-                fontSize: 10,
-                color: color,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-              )),
+          _navItem(context, Icons.home_rounded, 'الرئيسية', 0, isDark),
+          _navItem(context, Icons.medication_rounded, 'دواء', 1, isDark),
+          // Center elevated AI button
+          _buildAiCenter(),
+          _navItem(context, Icons.people_rounded, 'أسرة', 2, isDark),
+          _navItem(context, Icons.photo_rounded, 'ذكريات', 3, isDark),
         ],
       ),
     );
   }
-}
 
-class BottomNavItem {
-  // فئة نموذج بيانات عنصر التنقل
-  final IconData icon; // أيقونة العنصر
-  final String label; // نص العنصر
-  final int index; // فهرس العنصر
+  Widget _buildAiCenter() {
+    return Transform.translate(
+      offset: const Offset(0, -14),
+      child: GestureDetector(
+        onTap: onAiTap,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.45),
+                blurRadius: 16,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
 
-  const BottomNavItem({
-    // مشيد نموذج البيانات
-    required this.icon,
-    required this.label,
-    required this.index,
-  });
+  Widget _navItem(BuildContext context, IconData icon, String label, int index,
+      bool isDark) {
+    final isActive = currentIndex == index;
+    final color = isActive
+        ? const Color(0xFF6C63FF)
+        : (isDark ? Colors.white38 : const Color(0xFF9ca3af));
+
+    return GestureDetector(
+      onTap: () => onTap(index),
+      child: SizedBox(
+        width: 64,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.all(isActive ? 6 : 0),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFF6C63FF).withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight:
+                    isActive ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

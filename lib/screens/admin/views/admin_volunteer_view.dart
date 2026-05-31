@@ -249,30 +249,34 @@ class AdminVolunteerView extends StatelessWidget {
                     const SizedBox(height: 12),
                     _buildField(descController, 'وصف المهمة', maxLines: 3),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('النقاط',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF334155))),
-                        Text('$selectedPoints نقطة',
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0ea5e9))),
-                      ],
-                    ),
                     StatefulBuilder(builder: (context, setModalState) {
-                      return Slider(
-                        value: selectedPoints.toDouble(),
-                        min: 10,
-                        max: 200,
-                        divisions: 19,
-                        activeColor: const Color(0xFF0ea5e9),
-                        onChanged: (val) =>
-                            setModalState(() => selectedPoints = val.toInt()),
+                      return Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('النقاط',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF334155))),
+                              Text('$selectedPoints نقطة',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0ea5e9))),
+                            ],
+                          ),
+                          Slider(
+                            value: selectedPoints.toDouble(),
+                            min: 10,
+                            max: 200,
+                            divisions: 19,
+                            activeColor: const Color(0xFF0ea5e9),
+                            onChanged: (val) => setModalState(
+                                () => selectedPoints = val.toInt()),
+                          ),
+                        ],
                       );
                     }),
                     const SizedBox(height: 24),

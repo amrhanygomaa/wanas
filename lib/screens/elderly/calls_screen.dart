@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
+import '../chat/family_resident_chat_screen.dart';
 
 class CallsScreen extends ConsumerStatefulWidget {
   const CallsScreen({super.key});
@@ -1000,24 +1001,26 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               ],
             ),
             const SizedBox(width: 20),
-            // Middle: Info
+            // Middle: Info + actions under name
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                       color: hc ? Colors.white : const Color(0xFF1a1a1a),
-                      letterSpacing: -0.8,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: (isOnline
                               ? const Color(0xFF6C63FF)
@@ -1028,7 +1031,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                     child: Text(
                       relation,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: isOnline
                             ? const Color(0xFF6C63FF)
                             : const Color(0xFF6B7280),
@@ -1036,29 +1039,55 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  // Action buttons under the name
+                  Row(
+                    children: [
+                      _buildActionCircle(
+                        onTap: () =>
+                            provider.launchZoom(member.zoomLink),
+                        icon: Icons.videocam_rounded,
+                        color: const Color(0xFF6C63FF),
+                        isActive: isOnline,
+                        hc: hc,
+                      ),
+                      const SizedBox(width: 10),
+                      _buildActionCircle(
+                        onTap: () =>
+                            provider.callPhoneNumber(member.phoneNumber),
+                        icon: Icons.phone_rounded,
+                        color: const Color(0xFF4ade80),
+                        isActive: isOnline,
+                        hc: hc,
+                        isOutlined: true,
+                      ),
+                      const SizedBox(width: 10),
+                      _buildActionCircle(
+                        onTap: member.userId != null
+                            ? () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        FamilyResidentChatScreen(
+                                      otherUserId: member.userId!,
+                                      otherUserName: member.name,
+                                      otherUserRole: member.relation,
+                                      accentColor:
+                                          const Color(0xFF6C63FF),
+                                    ),
+                                  ),
+                                )
+                            : () {},
+                        icon: Icons.chat_bubble_outline_rounded,
+                        color: const Color(0xFFea580c),
+                        isActive: member.userId != null,
+                        hc: hc,
+                        isOutlined: true,
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ),
-            // Right: Actions
-            Column(
-              children: [
-                _buildActionCircle(
-                  onTap: () => provider.launchZoom(member.zoomLink),
-                  icon: Icons.videocam_rounded,
-                  color: const Color(0xFF6C63FF),
-                  isActive: isOnline,
-                  hc: hc,
-                ),
-                const SizedBox(height: 12),
-                _buildActionCircle(
-                  onTap: () => provider.callPhoneNumber(member.phoneNumber),
-                  icon: Icons.phone_rounded,
-                  color: const Color(0xFF4ade80),
-                  isActive: isOnline,
-                  hc: hc,
-                  isOutlined: true,
-                ),
-              ],
             ),
           ],
         ),
@@ -1199,7 +1228,16 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               final msg = entry.value;
               final sender = provider.familyMembers.firstWhere(
                   (m) => m.id == msg.senderId,
-                  orElse: () => provider.familyMembers.first);
+                  orElse: () => provider.familyMembers.isNotEmpty
+                      ? provider.familyMembers.first
+                      : FamilyMember(
+                          id: msg.senderId,
+                          name: 'أحد أفراد العائلة',
+                          relation: 'قريب',
+                          avatarPath: '',
+                          initials: '؟',
+                          phoneNumber: '',
+                        ));
               final gradients = [
                 const [Color(0xFFf472b6), Color(0xFFdb2777)],
                 const [Color(0xFF34d399), Color(0xFF059669)],
