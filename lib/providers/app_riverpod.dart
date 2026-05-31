@@ -1997,9 +1997,37 @@ class AppRiverpod extends ChangeNotifier {
         volunteerRatings.length;
   }
 
-  int get totalReviews => 12;
-  String get topSkill => 'التعامل ⭐ ٥.٠';
-  String get skillNeedsImprovement => 'التحضير ٤.٠';
+  int get totalReviews => volunteerRatings.length;
+
+  String get topSkill {
+    if (volunteerRatings.isEmpty) return '—';
+    final allCriteria = <String, List<double>>{};
+    for (final r in volunteerRatings) {
+      for (final e in r.criteriaScores.entries) {
+        allCriteria.putIfAbsent(e.key, () => []).add(e.value);
+      }
+    }
+    if (allCriteria.isEmpty) return '—';
+    final avgs = allCriteria.map(
+        (k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
+    final best = avgs.entries.reduce((a, b) => a.value >= b.value ? a : b);
+    return '${best.key} ⭐ ${best.value.toStringAsFixed(1)}';
+  }
+
+  String get skillNeedsImprovement {
+    if (volunteerRatings.isEmpty) return '—';
+    final allCriteria = <String, List<double>>{};
+    for (final r in volunteerRatings) {
+      for (final e in r.criteriaScores.entries) {
+        allCriteria.putIfAbsent(e.key, () => []).add(e.value);
+      }
+    }
+    if (allCriteria.isEmpty) return '—';
+    final avgs = allCriteria.map(
+        (k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
+    final worst = avgs.entries.reduce((a, b) => a.value <= b.value ? a : b);
+    return '${worst.key} ${worst.value.toStringAsFixed(1)}';
+  }
 
   List<Medication> get todayMedications => medications;
   Medication? get nextMedication {

@@ -132,13 +132,21 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
       if (reportType == 'تنبيه حرج') icon = '🚨';
       if (reportType == 'تقرير أدوية') icon = '💊';
 
+      final now = DateTime.now();
+      const arabicMonths = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+      ];
+      final monthName = arabicMonths[now.month - 1];
+      final hourStr = now.hour.toString().padLeft(2, '0');
+      final minStr = now.minute.toString().padLeft(2, '0');
       await provider.addSentReport(SentReport(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: now.millisecondsSinceEpoch.toString(),
         icon: icon,
-        title: '$reportType — ${DateTime.now().day} مايو',
-        meta: 'أُرسل يدوياً · ${DateTime.now().hour}:${DateTime.now().minute}',
+        title: '$reportType — ${now.day} $monthName',
+        meta: 'أُرسل يدوياً · $hourStr:$minStr',
         status: 'أُرسل',
-        date: DateTime.now().toIso8601String(),
+        date: now.toIso8601String(),
       ));
 
       if (!mounted) return;
