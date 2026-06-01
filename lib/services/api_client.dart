@@ -85,13 +85,18 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> post(String path, {Object? body, bool auth = true}) async {
+  Future<dynamic> post(
+    String path, {
+    Object? body,
+    bool auth = true,
+    Duration? timeout,
+  }) async {
     try {
       final res = await http
           .post(_uri(path),
               headers: await _buildHeaders(auth: auth),
               body: body == null ? null : jsonEncode(body))
-          .timeout(ApiConfig.requestTimeout);
+          .timeout(timeout ?? ApiConfig.requestTimeout);
       return _handle(res);
     } on SocketException {
       throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');

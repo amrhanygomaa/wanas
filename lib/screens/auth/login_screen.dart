@@ -27,6 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       _identifierController; // متحكم حقل المعرف (هاتف أو إيميل)
   late TextEditingController _passwordController; // متحكم حقل كلمة المرور
   bool _isLoggingIn = false;
+  bool _showPassword = false;
 
   @override
   void initState() {
@@ -249,13 +250,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               opacity: _fadeAnimations[
                                   3], // نفس توقيت ظهور الحقل السابق
                               child: _buildInput(
-                                // بناء حقل إدخال مخصص
-                                controller:
-                                    _passwordController, // ربط متحكم كلمة المرور
-                                label: 'كلمة المرور', // نص تلميحي
-                                icon:
-                                    Icons.lock_outline_rounded, // أيقونة القفل
-                                isPassword: true, // تفعيل خاصية إخفاء النص
+                                controller: _passwordController,
+                                label: 'كلمة المرور',
+                                icon: Icons.lock_outline_rounded,
+                                isPassword: !_showPassword,
+                                suffixIcon: GestureDetector(
+                                  onTap: () => setState(
+                                      () => _showPassword = !_showPassword),
+                                  child: Icon(
+                                    _showPassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: const Color(0xFF94a3b8),
+                                    size: 20,
+                                  ),
+                                ),
                               ),
                             ),
                             Align(
@@ -445,14 +454,212 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final success = await provider.login(id, password);
 
     if (!mounted) return;
-    setState(() => _isLoggingIn = false);
 
     if (success) {
-      _showSnack('تم تسجيل الدخول عبر AWS Cognito');
+      setState(() => _isLoggingIn = false);
+      // _showSnack('تم تسجيل الدخول بنجاح');
     } else {
-      _showSnack(provider.backendSyncError ?? 'تعذر تسجيل الدخول عبر AWS',
+      final challenge =
+          await provider.beginTemporaryPasswordActivation(id, password);
+      if (!mounted) return;
+      setState(() => _isLoggingIn = false);
+      if (challenge != null) {
+        _showTemporaryPasswordSheet(challenge);
+        return;
+      }
+      _showSnack(provider.backendSyncError ?? 'تعذر تسجيل الدخول عبر السيرفر',
           error: true);
     }
+  }
+
+  void _showTemporaryPasswordSheet(CognitoNewPasswordChallenge challenge) {
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    var loading = false;
+    var showPassword = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 22,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'تفعيل حساب الأسرة',
+                    style: TextStyle(
+                      color: Color(0xFF5A4B31),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'كلمة المرور التي وصلتك مؤقتة. عيّن كلمة مرور جديدة لإكمال التفعيل والدخول.',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 13,
+                    height: 1.6,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildInput(
+                  controller: newPassCtrl,
+                  label: 'كلمة المرور الجديدة',
+                  icon: Icons.lock_reset_rounded,
+                  isPassword: !showPassword,
+                  suffixIcon: GestureDetector(
+                    onTap: () => setSheet(() => showPassword = !showPassword),
+                    child: Icon(
+                      showPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: const Color(0xFF94A3B8),
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildInput(
+                  controller: confirmPassCtrl,
+                  label: 'تأكيد كلمة المرور الجديدة',
+                  icon: Icons.lock_outline_rounded,
+                  isPassword: !showPassword,
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: loading
+                      ? null
+                      : () async {
+                          final newPass = newPassCtrl.text;
+                          final confirmPass = confirmPassCtrl.text;
+                          final validation =
+                              _validateActivationPassword(newPass, confirmPass);
+                          if (validation != null) {
+                            _showSnack(validation, error: true);
+                            return;
+                          }
+
+                          setSheet(() => loading = true);
+                          final provider = ref.read(appRiverpod);
+                          final ok = await provider
+                              .completeTemporaryPasswordActivation(
+                            challenge,
+                            newPass,
+                          );
+
+                          if (!ctx.mounted) return;
+                          setSheet(() => loading = false);
+                          if (ok) {
+                            Navigator.pop(ctx);
+                            if (mounted) {
+                              _showSnack('تم تفعيل الحساب وتسجيل الدخول بنجاح');
+                            }
+                          } else if (mounted) {
+                            _showSnack(
+                              provider.backendSyncError ?? 'تعذر تفعيل الحساب',
+                              error: true,
+                            );
+                          }
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [
+                        Color(0xFFD2AF7D),
+                        Color(0xFFE1BE8C),
+                      ]),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              const Color(0xFFD2AF7D).withValues(alpha: 0.28),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: loading
+                        ? const SizedBox(
+                            height: 22,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'تفعيل الحساب',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Cairo',
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(() {
+      newPassCtrl.dispose();
+      confirmPassCtrl.dispose();
+    });
+  }
+
+  String? _validateActivationPassword(String password, String confirm) {
+    if (password.trim().isEmpty) return 'يرجى إدخال كلمة المرور الجديدة';
+    if (password.length < 8) return 'كلمة المرور يجب أن تكون ٨ أحرف على الأقل';
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      return 'كلمة المرور يجب أن تحتوي على حرف كبير';
+    }
+    if (!RegExp(r'[a-z]').hasMatch(password)) {
+      return 'كلمة المرور يجب أن تحتوي على حرف صغير';
+    }
+    if (!RegExp(r'\d').hasMatch(password)) {
+      return 'كلمة المرور يجب أن تحتوي على رقم';
+    }
+    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
+      return 'كلمة المرور يجب أن تحتوي على رمز خاص';
+    }
+    if (password != confirm) return 'كلمتا المرور غير متطابقتين';
+    return null;
   }
 
   void _showSnack(String message, {bool error = false}) {
@@ -516,37 +723,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Widget _buildInput({
-    // دالة مساعدة لبناء حقول الإدخال بشكل موحد
-    required TextEditingController controller, // المتحكم بالنص
-    required String label, // التلميح داخل الحقل
-    required IconData icon, // الأيقونة الجانبية
-    bool isPassword = false, // هل هو حقل كلمة مرور؟
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    Widget? suffixIcon,
   }) {
     return Container(
-      // وعاء الحقل مع التصميم الزجاجي
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.8), // خلفية بيضاء شبه شفافة
-        borderRadius: BorderRadius.circular(16), // حواف دائرية متناسقة
-        border: Border.all(
-            color: const Color(0xFFe2e8f0), width: 1.5), // إطار رمادي فاتح
+        color: Colors.white.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFe2e8f0), width: 1.5),
       ),
       child: TextField(
-        // مكون إدخال النص الأساسي
-        controller: controller, // ربط المتحكم
-        obscureText: isPassword, // إخفاء النص إذا كان كلمة مرور
-        textAlign: TextAlign.right, // محاذاة النص لليمين (عربي)
-        textDirection: TextDirection.rtl, // اتجاه النص من اليمين لليسار
+        controller: controller,
+        obscureText: isPassword,
+        textAlign: TextAlign.right,
+        textDirection: TextDirection.rtl,
         decoration: InputDecoration(
-          // تصميم مكونات الحقل الداخلية
-          hintText: label, // نص تلميحي
-          hintStyle: const TextStyle(
-              color: Color(0xFF94a3b8), fontSize: 15), // ستايل التلميح
-          border: InputBorder.none, // إخفاء الإطار الافتراضي لفلاتر
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 16), // حواف داخلية مريحة
-          prefixIcon: Icon(icon,
-              color: const Color(0xFF94a3b8),
-              size: 20), // الأيقونة في بداية الحقل (يميناً في RTL)
+          hintText: label,
+          hintStyle: const TextStyle(color: Color(0xFF94a3b8), fontSize: 15),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          prefixIcon: Icon(icon, color: const Color(0xFF94a3b8), size: 20),
+          suffixIcon: suffixIcon != null
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: suffixIcon,
+                )
+              : null,
         ),
       ),
     );

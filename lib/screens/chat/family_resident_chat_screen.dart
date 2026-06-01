@@ -336,7 +336,7 @@ class _FamilyResidentChatScreenState
         ),
       );
     }
-    if (_messages.isEmpty) {
+    if (_messages.isEmpty && !_uploadingAttachment) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -359,17 +359,136 @@ class _FamilyResidentChatScreenState
     return ListView.builder(
       controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      itemCount: _messages.length,
-      itemBuilder: (_, i) => _buildBubble(_messages[i])
-          .animate(delay: (30 * i).ms)
-          .fadeIn(duration: 200.ms)
-          .slideY(begin: 0.08, end: 0, duration: 200.ms, curve: Curves.easeOut),
+      itemCount: _messages.length + (_uploadingAttachment ? 1 : 0),
+      itemBuilder: (_, i) {
+        if (i == _messages.length && _uploadingAttachment) {
+          return _buildUploadingImageBubble();
+        }
+        return _buildBubble(_messages[i])
+            .animate(delay: (30 * i).ms)
+            .fadeIn(duration: 200.ms)
+            .slideY(
+                begin: 0.08, end: 0, duration: 200.ms, curve: Curves.easeOut);
+      },
     );
+  }
+
+  Widget _buildUploadingImageBubble() {
+    final time = _formatTime(DateTime.now().toIso8601String());
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: widget.accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(20),
+                      topRight: const Radius.circular(20),
+                      bottomLeft: const Radius.circular(20),
+                      bottomRight: Radius.zero,
+                    ),
+                    border: Border.all(
+                      color: widget.accentColor.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      height: 200,
+                      color: Colors.white,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            color: const Color(0xFFF1F5F9),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.image_rounded,
+                                    size: 48, color: Color(0xFF94a3b8)),
+                                SizedBox(height: 12),
+                                Text('جاري تحميل الصورة...',
+                                    style: TextStyle(
+                                        color: Color(0xFF94a3b8),
+                                        fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFea580c),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(time,
+                    style: const TextStyle(
+                        fontSize: 10, color: Color(0xFF94a3b8))),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 200.ms)
+        .slideY(begin: 0.08, end: 0, duration: 200.ms, curve: Curves.easeOut);
   }
 
   Widget _buildBubble(BackendRoleMessage msg) {
     final isMe = msg.senderId == _myUserId;
     final time = _formatTime(msg.createdAt);
+    final hasMedia = msg.mediaUrl != null && msg.mediaType == 'image';
+    final isRead = msg.readAt != null && msg.readAt!.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -397,10 +516,15 @@ class _FamilyResidentChatScreenState
                   isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: hasMedia
+                      ? const EdgeInsets.all(4)
+                      : const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
-                    gradient: isMe
+                    gradient: isMe && !hasMedia
                         ? LinearGradient(
                             colors: [
                               widget.accentColor,
@@ -410,7 +534,9 @@ class _FamilyResidentChatScreenState
                             end: Alignment.bottomRight,
                           )
                         : null,
-                    color: isMe ? null : Colors.white,
+                    color: (isMe && !hasMedia)
+                        ? null
+                        : (hasMedia ? null : Colors.white),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(20),
                       topRight: const Radius.circular(20),
@@ -427,20 +553,72 @@ class _FamilyResidentChatScreenState
                       ),
                     ],
                   ),
-                  child: Text(
-                    msg.body,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isMe ? Colors.white : const Color(0xFF1e293b),
-                      height: 1.5,
-                    ),
-                  ),
+                  child: hasMedia
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(
+                                msg.mediaUrl!,
+                                width: MediaQuery.of(context).size.width * 0.6,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 200,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.broken_image_rounded,
+                                          size: 32, color: Color(0xFF94a3b8)),
+                                      SizedBox(height: 8),
+                                      Text('فشل تحميل الصورة',
+                                          style: TextStyle(
+                                              color: Color(0xFF94a3b8),
+                                              fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          msg.body,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color:
+                                isMe ? Colors.white : const Color(0xFF1e293b),
+                            height: 1.5,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 4),
-                Text(time,
-                    style: const TextStyle(
-                        fontSize: 10, color: Color(0xFF94a3b8))),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment:
+                      isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                  children: [
+                    if (isMe) ...[
+                      Icon(
+                        isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                        size: 14,
+                        color: isRead
+                            ? widget.accentColor
+                            : const Color(0xFF94a3b8),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(time,
+                        style: const TextStyle(
+                            fontSize: 10, color: Color(0xFF94a3b8))),
+                  ],
+                ),
               ],
             ),
           ),

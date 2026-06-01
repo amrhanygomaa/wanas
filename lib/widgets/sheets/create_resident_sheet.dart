@@ -78,7 +78,7 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
         SnackBar(
           backgroundColor: const Color(0xFF10B981),
           content: Text(
-            '✓ تم إضافة المقيم ${resident.fullName} في AWS RDS',
+            '✓ تم إضافة المقيم ${resident.fullName} في السيرفر',
             style: const TextStyle(fontFamily: 'Cairo'),
           ),
         ),
@@ -151,7 +151,7 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
-                        'POST · AWS RDS',
+                        'POST · السيرفر',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
@@ -175,7 +175,7 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'يتم حفظ البيانات في PostgreSQL على AWS RDS مباشرة',
+                  'يتم حفظ البيانات في PostgreSQL على السيرفر مباشرة',
                   style: TextStyle(
                     fontSize: 11,
                     color: Color(0xFF64748B),
@@ -267,7 +267,7 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
                           )
                         : const Icon(Icons.cloud_upload_rounded),
                     label: Text(
-                      _isSubmitting ? 'جاري الحفظ في AWS...' : 'حفظ في AWS RDS',
+                      _isSubmitting ? 'جاري الحفظ في السيرفر...' : 'حفظ في السيرفر',
                       style: const TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,

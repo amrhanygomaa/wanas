@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
+import 'sent_reports_history_screen.dart';
 
 class NurseReportsScreen extends ConsumerStatefulWidget {
   const NurseReportsScreen({super.key});
@@ -249,7 +250,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   ),
                   pw.SizedBox(height: 30),
 
-                  // Content from the AWS-backed app state.
+                  // Content from the السيرفر-backed app state.
                   pw.Text('تفاصيل التقرير:',
                       style: pw.TextStyle(
                           font: ttfBold,
@@ -264,7 +265,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   ] else if (reportType == 'تنبيه حرج') ...[
                     _pdfRow(ttf, ttfBold, 'المقيم', residentName),
                     _pdfRow(ttf, ttfBold, 'الحالات الحرجة', '$criticalCount'),
-                    _pdfRow(ttf, ttfBold, 'مصدر البيانات', 'AWS'),
+                    _pdfRow(ttf, ttfBold, 'مصدر البيانات', 'السيرفر'),
                   ] else ...[
                     _pdfRow(ttf, ttfBold, 'حالة الوردية', _getShiftName()),
                     _pdfRow(ttf, ttfBold, 'عدد المقيمين المتابعين',
@@ -369,7 +370,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: isDark ? Colors.white : Colors.black87)),
-          Text('• البيانات المعروضة محملة من AWS حسب آخر مزامنة.',
+          Text('• البيانات المعروضة محملة من السيرفر حسب آخر مزامنة.',
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 11,
@@ -389,7 +390,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
           const SizedBox(height: 12),
           _previewRow('المقيم', residentName),
           _previewRow('الحالات الحرجة', '${provider.criticalResidentsCount}'),
-          _previewRow('مصدر البيانات', 'AWS'),
+          _previewRow('مصدر البيانات', 'السيرفر'),
         ],
       );
     } else if (type == 'تقرير أدوية') {
@@ -406,7 +407,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: isDark ? Colors.white : Colors.black87)),
-          Text('• راجع جدول الأدوية المحمل من AWS للتفاصيل.',
+          Text('• راجع جدول الأدوية المحمل من السيرفر للتفاصيل.',
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 11,
@@ -430,7 +431,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                   color: isDark ? Colors.white : Colors.black87)),
-          Text('• أهم الملاحظات ستظهر حسب بيانات AWS المتاحة.',
+          Text('• أهم الملاحظات ستظهر حسب بيانات السيرفر المتاحة.',
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 11,
@@ -837,7 +838,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                           fontWeight: FontWeight.bold,
                           color: Colors.white)),
                   const SizedBox(height: 1),
-                  Text('غرفة ${resident.room} · الحالة من AWS',
+                  Text('غرفة ${resident.room} · الحالة من السيرفر',
                       style:
                           const TextStyle(fontSize: 12, color: Colors.white)),
                 ],
@@ -1421,6 +1422,12 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final provider = ref.watch(appRiverpod);
 
+    // Show only the last 3 items
+    final displayReports = provider.sentReports.length > 3
+        ? provider.sentReports.sublist(0, 3)
+        : provider.sentReports;
+    final hasMoreReports = provider.sentReports.length > 3;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
@@ -1460,29 +1467,81 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: provider.sentReports.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final report = provider.sentReports[index];
-                return TweenAnimationBuilder<double>(
-                  duration: Duration(milliseconds: 300 + (index * 100)),
-                  tween: Tween<double>(begin: 0.0, end: 1.0),
-                  curve: Curves.easeOutBack,
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset(0.0, 20.0 * (1.0 - value).clamp(-1.0, 1.0)),
-                      child: Opacity(
-                        opacity: value.clamp(0.0, 1.0),
-                        child: child,
-                      ),
+            Column(
+              children: [
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: displayReports.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final report = displayReports[index];
+                    return TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 300 + (index * 100)),
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      curve: Curves.easeOutBack,
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                              0.0, 20.0 * (1.0 - value).clamp(-1.0, 1.0)),
+                          child: Opacity(
+                            opacity: value.clamp(0.0, 1.0),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildSentReportCard(report),
                     );
                   },
-                  child: _buildSentReportCard(report),
-                );
-              },
+                ),
+                if (hasMoreReports) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SentReportsHistoryScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'عرض المزيد',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
         ],
       ),

@@ -167,6 +167,10 @@ class VoiceMessage {
   bool isUnread;
   String? audioUrl;
   int? durationSeconds;
+  String? recipientId;
+  String? recipientName;
+  String deliveryStatus; // pending, sent, failed
+  String moderationStatus; // pending, approved, rejected
 
   VoiceMessage({
     required this.id,
@@ -177,6 +181,10 @@ class VoiceMessage {
     this.isUnread = true,
     this.audioUrl,
     this.durationSeconds,
+    this.recipientId,
+    this.recipientName,
+    this.deliveryStatus = 'sent',
+    this.moderationStatus = 'pending',
   });
 }
 
@@ -698,12 +706,18 @@ class SpecialistResidentFile {
   final String? phone;
   final int? age;
   final String? familyEmail;
+  final String? nationalId;
+  final String? gender;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
+  final String? emergencyRelation;
 
   // الحقول الجديدة للأرشيف الشامل
   final String? bloodType;
   final List<String>? chronicDiseases;
   final List<String>? allergies;
   final String? insuranceInfo;
+  final String? primaryDoctorName;
   final String? mobilityStatus;
   final List<String>? assistiveDevices;
   final String? cognitiveStatus;
@@ -715,6 +729,7 @@ class SpecialistResidentFile {
   final String? socialStatus;
   final List<String>? uploadedDocuments;
   final String? imageUrl;
+  final String? nickname; // اسم الدلع / الاسم المُفضَّل
 
   SpecialistResidentFile({
     required this.id,
@@ -729,10 +744,16 @@ class SpecialistResidentFile {
     this.phone,
     this.age,
     this.familyEmail,
+    this.nationalId,
+    this.gender,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
+    this.emergencyRelation,
     this.bloodType,
     this.chronicDiseases,
     this.allergies,
     this.insuranceInfo,
+    this.primaryDoctorName,
     this.mobilityStatus,
     this.assistiveDevices,
     this.cognitiveStatus,
@@ -744,6 +765,7 @@ class SpecialistResidentFile {
     this.socialStatus,
     this.uploadedDocuments,
     this.imageUrl,
+    this.nickname,
   });
 
   SpecialistResidentFile copyWith({
@@ -759,10 +781,16 @@ class SpecialistResidentFile {
     String? phone,
     int? age,
     String? familyEmail,
+    String? nationalId,
+    String? gender,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    String? emergencyRelation,
     String? bloodType,
     List<String>? chronicDiseases,
     List<String>? allergies,
     String? insuranceInfo,
+    String? primaryDoctorName,
     String? mobilityStatus,
     List<String>? assistiveDevices,
     String? cognitiveStatus,
@@ -774,6 +802,7 @@ class SpecialistResidentFile {
     String? socialStatus,
     List<String>? uploadedDocuments,
     String? imageUrl,
+    String? nickname,
   }) {
     return SpecialistResidentFile(
       id: id ?? this.id,
@@ -788,10 +817,17 @@ class SpecialistResidentFile {
       phone: phone ?? this.phone,
       age: age ?? this.age,
       familyEmail: familyEmail ?? this.familyEmail,
+      nationalId: nationalId ?? this.nationalId,
+      gender: gender ?? this.gender,
+      emergencyContactName: emergencyContactName ?? this.emergencyContactName,
+      emergencyContactPhone:
+          emergencyContactPhone ?? this.emergencyContactPhone,
+      emergencyRelation: emergencyRelation ?? this.emergencyRelation,
       bloodType: bloodType ?? this.bloodType,
       chronicDiseases: chronicDiseases ?? this.chronicDiseases,
       allergies: allergies ?? this.allergies,
       insuranceInfo: insuranceInfo ?? this.insuranceInfo,
+      primaryDoctorName: primaryDoctorName ?? this.primaryDoctorName,
       mobilityStatus: mobilityStatus ?? this.mobilityStatus,
       assistiveDevices: assistiveDevices ?? this.assistiveDevices,
       cognitiveStatus: cognitiveStatus ?? this.cognitiveStatus,
@@ -803,6 +839,7 @@ class SpecialistResidentFile {
       socialStatus: socialStatus ?? this.socialStatus,
       uploadedDocuments: uploadedDocuments ?? this.uploadedDocuments,
       imageUrl: imageUrl ?? this.imageUrl,
+      nickname: nickname ?? this.nickname,
     );
   }
 }

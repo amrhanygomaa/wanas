@@ -5,6 +5,139 @@ import '../../services/api_client.dart';
 // شاشة استعادة كلمة السر — مرحلتان:
 // 1) إدخال البريد → POST /auth/forgot-password
 // 2) إدخال الكود + كلمة سر جديدة → POST /auth/confirm-forgot-password
+
+class _TopAlertOverlay {
+  static void show(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    final overlay = Overlay.of(context);
+    final animationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: Ticker((callback) {}),
+    );
+
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animationController,
+                  curve: Curves.easeOutCubic,
+                )),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isError
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF059669),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isError
+                                ? const Color(0xFFDC2626)
+                                : const Color(0xFF059669))
+                            .withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            isError ? Icons.error_outline : Icons.check_circle,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          message,
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () {
+                          animationController.reverse().then((_) {
+                            entry.remove();
+                            animationController.dispose();
+                          });
+                        },
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(entry);
+    animationController.forward();
+
+    Future.delayed(duration, () {
+      if (entry.mounted) {
+        animationController.reverse().then((_) {
+          if (entry.mounted) {
+            entry.remove();
+          }
+          animationController.dispose();
+        });
+      }
+    });
+  }
+}
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -71,13 +204,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _toast(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
-        backgroundColor:
-            isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-      ),
+    _TopAlertOverlay.show(
+      context,
+      msg,
+      isError: isError,
+      duration: const Duration(seconds: 4),
     );
   }
 

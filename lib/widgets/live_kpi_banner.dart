@@ -6,7 +6,7 @@ import '../services/api_client.dart';
 import '../services/realtime_service.dart';
 
 // بانر مؤشرات الأداء المباشرة من /kpi/dashboard
-// يُعرض في شاشة الإدارة لإثبات التكامل الحي مع AWS RDS
+// يُعرض في شاشة الإدارة لإثبات التكامل الحي مع السيرفر
 class LiveKpiBanner extends StatefulWidget {
   const LiveKpiBanner({super.key});
 
@@ -102,7 +102,7 @@ class _LiveKpiBannerState extends State<LiveKpiBanner> {
                 ),
                 SizedBox(width: 10),
                 Text(
-                  'جاري قراءة مؤشرات الأداء من AWS RDS...',
+                  'جاري قراءة مؤشرات الأداء من السيرفر...',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -170,7 +170,7 @@ class _LiveKpiBannerState extends State<LiveKpiBanner> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'AWS RDS · آخر ${k.periodDays} يوم',
+                      'السيرفر · آخر ${k.periodDays} يوم',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -189,7 +189,7 @@ class _LiveKpiBannerState extends State<LiveKpiBanner> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
-                      'AWS',
+                      'السيرفر',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,

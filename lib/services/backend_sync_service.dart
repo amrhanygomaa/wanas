@@ -110,7 +110,8 @@ class BackendSyncService {
         loadAll || isResident || isFamily || isNurse || isSpecialist || isAdmin;
     final loadResidentWellness = loadAll || isResident || isFamily;
     final loadMedicationData = loadAll || isResident || isFamily || isNurse;
-    final loadActivitiesData = loadAll || isResident || isSpecialist || isNurse;
+    final loadActivitiesData =
+        loadAll || isResident || isSpecialist || isNurse || isFamily;
     final loadFamilyData = loadAll || isResident || isFamily;
     final loadNursingData = loadAll || isNurse || isAdmin;
     final loadSocialData = loadAll || isSpecialist;
@@ -201,7 +202,8 @@ class BackendSyncService {
     final overdueDosesFuture = listWhen(
         loadMedicationData, '/medications/overdue',
         query: (isResident || isFamily) ? scopedResidentQuery : null);
-    final activitiesFuture = listWhen(loadActivitiesData, '/activities');
+    final activitiesFuture = listWhen(loadActivitiesData, '/activities',
+        query: (isResident || isFamily) ? scopedResidentQuery : null);
     final complaintsFuture = listWhen(loadSocialData || isAdmin, '/complaints');
     final visitsFuture = noScopedResident
         ? Future<List<Map<String, dynamic>>?>.value(<Map<String, dynamic>>[])
@@ -386,8 +388,11 @@ class BackendSyncService {
           socialToolsJson?.map(_socialAssessmentToolFromJson).toList(),
       socialResidentScores:
           socialScoresJson?.map(_socialResidentScoreFromJson).toList(),
-      staffPerformance:
-          staffPerformanceJson?.map(_staffPerformanceFromJson).toList(),
+      staffPerformance: staffPerformanceJson
+          ?.map(_staffPerformanceFromJson)
+          .toList()
+          .where((staff) => _isValidStaff(staff))
+          .toList(),
       sentReports: sentReportsJson?.map(_sentReportFromJson).toList(),
       careReportPreview:
           careReportJson == null ? null : _careReportFromJson(careReportJson),
@@ -575,25 +580,47 @@ class BackendSyncService {
   }
 
   SpecialistResidentFile _residentFileFromJson(Map<String, dynamic> j) {
-    final name = '${_s(j['firstName'])} ${_s(j['lastName'])}'.trim();
+    final nameEn = '${_s(j['firstName'])} ${_s(j['lastName'])}'.trim();
+    // الاسم العربي — يُفضَّل من حقل arabicName أو firstNameAr/lastNameAr
+    final nameArFirst = _s(j['firstNameAr'] ?? j['arabicFirstName'] ?? '');
+    final nameArLast = _s(j['lastNameAr'] ?? j['arabicLastName'] ?? '');
+    final nameAr = '$nameArFirst $nameArLast'.trim();
+    final name =
+        nameAr.isNotEmpty ? nameAr : (nameEn.isEmpty ? 'مقيم' : nameEn);
+    final nickname = _s(j['nickname'] ?? j['preferredName'] ?? '');
     return SpecialistResidentFile(
       id: _s(j['id']),
-      name: name.isEmpty ? 'مقيم' : name,
-      nameEn: name,
+      name: name,
+      nameEn: nameEn.isEmpty ? name : nameEn,
+      nickname: nickname.isEmpty ? null : nickname,
       room: _s(j['roomNumber'], fallback: '-'),
       status: _s(j['status'], fallback: 'active') == 'active'
           ? 'updated'
           : _s(j['status']),
-      lastUpdate: 'من AWS',
+      lastUpdate: 'من السيرفر',
       categories: const ['medical', 'social'],
       initials: _initials(name),
       age: _age(_s(j['dateOfBirth'])),
       phone: _s(j['phone'], fallback: ''),
+      nationalId: _s(j['nationalId'], fallback: ''),
+      gender: _s(j['gender'], fallback: ''),
+      emergencyContactName: _s(j['emergencyContactName'], fallback: ''),
+      emergencyContactPhone: _s(j['emergencyContactPhone'], fallback: ''),
+      emergencyRelation: _s(j['emergencyRelation'], fallback: ''),
       bloodType: _s(j['bloodType'], fallback: 'غير محدد'),
       chronicDiseases: _csv(j['chronicDiseases']),
       allergies: _csv(j['allergies']),
+      insuranceInfo: _s(j['insuranceInfo'], fallback: ''),
+      primaryDoctorName: _s(j['primaryDoctorName'], fallback: ''),
       mobilityStatus: _s(j['mobilityStatus'], fallback: 'غير محدد'),
+      assistiveDevices: _csv(j['assistiveDevices']),
+      cognitiveStatus: _s(j['cognitiveStatus'], fallback: ''),
       dietType: _s(j['dietType'], fallback: 'عادي'),
+      foodRestrictions: _csv(j['foodRestrictions']),
+      foodPreferences: _s(j['foodPreferences'], fallback: ''),
+      previousProfession: _s(j['previousProfession'], fallback: ''),
+      hobbies: _csv(j['hobbies']),
+      socialStatus: _s(j['socialStatus'], fallback: ''),
       uploadedDocuments: const [],
       imageUrl: _s(j['imageUrl'], fallback: ''),
     );
@@ -610,19 +637,23 @@ class BackendSyncService {
       entryDate: _date(_s(j['admissionDate'])),
       nationalId: _s(j['nationalId'], fallback: ''),
       imageUrl: _s(j['imageUrl'], fallback: ''),
-      emergencyContactName: 'غير محدد',
-      emergencyContactPhone: '',
-      emergencyRelation: '',
+      emergencyContactName: _s(j['emergencyContactName'], fallback: 'غير محدد'),
+      emergencyContactPhone: _s(j['emergencyContactPhone'], fallback: ''),
+      emergencyRelation: _s(j['emergencyRelation'], fallback: ''),
       bloodType: _s(j['bloodType'], fallback: 'غير محدد'),
       allergies: _csv(j['allergies']),
       chronicDiseases: _csv(j['chronicDiseases']),
-      insuranceInfo: 'غير محدد',
+      insuranceInfo: _s(j['insuranceInfo'], fallback: 'غير محدد'),
+      primaryDoctorName: _s(j['primaryDoctorName'], fallback: ''),
       mobilityStatus: _s(j['mobilityStatus'], fallback: 'غير محدد'),
-      cognitiveStatus: 'غير محدد',
+      assistiveDevices: _csv(j['assistiveDevices']),
+      cognitiveStatus: _s(j['cognitiveStatus'], fallback: 'غير محدد'),
       dietType: _s(j['dietType'], fallback: 'عادي'),
-      foodPreferences: '',
-      previousProfession: '',
-      socialStatus: '',
+      foodRestrictions: _csv(j['foodRestrictions']),
+      foodPreferences: _s(j['foodPreferences'], fallback: ''),
+      previousProfession: _s(j['previousProfession'], fallback: ''),
+      hobbies: _csv(j['hobbies']),
+      socialStatus: _s(j['socialStatus'], fallback: ''),
       contractType: 'شهري',
     );
   }
@@ -753,7 +784,7 @@ class BackendSyncService {
       location: _s(j['location'], fallback: 'الدار'),
       time: _timeFromDate(start),
       status: start.isBefore(DateTime.now()) ? 'done' : 'coming',
-      badges: 'AWS',
+      badges: 'السيرفر',
       pointsReward: 10,
       supervisor: _s(
         j['createdByName'] ?? j['supervisorName'] ?? j['supervisor_name'],
@@ -850,11 +881,12 @@ class BackendSyncService {
     Map<String, String> residentMap,
   ) {
     final residentId = _s(j['residentId']);
+    final imageUrl = _mediaUrlFromJson(j);
     return MemoryMoment(
       id: _s(j['id']),
       residentId: residentId,
       residentName: residentMap[residentId] ?? residentId,
-      imageUrl: _s(j['imageUrl'], fallback: ''),
+      imageUrl: imageUrl,
       activityTitle: _s(j['activityTitle'], fallback: 'ذكرى من الدار'),
       date: _dateLabel(_s(j['createdAt'])),
       appreciations: _int(j['appreciations']),
@@ -862,13 +894,14 @@ class BackendSyncService {
   }
 
   MemoryItem _memoryItemFromJson(Map<String, dynamic> j) {
+    final imageUrl = _mediaUrlFromJson(j);
     return MemoryItem(
       id: _s(j['id']),
       category: 'المسكن',
       title: _s(j['activityTitle'], fallback: 'ذكرى من الدار'),
       date: _dateLabel(_s(j['createdAt'])),
-      type: _s(j['imageUrl']).isEmpty ? 'text' : 'image',
-      assetPath: _s(j['imageUrl'], fallback: ''),
+      type: imageUrl.isEmpty ? 'text' : 'image',
+      assetPath: imageUrl,
     );
   }
 
@@ -877,10 +910,7 @@ class BackendSyncService {
     Map<String, String> residentMap,
   ) {
     final residentId = _s(j['residentId'] ?? j['resident_id']);
-    final mediaUrl = _s(
-      j['mediaUrl'] ?? j['media_url'] ?? j['downloadUrl'] ?? j['presignedUrl'],
-      fallback: '',
-    );
+    final mediaUrl = _mediaUrlFromJson(j);
     return MemoryMoment(
       id: 'fb_${_s(j['id'])}',
       residentId: residentId,
@@ -893,10 +923,7 @@ class BackendSyncService {
   }
 
   MemoryItem _memoryItemFromFamilyMedia(Map<String, dynamic> j) {
-    final mediaUrl = _s(
-      j['mediaUrl'] ?? j['media_url'] ?? j['downloadUrl'] ?? j['presignedUrl'],
-      fallback: '',
-    );
+    final mediaUrl = _mediaUrlFromJson(j);
     return MemoryItem(
       id: 'fb_${_s(j['id'])}',
       category: 'أسرة',
@@ -907,7 +934,40 @@ class BackendSyncService {
     );
   }
 
+  String _mediaUrlFromJson(Map<String, dynamic> j) {
+    return _s(
+      j['imageUrl'] ??
+          j['image_url'] ??
+          j['mediaUrl'] ??
+          j['media_url'] ??
+          j['downloadUrl'] ??
+          j['download_url'] ??
+          j['presignedUrl'] ??
+          j['presigned_url'] ??
+          j['fileName'] ??
+          j['file_name'] ??
+          j['url'],
+      fallback: '',
+    );
+  }
+
   VoiceMessage _voiceMessageFromJson(Map<String, dynamic> j) {
+    final recipientName = _s(
+      j['recipientName'] ??
+          j['recipient_name'] ??
+          j['familyMemberName'] ??
+          j['family_member_name'],
+    );
+    final status = _s(
+        j['deliveryStatus'] ?? j['delivery_status'] ?? j['status'],
+        fallback: 'sent');
+    final moderation = _s(
+      j['moderationStatus'] ??
+          j['moderation_status'] ??
+          j['approvalStatus'] ??
+          j['approval_status'],
+      fallback: status == 'rejected' ? 'rejected' : 'pending',
+    );
     return VoiceMessage(
       id: _s(j['id']),
       senderId: _s(j['senderType'], fallback: 'family'),
@@ -915,6 +975,12 @@ class BackendSyncService {
       timeDescription: _dateLabel(_s(j['createdAt'])),
       audioUrl: _s(j['audioUrl']).isEmpty ? null : _s(j['audioUrl']),
       durationSeconds: _int(j['durationSeconds']),
+      recipientId: _s(j['recipientId'] ?? j['recipient_id']).isEmpty
+          ? _s(j['familyMemberId'] ?? j['family_member_id'])
+          : _s(j['recipientId'] ?? j['recipient_id']),
+      recipientName: recipientName.isEmpty ? null : recipientName,
+      deliveryStatus: status.isEmpty ? 'sent' : status,
+      moderationStatus: moderation.isEmpty ? 'pending' : moderation,
     );
   }
 
@@ -1201,10 +1267,31 @@ class BackendSyncService {
       name: _s(j['name'], fallback: 'عضو فريق'),
       role: _s(j['role'], fallback: ''),
       completionRate: _double(j['completionRate']) / 100,
-      lastActive: _s(j['lastActive'], fallback: 'من AWS'),
+      lastActive: _s(j['lastActive'], fallback: 'من السيرفر'),
       status: j['isOnline'] == true ? 'online' : 'offline',
       imageUrl: _s(j['imageUrl'], fallback: ''),
     );
+  }
+
+  bool _isValidStaff(StaffPerformance staff) {
+    // Filter out fake/invalid staff accounts
+    // Remove entries where name is empty, contains only placeholder characters, or default text
+    final name = staff.name.trim();
+
+    // Check if name is empty or very short
+    if (name.isEmpty || name.length < 2) return false;
+
+    // Check if name contains mostly question marks or special placeholder characters
+    final questionMarkCount = name.split('').where((c) => c == '?').length;
+    if (questionMarkCount > (name.length / 2)) return false;
+
+    // Check if name is default/placeholder text
+    if (name == 'عضو فريق' || name == 'من السيرفر' || name.startsWith('????')) {
+      return false;
+    }
+
+    // Valid staff account
+    return true;
   }
 
   SentReport _sentReportFromJson(Map<String, dynamic> j) {
@@ -1226,7 +1313,7 @@ class BackendSyncService {
 
   String _fullArabicDateLabel(String value) {
     final parsed = DateTime.tryParse(value);
-    if (parsed == null) return value.isEmpty ? 'من AWS' : value;
+    if (parsed == null) return value.isEmpty ? 'من السيرفر' : value;
     const months = [
       'يناير',
       'فبراير',
@@ -1510,7 +1597,7 @@ class BackendSyncService {
 
   String _dateLabel(String value) {
     final parsed = DateTime.tryParse(value);
-    if (parsed == null) return value.isEmpty ? 'من AWS' : value;
+    if (parsed == null) return value.isEmpty ? 'من السيرفر' : value;
     return '${parsed.year}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
   }
 

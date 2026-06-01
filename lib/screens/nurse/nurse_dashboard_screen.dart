@@ -891,7 +891,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
         if (provider.residentFiles.isEmpty)
           const Padding(
             padding: EdgeInsets.all(16),
-            child: Text('لا توجد بيانات مقيمين من AWS الآن',
+            child: Text('لا توجد بيانات مقيمين من السيرفر الآن',
                 style: TextStyle(color: Color(0xFF64748B))),
           )
         else
@@ -910,8 +910,8 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
             return _buildResCard(
               name: '${resident.name} — غرفة ${resident.room}',
               room: resident.age == null
-                  ? 'من AWS'
-                  : '${resident.age} سنة · من AWS',
+                  ? 'من السيرفر'
+                  : '${resident.age} سنة · من السيرفر',
               av: resident.initials,
               avBg: isCritical
                   ? const Color(0xFFFFE4E6)

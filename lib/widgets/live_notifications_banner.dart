@@ -104,7 +104,7 @@ class _LiveNotificationsBannerState extends State<LiveNotificationsBanner> {
         const SnackBar(
           backgroundColor: Color(0xFF6366F1),
           content: Text(
-            'تم إنشاء إشعار جديد في AWS RDS (POST /notifications)',
+            'تم إنشاء إشعار جديد في السيرفر (POST /notifications)',
             style: TextStyle(fontFamily: 'Cairo'),
           ),
         ),
@@ -250,7 +250,7 @@ class _LiveNotificationsBannerState extends State<LiveNotificationsBanner> {
                       )
                     : const Icon(Icons.add_alert_rounded, size: 16),
                 label: const Text(
-                  'إنشاء إشعار في AWS RDS',
+                  'إنشاء إشعار في السيرفر',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,

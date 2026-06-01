@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
 import '../chat/family_resident_chat_screen.dart';
+import 'heart_messages_screen.dart';
 
 class CallsScreen extends ConsumerStatefulWidget {
   const CallsScreen({super.key});
@@ -139,112 +143,14 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
   }
 
   void _showRecordDialog(AppRiverpod provider) {
-    bool isRecording = false;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('إرسال رسالة صوتية',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(
-                  isRecording ? 'جاري التسجيل...' : 'اضغط زر التسجيل للبدء',
-                  style: TextStyle(
-                    color: isRecording
-                        ? const Color(0xFFef4444)
-                        : const Color(0xFF94a3b8),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: () => setS(() => isRecording = !isRecording),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: isRecording
-                            ? [const Color(0xFFef4444), const Color(0xFFf97316)]
-                            : [
-                                const Color(0xFF6C63FF),
-                                const Color(0xFFc084fc)
-                              ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isRecording
-                                  ? const Color(0xFFef4444)
-                                  : const Color(0xFF6C63FF))
-                              .withValues(alpha: 0.4),
-                          blurRadius: 20,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      isRecording ? Icons.stop_rounded : Icons.mic,
-                      color: Colors.white,
-                      size: 38,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('إلغاء',
-                            style: TextStyle(
-                                color: Color(0xFF94a3b8), fontSize: 16)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          provider.sendVoiceMessageFromResident(
-                              'رسالة من الجد — أنا بخير وبشوقكم');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('تم إرسال رسالتك الصوتية للأسرة 🎤❤️'),
-                              backgroundColor: Color(0xFF6C63FF),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6C63FF),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('إرسال ✨',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+    _openHeartMessagesPage(autoRecord: true);
+  }
+
+  void _openHeartMessagesPage({bool autoRecord = false}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => HeartMessagesScreen(autoRecord: autoRecord),
       ),
     );
   }
@@ -1056,12 +962,23 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               children: [
                 // Video call
                 _buildActionCircle(
-                  onTap: () => provider.launchZoom(member.zoomLink),
+                  onTap: () {
+                    if (!hasApp) {
+                      _showNotOnAppFeedback(member.name);
+                      return;
+                    }
+                    provider.startVideoCall(
+                      member.name,
+                      member.initials,
+                      calleeId: member.userId,
+                      residentId: provider.backendResidentId,
+                    );
+                  },
                   icon: Icons.videocam_rounded,
                   color: const Color(0xFF6C63FF),
-                  isActive: isOnline,
+                  isActive: hasApp,
                   hc: hc,
-                  tooltip: isOnline ? 'مكالمة فيديو' : 'غير متاح',
+                  tooltip: hasApp ? 'مكالمة فيديو' : 'ليس على التطبيق',
                 ),
                 // Phone call
                 _buildActionCircle(
@@ -1115,8 +1032,8 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
             Expanded(
               child: Text(
                 '$name ليس مستخدماً على تطبيق ونس حتى الآن',
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1188,9 +1105,11 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
   }
 
   Widget _buildVoiceMessages(AppRiverpod provider) {
-    if (provider.voiceMessages.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final received =
+        provider.voiceMessages.where((m) => m.senderId != 'resident').toList();
+    final sent =
+        provider.voiceMessages.where((m) => m.senderId == 'resident').toList();
+
     return Container(
       decoration: BoxDecoration(
           color: Colors.white,
@@ -1207,20 +1126,25 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Icon(Icons.mic_rounded, color: Color(0xFF6C63FF), size: 24),
-                SizedBox(width: 8),
-                Text('رسائل من القلب ✨',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6C63FF))),
-              ],
+            GestureDetector(
+              onTap: _openHeartMessagesPage,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Icon(Icons.chevron_left_rounded,
+                      color: Color(0xFF6C63FF), size: 24),
+                  Spacer(),
+                  Text('رسائل من القلب ✨',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6C63FF))),
+                  SizedBox(width: 8),
+                  Icon(Icons.mic_rounded, color: Color(0xFF6C63FF), size: 24),
+                ],
+              ),
             ),
             const SizedBox(height: 15),
-            // زر تسجيل رسالة جديدة مدمج داخل الصندوق
             GestureDetector(
               onTap: () => _showRecordDialog(provider),
               child: Container(
@@ -1244,56 +1168,170 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                   children: [
                     Icon(Icons.mic, color: Colors.white, size: 22),
                     SizedBox(width: 10),
-                    Text('رسائل من القلب ✨',
+                    Text('سجّل رسالة لعائلتك',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold)),
-                    SizedBox(width: 8),
-                    Text('— عائلتك بانتظارك',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            const Divider(color: Color(0xFFf5f3ff), thickness: 1),
-            const SizedBox(height: 10),
-            ...provider.voiceMessages.asMap().entries.map((entry) {
-              final index = entry.key;
-              final msg = entry.value;
-              final sender =
-                  provider.familyMembers.firstWhere((m) => m.id == msg.senderId,
-                      orElse: () => provider.familyMembers.isNotEmpty
-                          ? provider.familyMembers.first
-                          : FamilyMember(
-                              id: msg.senderId,
-                              name: 'أحد أفراد العائلة',
-                              relation: 'قريب',
-                              avatarPath: '',
-                              initials: '؟',
-                              phoneNumber: '',
-                            ));
-              final gradients = [
-                const [Color(0xFFf472b6), Color(0xFFdb2777)],
-                const [Color(0xFF34d399), Color(0xFF059669)],
-                const [Color(0xFF818cf8), Color(0xFF4f46e5)],
-                const [Color(0xFFfbbf24), Color(0xFFd97706)],
-              ];
-              // Using sender order mapped to a gradient or just by msg index
-              final pGradient = gradients[index % gradients.length];
-              return Column(
+            if (sent.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  if (index > 0) const Divider(color: Color(0xFFf5f3ff)),
-                  _buildVoiceMessageRow(provider, msg, sender, pGradient)
+                  Icon(Icons.send_rounded, color: Color(0xFF10b981), size: 18),
+                  SizedBox(width: 6),
+                  Text('رسائلي المُرسلة',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF10b981))),
                 ],
-              );
-            }),
+              ),
+              const SizedBox(height: 8),
+              ...sent.asMap().entries.map((e) => Column(
+                    children: [
+                      if (e.key > 0)
+                        const Divider(color: Color(0xFFf0fdf4), thickness: 1),
+                      _buildSentVoiceRow(e.value),
+                    ],
+                  )),
+            ],
+            if (received.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(color: Color(0xFFf5f3ff), thickness: 1),
+              const SizedBox(height: 8),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Icon(Icons.inbox_rounded, color: Color(0xFF6C63FF), size: 18),
+                  SizedBox(width: 6),
+                  Text('رسائل من العائلة',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6C63FF))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...received.asMap().entries.map((entry) {
+                final index = entry.key;
+                final msg = entry.value;
+                final sender = provider.familyMembers
+                    .firstWhere((m) => m.id == msg.senderId,
+                        orElse: () => provider.familyMembers.isNotEmpty
+                            ? provider.familyMembers.first
+                            : FamilyMember(
+                                id: msg.senderId,
+                                name: 'أحد أفراد العائلة',
+                                relation: 'قريب',
+                                avatarPath: '',
+                                initials: '؟',
+                                phoneNumber: '',
+                              ));
+                final gradients = [
+                  const [Color(0xFFf472b6), Color(0xFFdb2777)],
+                  const [Color(0xFF34d399), Color(0xFF059669)],
+                  const [Color(0xFF818cf8), Color(0xFF4f46e5)],
+                  const [Color(0xFFfbbf24), Color(0xFFd97706)],
+                ];
+                final pGradient = gradients[index % gradients.length];
+                return Column(
+                  children: [
+                    if (index > 0) const Divider(color: Color(0xFFf5f3ff)),
+                    _buildVoiceMessageRow(provider, msg, sender, pGradient),
+                  ],
+                );
+              }),
+            ],
+            if (received.isEmpty && sent.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Text(
+                    'لا توجد رسائل بعد\nسجّل رسالتك الأولى لعائلتك!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 14, color: Color(0xFF94a3b8), height: 1.6),
+                  ),
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSentVoiceRow(VoiceMessage msg) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF10b981), Color(0xFF059669)],
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF10b981).withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                )
+              ],
+            ),
+            child: const Icon(Icons.mic, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  msg.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1e293b)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  msg.timeDescription,
+                  style:
+                      const TextStyle(fontSize: 13, color: Color(0xFF64748b)),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFdcfce7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle_rounded,
+                    color: Color(0xFF10b981), size: 16),
+                SizedBox(width: 4),
+                Text('تم الإرسال',
+                    style: TextStyle(
+                        color: Color(0xFF10b981),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1305,7 +1343,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          // Right: Avatar
           Container(
             width: 52,
             height: 52,
@@ -1327,7 +1364,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                         fontWeight: FontWeight.bold))),
           ),
           const SizedBox(width: 12),
-          // Middle: Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1346,7 +1382,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               ],
             ),
           ),
-          // Waveform
           if (isPlaying)
             Row(
               children: [
@@ -1358,7 +1393,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
               ],
             ),
           const SizedBox(width: 12),
-          // Left: Play Button
           GestureDetector(
             onTap: () => provider.toggleVoiceMessage(msg.id),
             child: Container(
@@ -1435,7 +1469,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
             if (calls.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('لا توجد مكالمات من AWS حتى الآن',
+                child: Text('لا توجد مكالمات من السيرفر حتى الآن',
                     style: TextStyle(color: Color(0xFF64748b))),
               )
             else
@@ -1586,6 +1620,251 @@ class _CallsScreenState extends ConsumerState<CallsScreen>
                         ? Colors.white
                         : (hc ? Colors.white38 : const Color(0xFF9CA3AF))),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordDialog extends StatefulWidget {
+  final AppRiverpod provider;
+  final BuildContext parentContext;
+
+  const _RecordDialog({required this.provider, required this.parentContext});
+
+  @override
+  State<_RecordDialog> createState() => _RecordDialogState();
+}
+
+class _RecordDialogState extends State<_RecordDialog> {
+  final _titleCtrl = TextEditingController(text: 'رسالة من القلب');
+  final _recorder = AudioRecorder();
+
+  bool _isRecording = false;
+  bool _isSending = false;
+  String? _recordedPath;
+  int _seconds = 0;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _timer?.cancel();
+    _recorder.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      _timer?.cancel();
+      final path = await _recorder.stop();
+      setState(() {
+        _isRecording = false;
+        _recordedPath = path;
+      });
+    } else {
+      final messenger = ScaffoldMessenger.of(widget.parentContext);
+      final hasPermission = await _recorder.hasPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('يرجى السماح للتطبيق بالوصول للميكروفون'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _recorder.start(const RecordConfig(), path: path);
+      setState(() {
+        _isRecording = true;
+        _seconds = 0;
+        _recordedPath = null;
+      });
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        setState(() => _seconds++);
+      });
+    }
+  }
+
+  Future<void> _send() async {
+    if (_recordedPath == null) return;
+    setState(() => _isSending = true);
+    final title =
+        _titleCtrl.text.trim().isEmpty ? 'رسالة صوتية' : _titleCtrl.text.trim();
+    final messenger = ScaffoldMessenger.of(widget.parentContext);
+    await widget.provider.sendVoiceMessageFromResident(
+      title,
+      audioPath: _recordedPath,
+      durationSeconds: _seconds,
+    );
+    if (mounted) {
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('تم إرسال رسالتك الصوتية للأسرة 🎤❤️'),
+          backgroundColor: Color(0xFF6C63FF),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  String get _timerText {
+    final m = (_seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (_seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'رسالة من القلب ✨',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6C63FF)),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleCtrl,
+              enabled: !_isRecording && !_isSending,
+              textAlign: TextAlign.right,
+              decoration: InputDecoration(
+                labelText: 'اسم الرسالة',
+                hintText: 'مثال: رسالة الصباح',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (_isRecording || _recordedPath != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  _recordedPath != null ? 'المدة: $_timerText' : _timerText,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: _isRecording
+                        ? const Color(0xFFef4444)
+                        : const Color(0xFF6C63FF),
+                  ),
+                ),
+              ),
+            GestureDetector(
+              onTap: _isSending ? null : _toggleRecording,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: _isRecording
+                        ? [const Color(0xFFef4444), const Color(0xFFf97316)]
+                        : _recordedPath != null
+                            ? [const Color(0xFF10b981), const Color(0xFF059669)]
+                            : [
+                                const Color(0xFF6C63FF),
+                                const Color(0xFFc084fc)
+                              ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_isRecording
+                              ? const Color(0xFFef4444)
+                              : _recordedPath != null
+                                  ? const Color(0xFF10b981)
+                                  : const Color(0xFF6C63FF))
+                          .withValues(alpha: 0.4),
+                      blurRadius: 20,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  _isRecording
+                      ? Icons.stop_rounded
+                      : _recordedPath != null
+                          ? Icons.check_rounded
+                          : Icons.mic,
+                  color: Colors.white,
+                  size: 38,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _isRecording
+                  ? 'جاري التسجيل... اضغط للإيقاف'
+                  : _recordedPath != null
+                      ? 'تم التسجيل ✓ — يمكنك الإرسال الآن'
+                      : 'اضغط للبدء في التسجيل',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _isRecording
+                    ? const Color(0xFFef4444)
+                    : const Color(0xFF94a3b8),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: _isSending ? null : () => Navigator.pop(context),
+                    child: const Text('إلغاء',
+                        style:
+                            TextStyle(color: Color(0xFF94a3b8), fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed:
+                        (_recordedPath == null || _isSending) ? null : _send,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6C63FF),
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _isSending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text('إرسال ✨',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

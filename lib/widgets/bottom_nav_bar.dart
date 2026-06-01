@@ -15,9 +15,9 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
 
     return Container(
-      height: 70,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         border: Border(
@@ -34,15 +34,25 @@ class BottomNavBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _navItem(context, Icons.home_rounded, 'الرئيسية', 0, isDark),
-          _navItem(context, Icons.medication_rounded, 'دواء', 1, isDark),
-          // Center elevated AI button
-          _buildAiCenter(),
-          _navItem(context, Icons.people_rounded, 'أسرة', 2, isDark),
-          _navItem(context, Icons.photo_rounded, 'ذكريات', 3, isDark),
+          SizedBox(
+            height: 70,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _navItem(context, Icons.home_rounded, 'الرئيسية', 0, isDark),
+                _navItem(
+                    context, Icons.medication_rounded, 'دواء', 1, isDark),
+                _buildAiCenter(),
+                _navItem(context, Icons.people_rounded, 'أسرة', 2, isDark),
+                _navItem(context, Icons.photo_rounded, 'ذكريات', 3, isDark),
+              ],
+            ),
+          ),
+          // مساحة لمنع تداخل system navigation bar مع nav items
+          SizedBox(height: bottomPadding),
         ],
       ),
     );

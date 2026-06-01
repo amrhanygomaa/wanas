@@ -88,7 +88,7 @@ class AiSpeechResponse {
   }
 }
 
-// خدمة الذكاء الاصطناعي عبر AWS Bedrock (Claude Haiku 4.5)
+// خدمة الذكاء الاصطناعي عبر السيرفر Bedrock (Claude Haiku 4.5)
 // متصلة فعلياً بالباك اند الإنتاجي على EC2.
 class AiService {
   AiService._();
@@ -130,9 +130,15 @@ class AiService {
     String voiceId = 'Zayd',
     String engine = 'neural',
     String? provider,
+    String? model,
+    String? voiceName,
+    String? languageCode,
+    String? audioEncoding,
+    String? prompt,
     String? openAiVoice,
     String? openAiVoiceId,
     String? voiceInstructions,
+    Duration timeout = const Duration(seconds: 45),
   }) async {
     final body = <String, dynamic>{
       'text': text,
@@ -140,6 +146,14 @@ class AiService {
       'engine': engine,
     };
     if (provider != null) body['provider'] = provider;
+    if (model != null) {
+      body['model'] = model;
+      body['modelName'] = model;
+    }
+    if (voiceName != null) body['voiceName'] = voiceName;
+    if (languageCode != null) body['languageCode'] = languageCode;
+    if (audioEncoding != null) body['audioEncoding'] = audioEncoding;
+    if (prompt != null) body['prompt'] = prompt;
     if (openAiVoice != null) body['openAiVoice'] = openAiVoice;
     if (openAiVoiceId != null) body['openAiVoiceId'] = openAiVoiceId;
     if (voiceInstructions != null) {
@@ -150,6 +164,7 @@ class AiService {
       '/ai/speech',
       body: body,
       auth: false,
+      timeout: timeout,
     );
     return AiSpeechResponse.fromJson(res as Map<String, dynamic>);
   }

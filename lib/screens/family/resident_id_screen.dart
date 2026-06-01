@@ -94,7 +94,7 @@ class _ResidentIdScreenState extends ConsumerState<ResidentIdScreen>
               children: [
                 _buildQRCode(qrData),
                 const SizedBox(height: 32),
-                Text(resident?.name ?? 'لا توجد بيانات مقيم من AWS',
+                Text(resident?.name ?? 'لا توجد بيانات مقيم من السيرفر',
                     style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

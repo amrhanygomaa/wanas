@@ -15,6 +15,7 @@ class TaptabaScaffold extends ConsumerStatefulWidget {
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
   final String? overrideRole; // تحديد دور المستخدم لتخصيص القائمة
+  final bool extendBody; // هل يمتد المحتوى خلف شريط التنقل السفلي؟
   final bool extendBodyBehindAppBar; // تمديد المحتوى خلف شريط العنوان
   final bool transparentAppBar; // جعل شريط العنوان شفافاً
   final bool hideAppBar; // إخفاء شريط العنوان بالكامل
@@ -35,6 +36,7 @@ class TaptabaScaffold extends ConsumerStatefulWidget {
     this.floatingActionButton,
     this.floatingActionButtonLocation,
     this.overrideRole,
+    this.extendBody = true,
     this.extendBodyBehindAppBar = false,
     this.transparentAppBar = false,
     this.hideAppBar = false,
@@ -191,12 +193,10 @@ class _TaptabaScaffoldState extends ConsumerState<TaptabaScaffold>
   Widget build(BuildContext context) {
     // دالة بناء الواجهة
     return Scaffold(
-      // المكون الأساسي للهيكل في فلاتر
-      key: _scaffoldKey, // ربط المفتاح
-      extendBodyBehindAppBar:
-          widget.extendBodyBehindAppBar, // ضبط تمديد المحتوى
-      backgroundColor:
-          Theme.of(context).scaffoldBackgroundColor, // لون خلفية التطبيق
+      key: _scaffoldKey,
+      extendBody: widget.extendBody,
+      extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       drawer: TaptabaDrawer(
           overrideRole: widget.overrideRole), // القائمة الجانبية الموحدة
       body: widget.hideAppBar

@@ -212,7 +212,7 @@ class _AdminSettingsViewState extends ConsumerState<AdminSettingsView> {
           _sectionTitle('إعدادات المنشأة', Icons.business_rounded),
           const SizedBox(height: 8),
           const Text(
-            'تُحفظ مباشرة في قاعدة بيانات AWS RDS وتظهر للموظفين والأسر فوراً.',
+            'تُحفظ مباشرة في قاعدة بيانات السيرفر وتظهر للموظفين والأسر فوراً.',
             style: TextStyle(
                 fontSize: 11, color: Color(0xFF64748B), fontFamily: 'Cairo'),
           ),

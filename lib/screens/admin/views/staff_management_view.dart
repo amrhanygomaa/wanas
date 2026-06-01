@@ -166,7 +166,7 @@ class StaffManagementView extends StatelessWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(provider.backendSyncError ??
-                                'تعذر تسجيل الحساب على AWS'),
+                                'تعذر تسجيل الحساب على السيرفر'),
                             backgroundColor: const Color(0xFFef4444),
                           ),
                         );
@@ -177,7 +177,7 @@ class StaffManagementView extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'تم تسجيل حساب "${nameController.text}" على AWS بنجاح'),
+                              'تم تسجيل حساب "${nameController.text}" على السيرفر بنجاح'),
                           backgroundColor: const Color(0xFF0ea5e9),
                         ),
                       );

@@ -870,15 +870,19 @@ class _VolunteerOpportunitiesViewState
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
+                    Row(
                       children: [
+                        Expanded(
+                          child: _buildDetailChip(
+                            _localizeSchedule(opp.dateInfo),
+                            'assets/icons/calendar.png',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         _buildDetailChip(
-                            opp.dateInfo, 'assets/icons/calendar.png'),
-                        _buildDetailChip(
-                            'المقاعد: ${opp.filledSlots}/${opp.totalSlots}',
-                            Icons.people_outline),
+                          'المقاعد: ${opp.filledSlots}/${opp.totalSlots}',
+                          Icons.people_outline,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -979,9 +983,28 @@ class _VolunteerOpportunitiesViewState
     );
   }
 
+  String _localizeSchedule(String raw) {
+    return raw
+        .replaceAll('Mondays', 'الاثنين')
+        .replaceAll('Monday', 'الاثنين')
+        .replaceAll('Tuesdays', 'الثلاثاء')
+        .replaceAll('Tuesday', 'الثلاثاء')
+        .replaceAll('Wednesdays', 'الأربعاء')
+        .replaceAll('Wednesday', 'الأربعاء')
+        .replaceAll('Thursdays', 'الخميس')
+        .replaceAll('Thursday', 'الخميس')
+        .replaceAll('Fridays', 'الجمعة')
+        .replaceAll('Friday', 'الجمعة')
+        .replaceAll('Saturdays', 'السبت')
+        .replaceAll('Saturday', 'السبت')
+        .replaceAll('Sundays', 'الأحد')
+        .replaceAll('Sunday', 'الأحد')
+        .replaceAll(' & ', ' و ')
+        .replaceAll(', ', ' و ');
+  }
+
   Widget _buildDetailChip(String label, dynamic icon) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
           color: const Color(0xFFf8fafc),

@@ -314,7 +314,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                   controller: residentController,
                   decoration: const InputDecoration(
                     labelText: 'اسم المسن',
-                    hintText: 'اسم المقيم كما يظهر من AWS',
+                    hintText: 'اسم المقيم كما يظهر من السيرفر',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1082,7 +1082,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                   controller: doctorController,
                   decoration: const InputDecoration(
                     labelText: 'اسم الطبيب',
-                    hintText: 'اسم الطبيب من بيانات AWS',
+                    hintText: 'اسم الطبيب من بيانات السيرفر',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1137,7 +1137,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                     controller: residentController,
                     decoration: const InputDecoration(
                       labelText: 'اسم المقيم',
-                      hintText: 'اسم المقيم كما يظهر من AWS',
+                      hintText: 'اسم المقيم كما يظهر من السيرفر',
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -1535,7 +1535,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                   controller: residentController,
                   decoration: const InputDecoration(
                     labelText: 'اسم المقيم',
-                    hintText: 'اسم المقيم كما يظهر من AWS',
+                    hintText: 'اسم المقيم كما يظهر من السيرفر',
                   ),
                 ),
                 const SizedBox(height: 12),

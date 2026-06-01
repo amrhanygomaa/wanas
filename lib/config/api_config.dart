@@ -1,4 +1,4 @@
-// إعدادات الاتصال بالـ Backend (AWS Raaya Backend)
+// إعدادات الاتصال بالـ Backend (السيرفر Raaya Backend)
 //
 // لتغيير البيئة، عدّل [baseUrl].
 //   - Android Emulator (local dev) → 'http://10.0.2.2:3000'
@@ -10,7 +10,7 @@ class ApiConfig {
     defaultValue: 'https://api.helpers-tech.com',
   );
 
-  // AWS Cognito (raaya-users-dev pool)
+  // السيرفر (raaya-users-dev pool)
   static const String cognitoRegion = 'us-east-1';
   static const String cognitoUserPoolId = 'us-east-1_WQgMPSADf';
   static const String cognitoClientId = 'ifk56gi2vp5jn4tshvp96vn06';

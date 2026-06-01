@@ -50,9 +50,10 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
         vsync: this, duration: const Duration(milliseconds: 2400))
       ..repeat();
 
-    // تحميل صور الجهاز عند الدخول
+    // تحميل صور الجهاز والألبومات المحفوظة عند الدخول
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(appRiverpod).fetchGalleryImages();
+      ref.read(appRiverpod).loadLocalAlbums();
     });
   }
 
@@ -97,9 +98,9 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
   }
 
   Widget _buildHero(AppRiverpod provider) {
-    int photoCount =
-        provider.memoriesList.where((m) => m.type == 'image').length +
-            provider.memoryMoments.length;
+    int photoCount = provider
+        .getMemoriesByCategory(AppRiverpod.defaultPhotoAlbumName)
+        .length;
     int videoCount =
         provider.memoriesList.where((m) => m.type == 'video').length;
     return AnimatedBuilder(
@@ -366,7 +367,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                               Text(
                                   provider.memoriesList.isNotEmpty
                                       ? provider.memoriesList.first.title
-                                      : 'لا توجد ذكريات من AWS',
+                                      : 'لا توجد ذكريات من السيرفر',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
@@ -377,7 +378,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                                           ? Colors.white
                                           : const Color(0xFF0f172a))),
                               const SizedBox(height: 6),
-                              Text('من ألبوم AWS',
+                              Text('من ألبوم السيرفر',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.right,
@@ -687,8 +688,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
                   const Text(
                     'ابدأ بإنشاء ألبوم وإضافة صور ذكرياتك',
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(fontSize: 12, color: Color(0xFF94a3b8)),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF94a3b8)),
                   ),
                 ],
               ),
@@ -1112,7 +1112,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen>
         ? (latestMsg.type == 'voice'
             ? '🎤 أرسلت لك العائلة رسالة صوتية تشجيعية، يمكنك الاستماع إليها من شاشة الاتصالات أو الرسائل!'
             : '"${latestMsg.content}"')
-        : 'لا توجد رسائل عائلية من AWS حتى الآن';
+        : 'لا توجد رسائل عائلية من السيرفر حتى الآن';
 
     final signatureText = latestMsg != null ? 'من: العائلة ❤️' : 'من: العائلة';
 

@@ -126,7 +126,19 @@ class CognitoUserInfo {
   }
 }
 
-// خدمة المصادقة عبر AWS backend مع الاحتفاظ بتوكنات Cognito للجلسة.
+class CognitoNewPasswordChallenge {
+  final String email;
+  final String username;
+  final String session;
+
+  const CognitoNewPasswordChallenge({
+    required this.email,
+    required this.username,
+    required this.session,
+  });
+}
+
+// خدمة المصادقة عبر السيرفر مع الاحتفاظ بتوكنات Cognito للجلسة.
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
@@ -167,7 +179,7 @@ class AuthService {
     final refreshToken = body['refreshToken']?.toString();
 
     if (sessionToken.isEmpty) {
-      throw ApiException(500, 'استجابة تسجيل الدخول من AWS غير متوقعة', body);
+      throw ApiException(500, 'استجابة تسجيل الدخول من السيرفر غير متوقعة', body);
     }
 
     await ApiClient.instance.saveTokens(
@@ -188,6 +200,81 @@ class AuthService {
     if (kDebugMode) {
       debugPrint(
           '[Auth] backend login OK → ${_currentUser?.email} roles=${_currentUser?.roles}');
+    }
+
+    return _currentUser!;
+  }
+
+  Future<CognitoNewPasswordChallenge?> detectNewPasswordChallenge(
+    String email,
+    String temporaryPassword,
+  ) async {
+    final cleanEmail = email.trim();
+    final body = await _postCognito({
+      'AuthFlow': 'USER_PASSWORD_AUTH',
+      'ClientId': ApiConfig.cognitoClientId,
+      'AuthParameters': {
+        'USERNAME': cleanEmail,
+        'PASSWORD': temporaryPassword,
+      },
+    });
+
+    final challengeName = body['ChallengeName']?.toString();
+    if (challengeName != 'NEW_PASSWORD_REQUIRED') return null;
+
+    final params = body['ChallengeParameters'];
+    final username = params is Map
+        ? (params['USER_ID_FOR_SRP'] ?? params['USERNAME'] ?? cleanEmail)
+            .toString()
+        : cleanEmail;
+    final session = body['Session']?.toString() ?? '';
+    if (session.isEmpty) {
+      throw ApiException(500, 'استجابة تفعيل الحساب من Cognito غير متوقعة');
+    }
+
+    return CognitoNewPasswordChallenge(
+      email: cleanEmail,
+      username: username,
+      session: session,
+    );
+  }
+
+  Future<CognitoUserInfo> completeNewPasswordChallenge({
+    required CognitoNewPasswordChallenge challenge,
+    required String newPassword,
+  }) async {
+    final body = await _postCognito({
+      'ChallengeName': 'NEW_PASSWORD_REQUIRED',
+      'ClientId': ApiConfig.cognitoClientId,
+      'Session': challenge.session,
+      'ChallengeResponses': {
+        'USERNAME': challenge.username,
+        'NEW_PASSWORD': newPassword,
+      },
+    }, target: 'AWSCognitoIdentityProviderService.RespondToAuthChallenge');
+
+    final auth = body['AuthenticationResult'] as Map<String, dynamic>?;
+    final idToken = auth?['IdToken']?.toString() ?? '';
+    final accessToken = auth?['AccessToken']?.toString() ?? '';
+    final refreshToken = auth?['RefreshToken']?.toString();
+    final sessionToken = idToken.isNotEmpty ? idToken : accessToken;
+    if (sessionToken.isEmpty) {
+      throw ApiException(500, 'استجابة تفعيل الحساب من Cognito غير متوقعة');
+    }
+
+    await ApiClient.instance.saveTokens(
+      idToken: sessionToken,
+      refreshToken:
+          refreshToken == null || refreshToken.isEmpty ? null : refreshToken,
+    );
+
+    _currentUser = CognitoUserInfo.fromJwtPayload(
+      _decodeJwtPayload(sessionToken),
+    );
+
+    if (kDebugMode) {
+      debugPrint(
+          '[Auth] new password challenge OK → ${_currentUser?.email} roles=${_currentUser?.roles}');
     }
 
     return _currentUser!;
@@ -445,6 +532,47 @@ class AuthService {
     final decoded = jsonDecode(raw);
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     return {'message': decoded.toString()};
+  }
+
+  Future<Map<String, dynamic>> _postCognito(
+    Map<String, dynamic> payload, {
+    String target = 'AWSCognitoIdentityProviderService.InitiateAuth',
+  }) async {
+    final res = await http
+        .post(
+          Uri.parse(ApiConfig.cognitoEndpoint),
+          headers: {
+            'X-Amz-Target': target,
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: jsonEncode(payload),
+        )
+        .timeout(ApiConfig.requestTimeout);
+
+    final body = _decodeJsonObject(res.body);
+    if (res.statusCode == 200) return body;
+
+    final type = (body['__type'] ?? '').toString();
+    if (type.contains('NotAuthorizedException') ||
+        type.contains('UserNotFoundException')) {
+      throw ApiException(401, 'بيانات الدخول غير صحيحة', body);
+    }
+    if (type.contains('InvalidPasswordException')) {
+      throw ApiException(
+        400,
+        'كلمة المرور الجديدة لا تطابق سياسة الأمان المطلوبة',
+        body,
+      );
+    }
+    if (type.contains('InvalidParameterException')) {
+      throw ApiException(400, 'بيانات تفعيل الحساب غير مكتملة', body);
+    }
+
+    throw ApiException(
+      res.statusCode,
+      _extractErrorMessage(body, fallback: 'تعذر تفعيل الحساب المؤقت'),
+      body,
+    );
   }
 
   String _extractErrorMessage(Map<String, dynamic> body,

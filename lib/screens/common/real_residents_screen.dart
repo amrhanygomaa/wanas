@@ -3,7 +3,7 @@ import '../../services/residents_service.dart';
 import '../../services/api_client.dart';
 import '../../widgets/sheets/create_resident_sheet.dart';
 
-// شاشة مقيمين 100% مربوطة بـ AWS RDS — لا mock data إطلاقاً
+// شاشة مقيمين 100% مربوطة بـ السيرفر — لا mock data إطلاقاً
 class RealResidentsScreen extends StatefulWidget {
   const RealResidentsScreen({super.key});
 
@@ -45,7 +45,7 @@ class _RealResidentsScreenState extends State<RealResidentsScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: const Text(
-            'المقيمون (AWS RDS)',
+            'المقيمون (السيرفر)',
             style: TextStyle(
               fontFamily: 'Cairo',
               fontWeight: FontWeight.bold,
@@ -127,7 +127,7 @@ class _RealResidentsScreenState extends State<RealResidentsScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text(
-              'Live · AWS RDS',
+              'Live · السيرفر',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,

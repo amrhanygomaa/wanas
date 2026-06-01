@@ -58,7 +58,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
         .toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
     if (upcoming.isEmpty) {
-      setState(() => _countdownText = 'لا توجد جلسات قادمة من AWS');
+      setState(() => _countdownText = 'لا توجد جلسات قادمة من السيرفر');
       return;
     }
     final target = upcoming.first.startTime;

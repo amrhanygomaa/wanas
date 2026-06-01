@@ -29,10 +29,17 @@ void main() {
   };
 
   SystemChrome.setPreferredOrientations([
-    // تثبيت وضع الشاشة
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // جعل system navigation bar شفاف تماماً (edge-to-edge)
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
   runApp(
     // تشغيل التطبيق
     const ProviderScope(
@@ -155,6 +162,20 @@ class _MyAppState extends ConsumerState<MyApp> {
         dialogTheme: const DialogThemeData(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+          actionTextColor: Colors.white,
+          contentTextStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
         // ضبط اتجاه النص في الثيم
         typography: Typography.material2021(platform: TargetPlatform.android),

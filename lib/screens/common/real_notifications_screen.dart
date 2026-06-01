@@ -3,7 +3,7 @@ import '../../services/notifications_api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 
-// شاشة إشعارات 100% AWS RDS — لا mock إطلاقاً
+// شاشة إشعارات 100% السيرفر — لا mock إطلاقاً
 class RealNotificationsScreen extends StatefulWidget {
   const RealNotificationsScreen({super.key});
 
@@ -92,7 +92,7 @@ class _RealNotificationsScreenState extends State<RealNotificationsScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: const Text(
-            'الإشعارات (AWS RDS)',
+            'الإشعارات (السيرفر)',
             style: TextStyle(
               fontFamily: 'Cairo',
               fontWeight: FontWeight.bold,

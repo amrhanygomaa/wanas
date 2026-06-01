@@ -25,6 +25,8 @@ class VoiceMessageService {
     required String residentId,
     required String title,
     String senderType = 'resident',
+    String? recipientId,
+    String? familyMemberId,
     String? filePath,
     int durationSeconds = 0,
   }) async {
@@ -35,6 +37,10 @@ class VoiceMessageService {
       'senderType': senderType,
       'title': title,
       'durationSeconds': durationSeconds,
+      if (recipientId != null && recipientId.isNotEmpty)
+        'recipientId': recipientId,
+      if (familyMemberId != null && familyMemberId.isNotEmpty)
+        'familyMemberId': familyMemberId,
       if (fileName != null) 'fileName': fileName,
       if (contentType != null) 'contentType': contentType,
     });

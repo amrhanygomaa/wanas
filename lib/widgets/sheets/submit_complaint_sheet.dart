@@ -94,7 +94,7 @@ class _SubmitComplaintSheetState extends State<SubmitComplaintSheet> {
         SnackBar(
           backgroundColor: const Color(0xFF10B981),
           content: Text(
-            '✓ تم تقديم الشكوى (ID: ${c.id.substring(0, 8)}...) في AWS RDS',
+            '✓ تم تقديم الشكوى (ID: ${c.id.substring(0, 8)}...) في السيرفر',
             style: const TextStyle(fontFamily: 'Cairo'),
           ),
         ),
@@ -161,7 +161,7 @@ class _SubmitComplaintSheetState extends State<SubmitComplaintSheet> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
-                    'POST /complaints · AWS RDS',
+                    'POST /complaints · السيرفر',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
@@ -261,7 +261,7 @@ class _SubmitComplaintSheetState extends State<SubmitComplaintSheet> {
                           )
                         : const Icon(Icons.cloud_upload_rounded),
                     label: Text(
-                      _isSubmitting ? 'جاري التقديم...' : 'تقديم في AWS RDS',
+                      _isSubmitting ? 'جاري التقديم...' : 'تقديم في السيرفر',
                       style: const TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,

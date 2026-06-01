@@ -36,6 +36,7 @@ class BackendRoleMessage {
   final String body;
   final String? mediaUrl;
   final String? mediaType;
+  final String? deliveredAt;
   final String? readAt;
   final String createdAt;
 
@@ -46,6 +47,7 @@ class BackendRoleMessage {
     required this.body,
     this.mediaUrl,
     this.mediaType,
+    this.deliveredAt,
     this.readAt,
     required this.createdAt,
   });
@@ -58,6 +60,7 @@ class BackendRoleMessage {
       body: (j['body'] ?? j['text'] ?? '').toString(),
       mediaUrl: (j['mediaUrl'] ?? j['media_url'])?.toString(),
       mediaType: (j['mediaType'] ?? j['media_type'])?.toString(),
+      deliveredAt: (j['deliveredAt'] ?? j['delivered_at'])?.toString(),
       readAt: (j['readAt'] ?? j['read_at'])?.toString(),
       createdAt: (j['createdAt'] ?? j['created_at'] ?? '').toString(),
     );

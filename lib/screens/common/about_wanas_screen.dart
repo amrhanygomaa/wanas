@@ -48,7 +48,7 @@ class AboutWanasScreen extends ConsumerWidget {
               centerTitle: true,
               titlePadding: const EdgeInsets.only(bottom: 16),
               title: const Text(
-                'عن ونس',
+                'عن wanas',
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontWeight: FontWeight.bold,
@@ -151,7 +151,7 @@ class AboutWanasScreen extends ConsumerWidget {
               delegate: SliverChildListDelegate([
                 // App name + version
                 Text(
-                  'تطبيق ونس للرعاية الذكية',
+                  'تطبيق wanas للرعاية الذكية',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
@@ -204,17 +204,10 @@ class AboutWanasScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
 
-                _SectionCard(
-                  icon: Icons.support_agent_rounded,
-                  iconColor: const Color(0xFF059669),
-                  accentColor: headerStart,
-                  title: 'تواصل معنا',
-                  body: 'البريد الإلكتروني: support@wanas.sa\nالهاتف: 920‑000‑0000\nالموقع: www.wanas.sa',
-                ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 14),
 
                 const Text(
-                  '© 2024 ونس — جميع الحقوق محفوظة',
+                  '© 2026 wanas — جميع الحقوق محفوظة',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       fontSize: 12,

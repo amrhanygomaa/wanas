@@ -145,7 +145,7 @@ class _LiveMedicationsBannerState extends State<LiveMedicationsBanner> {
               ),
               SizedBox(width: 10),
               Text(
-                'جلب الجداول الدوائية من AWS RDS...',
+                'جلب الجداول الدوائية من السيرفر...',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,

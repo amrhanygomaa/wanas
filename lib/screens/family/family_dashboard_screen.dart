@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:lottie/lottie.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart' as file_picker_lib;
+import '../../config/api_config.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
 import 'visit_booking_screen.dart';
@@ -16,6 +19,7 @@ import 'family_bridge_screen.dart';
 import 'family_activities_screen.dart';
 import '../../widgets/taptaba_scaffold.dart';
 import '../chat/family_resident_chat_screen.dart';
+import '../elderly/widgets/video_call_overlay.dart';
 
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
@@ -36,6 +40,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
   late AnimationController _rotationController;
   late AnimationController _floatController;
   late List<Animation<double>> _fadeAnimations;
+  Timer? _callPollTimer;
 
   @override
   void initState() {
@@ -62,13 +67,18 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
     });
 
     _fadeController.forward();
-    // Load inbox once — not inside build() to avoid infinite rebuild loop.
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => ref.read(appRiverpod).loadMessageInbox());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appRiverpod).loadMessageInbox();
+      // بدء الـ polling للمكالمات الواردة كل 5 ثواني
+      _callPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (mounted) ref.read(appRiverpod).refreshActiveVideoCalls();
+      });
+    });
   }
 
   @override
   void dispose() {
+    _callPollTimer?.cancel();
     _fadeController.dispose();
     _pulseController.dispose();
     _rotationController.dispose();
@@ -79,13 +89,14 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final provider = ref.watch(appRiverpod);
+    final showHero = _selectedIndex != 2 && _selectedIndex != 3;
 
     return TaptabaScaffold(
       title: 'ونس',
       titleColor: const Color(0xFFea580c),
       overrideRole: 'عائلة',
       useNestedScrollView: true,
-      sliverHeader: _selectedIndex == 3 ? null : _buildHero(provider),
+      sliverHeader: showHero ? _buildHero(provider) : null,
       bottomNavigationBar: _buildBottomNav(),
       body: Stack(
         children: [
@@ -97,14 +108,22 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                   : _selectedIndex == 2
                       ? _buildVisitsView(provider)
                       : _buildBillingView(provider),
-          if (_showMedicationDoneAnimation)
-            _buildMedicationDoneOverlay(), // أنيميشن التذكير
+          if (_showMedicationDoneAnimation) _buildMedicationDoneOverlay(),
+          if (provider.isIncomingCall) _buildIncomingCallBanner(provider),
+          if (provider.isVideoCallActive) const VideoCallOverlay(),
         ],
       ),
     );
   }
 
   Widget _buildHero(AppRiverpod provider) {
+    final residentId =
+        provider.backendResidentId ?? provider.currentAccount?.linkedResidentId;
+    final residentName = provider.residentFiles.isNotEmpty
+        ? provider.residentFiles.first.name
+        : 'المقيم';
+    final canStartResidentChat = residentId != null && residentId.isNotEmpty;
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -142,6 +161,9 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                         ],
                       ),
                       const Spacer(),
+                      if (canStartResidentChat)
+                        _buildChatHeaderButton(
+                            provider, residentId, residentName, context),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -546,6 +568,75 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
 
   // --- VIEWS ---
 
+  Widget _buildChatHeaderButton(AppRiverpod provider, String residentId,
+      String residentName, BuildContext context) {
+    return PopupMenuButton<String>(
+      position: PopupMenuPosition.under,
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.chat_bubble_outline_rounded,
+            color: Colors.white, size: 22),
+      ),
+      itemBuilder: (context) {
+        // Show all residents as chat options
+        return provider.residentFiles.map((resident) {
+          return PopupMenuItem<String>(
+            value: resident.id,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: const Color(0xFFfff7ed),
+                  child: Text(
+                    resident.name.isNotEmpty ? resident.name[0] : '؟',
+                    style: const TextStyle(
+                        color: Color(0xFFea580c),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    resident.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList();
+      },
+      onSelected: (selectedResidentId) {
+        final selectedResident = provider.residentFiles
+            .firstWhere((r) => r.id == selectedResidentId);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FamilyResidentChatScreen(
+              otherUserId: selectedResidentId,
+              otherUserName: selectedResident.name,
+              otherUserRole: 'المقيم',
+              residentId: selectedResidentId,
+            ),
+          ),
+        ).then((_) => provider.loadMessageInbox());
+      },
+    );
+  }
+
+  // --- VIEWS ---
+
   Widget _buildHomeView(AppRiverpod provider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -555,14 +646,16 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         children: [
           _buildHealthMetricsGrid(provider),
           const SizedBox(height: 24),
-          _buildChatCard(provider).animate().fadeIn(duration: 350.ms).slideY(
-              begin: 0.06, end: 0, duration: 350.ms, curve: Curves.easeOut),
-          const SizedBox(height: 24),
           _buildFamilyAIUpdateCard(provider)
               .animate(delay: 80.ms)
               .fadeIn(duration: 350.ms)
               .slideY(
                   begin: 0.06, end: 0, duration: 350.ms, curve: Curves.easeOut),
+          const SizedBox(height: 24),
+          _buildFamilyMessageCard(provider, context),
+          const SizedBox(height: 24),
+          _buildChatCard(provider).animate().fadeIn(duration: 350.ms).slideY(
+              begin: 0.06, end: 0, duration: 350.ms, curve: Curves.easeOut),
           const SizedBox(height: 24),
           _buildGamificationCard(provider, context),
           const SizedBox(height: 24),
@@ -576,6 +669,114 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
           const SizedBox(height: 24),
           _buildReviewsCard(provider),
           const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFamilyMessageCard(AppRiverpod provider, BuildContext context) {
+    final residentName = provider.residentFiles.isNotEmpty
+        ? provider.residentFiles.first.name
+        : 'المقيم';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFBAE6FD), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0EA5E9).withValues(alpha: 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0F2FE),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.mark_chat_unread_rounded,
+                    color: Color(0xFF0284C7), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'رسائل الأسرة للمقيم',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      'اكتب رسالة تظهر في ذكريات $residentName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showTextMessageDialog(context, provider),
+                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('رسالة مكتوبة'),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showVoiceRecordDialog(context, provider),
+                  icon: const Icon(Icons.mic_rounded, size: 18),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('رسالة صوتية'),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0284C7),
+                    side: const BorderSide(color: Color(0xFFBAE6FD)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1129,11 +1330,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
         (provider.residentFiles.isNotEmpty
             ? provider.residentFiles.first.id
             : null);
-    final moments = residentId == null || residentId.isEmpty
-        ? provider.memoryMoments
-        : provider.memoryMoments
-            .where((m) => m.residentId == residentId)
-            .toList();
+    final moments = provider.memoryWallMoments(residentId: residentId);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1168,97 +1365,193 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 220,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            itemCount: moments.length,
-            itemBuilder: (context, i) {
-              final m = moments[i];
-              return Container(
-                width: 180,
-                margin: const EdgeInsets.only(left: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFf1f5f9)),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ],
+        if (moments.isEmpty)
+          Container(
+            height: 132,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE0F2FE),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_outlined,
+                      color: Color(0xFF0284C7), size: 26),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(24)),
-                        child: Image.network(m.imageUrl, fit: BoxFit.cover),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(m.activityTitle,
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1e293b))),
-                            Text(m.date,
-                                style: const TextStyle(
-                                    fontSize: 8, color: Color(0xFF94a3b8))),
-                            const Spacer(),
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => provider.addAppreciation(m.id),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                        color: const Color(0xFFfff1f2),
-                                        borderRadius:
-                                            BorderRadius.circular(20)),
-                                    child: Row(
-                                      children: [
-                                        Text('${m.appreciations}',
-                                            style: const TextStyle(
-                                                color: Color(0xFFe11d48),
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold)),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.favorite,
-                                            color: Color(0xFFe11d48), size: 12),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                const Text('ممتنـون ❤️',
-                                    style: TextStyle(
-                                        fontSize: 8, color: Color(0xFF64748b))),
-                              ],
-                            ),
-                          ],
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'لا توجد صور عائلية بعد',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 4),
+                      Text(
+                        'اضغط عرض الكل / إضافة لمشاركة أول صورة.',
+                        textAlign: TextAlign.right,
+                        style:
+                            TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 220,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              itemCount: moments.length,
+              itemBuilder: (context, i) {
+                final m = moments[i];
+                return Container(
+                  width: 180,
+                  margin: const EdgeInsets.only(left: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFf1f5f9)),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(24)),
+                          child: _buildMemoryMomentImage(m.imageUrl),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(m.activityTitle,
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1e293b))),
+                              Text(m.date,
+                                  style: const TextStyle(
+                                      fontSize: 8, color: Color(0xFF94a3b8))),
+                              const Spacer(),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => provider.addAppreciation(m.id),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                          color: const Color(0xFFfff1f2),
+                                          borderRadius:
+                                              BorderRadius.circular(20)),
+                                      child: Row(
+                                        children: [
+                                          Text('${m.appreciations}',
+                                              style: const TextStyle(
+                                                  color: Color(0xFFe11d48),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold)),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.favorite,
+                                              color: Color(0xFFe11d48),
+                                              size: 12),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const Text('ممتنـون ❤️',
+                                      style: TextStyle(
+                                          fontSize: 8,
+                                          color: Color(0xFF64748b))),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
       ],
+    );
+  }
+
+  Widget _buildMemoryMomentImage(String imageUrl) {
+    final path = imageUrl.trim();
+    if (path.isEmpty) return _buildMemoryImageFallback();
+
+    if (!kIsWeb) {
+      final file = File(path);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildMemoryImageFallback(),
+        );
+      }
+    }
+
+    final resolvedUrl = _resolveMemoryImageUrl(path);
+    if (resolvedUrl.startsWith('http') ||
+        resolvedUrl.startsWith('blob') ||
+        resolvedUrl.startsWith('data:image')) {
+      return Image.network(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildMemoryImageFallback(),
+      );
+    }
+    return _buildMemoryImageFallback();
+  }
+
+  String _resolveMemoryImageUrl(String raw) {
+    if (raw.startsWith('/') && !raw.startsWith('//')) {
+      return '${ApiConfig.baseUrl}$raw';
+    }
+    return raw;
+  }
+
+  Widget _buildMemoryImageFallback() {
+    return Container(
+      color: const Color(0xFFE0F2FE),
+      child: const Center(
+        child: Icon(Icons.broken_image_outlined,
+            color: Color(0xFF0284C7), size: 30),
+      ),
     );
   }
 
@@ -2376,138 +2669,253 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
 
   Widget _buildVisitCard(FamilyVisit v) {
     bool isUpcoming = v.status == 'upcoming';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFf1f5f9)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(v.type == 'physical' ? '🏠 لقاء مودة' : '📹 مكالمة فيديو',
-                  style: const TextStyle(
-                      color: Color(0xFF64748b),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
-              const Spacer(),
-              _buildVisitBadge(v.status),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('الزائر: ${v.visitorName}',
-                        style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1e293b))),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _buildVisitInfo('assets/icons/calendar.png', v.date),
-                        const SizedBox(width: 12),
-                        _buildVisitInfo(Icons.access_time_rounded, v.time),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                    color: const Color(0xFFf8fafc),
-                    borderRadius: BorderRadius.circular(12)),
-                child: Icon(
-                    v.type == 'physical'
-                        ? Icons.people_alt_rounded
-                        : Icons.videocam_rounded,
-                    color: const Color(0xFFea580c)),
-              ),
-            ],
-          ),
-          if (isUpcoming) ...[
-            const SizedBox(height: 20),
-            const Divider(color: Color(0xFFf1f5f9)),
-            const SizedBox(height: 10),
-            if (v.type == 'video' && v.zoomLink != null) ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563eb),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
-                  icon: const Icon(Icons.videocam_rounded,
-                      color: Colors.white, size: 18),
-                  label: const Text('انضم للمكالمة',
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                  onPressed: () async {
-                    final uri = Uri.tryParse(v.zoomLink!);
-                    if (uri != null) {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
+    return GestureDetector(
+      onTap: () => _showVisitDetailsModal(v),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFf1f5f9)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4))
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(v.type == 'physical' ? '🏠 لقاء مودة' : '📹 مكالمة فيديو',
+                    style: const TextStyle(
+                        color: Color(0xFF64748b),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+                const Spacer(),
+                _buildVisitBadge(v.status),
+              ],
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFfff7ed),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const VisitBookingScreen())),
-                    child: const Text('تعديل الموعد',
-                        style: TextStyle(
-                            color: Color(0xFFea580c),
-                            fontWeight: FontWeight.bold)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('الزائر: ${v.visitorName}',
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1e293b))),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          _buildVisitInfo('assets/icons/calendar.png', v.date),
+                          const SizedBox(width: 12),
+                          _buildVisitInfo(Icons.access_time_rounded, v.time),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFcbd5e1)),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))),
-                    onPressed: () {},
-                    child: const Text('إلغاء',
-                        style: TextStyle(color: Color(0xFF64748b))),
-                  ),
+                const SizedBox(width: 16),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFf8fafc),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Icon(
+                      v.type == 'physical'
+                          ? Icons.people_alt_rounded
+                          : Icons.videocam_rounded,
+                      color: const Color(0xFFea580c)),
                 ),
               ],
             ),
+            if (isUpcoming) ...[
+              const SizedBox(height: 20),
+              const Divider(color: Color(0xFFf1f5f9)),
+              const SizedBox(height: 10),
+              if (v.type == 'video' && v.zoomLink != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563eb),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                    icon: const Icon(Icons.videocam_rounded,
+                        color: Colors.white, size: 18),
+                    label: const Text('انضم للمكالمة',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
+                    onPressed: () => _openZoomVisit(v.zoomLink!),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFfff7ed),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const VisitBookingScreen())),
+                      child: const Text('تعديل الموعد',
+                          style: TextStyle(
+                              color: Color(0xFFea580c),
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFcbd5e1)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                      onPressed: () {},
+                      child: const Text('إلغاء',
+                          style: TextStyle(color: Color(0xFF64748b))),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showVisitDetailsModal(FamilyVisit visit) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Text(
+              'تفاصيل الزيارة',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildVisitDetailRow('الزائر', visit.visitorName),
+            _buildVisitDetailRow('التاريخ', visit.date),
+            _buildVisitDetailRow('الوقت', visit.time),
+            _buildVisitDetailRow(
+              'النوع',
+              visit.type == 'video' ? 'مكالمة فيديو' : 'زيارة حضورية',
+            ),
+            _buildVisitDetailRow('الحالة', _visitStatusLabel(visit.status)),
+            if (visit.type == 'video') ...[
+              const SizedBox(height: 8),
+              if ((visit.zoomLink ?? '').trim().isNotEmpty)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openZoomVisit(visit.zoomLink!),
+                    icon: const Icon(Icons.videocam_rounded,
+                        color: Colors.white, size: 18),
+                    label: const Text(
+                      'دخول مكالمة Zoom',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Text(
+                    'رابط Zoom غير متاح حالياً',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFEA580C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openZoomVisit(String link) async {
+    final uri = Uri.tryParse(link.trim());
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Widget _buildVisitDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.left,
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Color(0xFF64748B))),
         ],
       ),
     );
+  }
+
+  String _visitStatusLabel(String status) {
+    if (status == 'upcoming') return 'قادمة';
+    if (status == 'pending') return 'بانتظار التأكيد';
+    if (status == 'completed') return 'مكتملة';
+    if (status == 'cancelled') return 'ملغاة';
+    return 'غير محدد';
   }
 
   Widget _buildVisitBadge(String status) {
@@ -2518,6 +2926,10 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
       col = const Color(0xFF1d4ed8);
       bg = const Color(0xFFdbeafe);
       label = 'قادمة';
+    } else if (status == 'pending') {
+      col = const Color(0xFF92400e);
+      bg = const Color(0xFFfef3c7);
+      label = 'بانتظار التأكيد';
     } else if (status == 'completed') {
       col = const Color(0xFF166534);
       bg = const Color(0xFFdcfce7);
@@ -3104,6 +3516,112 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen>
                   fontSize: 10,
                   fontWeight: isAct ? FontWeight.w900 : FontWeight.w600)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIncomingCallBanner(AppRiverpod provider) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Material(
+            elevation: 12,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF059669), Color(0xFF10b981)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  // أيقونة المتصل
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.25),
+                    ),
+                    child: Center(
+                      child: Text(
+                        provider.activeCallerInitials,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // النص
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '📲 مكالمة فيديو واردة',
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          provider.activeCallerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // رفض
+                  GestureDetector(
+                    onTap: () => provider.rejectCall(),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(Icons.call_end_rounded,
+                          color: Colors.white, size: 22),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // قبول
+                  GestureDetector(
+                    onTap: () => provider.acceptCall(),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: const Icon(Icons.videocam_rounded,
+                          color: Color(0xFF059669), size: 22),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

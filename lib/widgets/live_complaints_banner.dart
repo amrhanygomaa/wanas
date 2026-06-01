@@ -87,7 +87,7 @@ class _LiveComplaintsBannerState extends State<LiveComplaintsBanner> {
               ),
               SizedBox(width: 10),
               Text(
-                'جاري جلب الشكاوى من AWS RDS...',
+                'جاري جلب الشكاوى من السيرفر...',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,

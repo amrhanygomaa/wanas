@@ -343,7 +343,7 @@ class SpecialistHomeView extends ConsumerWidget {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: selectedResident.isEmpty ? null : selectedResident,
-                    hint: const Text('لا توجد بيانات مقيمين من AWS'),
+                    hint: const Text('لا توجد بيانات مقيمين من السيرفر'),
                     items: provider.filteredResidentScores
                         .map((r) => DropdownMenuItem(
                             value: r.name, child: Text(r.name)))
@@ -559,7 +559,7 @@ class SpecialistHomeView extends ConsumerWidget {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: selectedResidentId,
-                    hint: const Text('لا توجد بيانات مقيمين من AWS'),
+                    hint: const Text('لا توجد بيانات مقيمين من السيرفر'),
                     items: residents
                         .map((resident) => DropdownMenuItem(
                             value: resident.id,
@@ -609,7 +609,7 @@ class SpecialistHomeView extends ConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content: Text(error ??
-                                          'تمت مشاركة اللحظة مع الأهل عبر AWS'),
+                                          'تمت مشاركة اللحظة مع الأهل عبر السيرفر'),
                                       backgroundColor: error == null
                                           ? const Color(0xFF0ea5e9)
                                           : const Color(0xFFef4444)));
@@ -750,7 +750,7 @@ class SpecialistHomeView extends ConsumerWidget {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                               content:
-                                  Text(error ?? 'تم تسجيل الاحتياج على AWS'),
+                                  Text(error ?? 'تم تسجيل الاحتياج على السيرفر'),
                               backgroundColor: error == null
                                   ? null
                                   : const Color(0xFFef4444)));

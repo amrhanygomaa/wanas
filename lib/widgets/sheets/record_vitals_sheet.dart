@@ -113,7 +113,7 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
         const SnackBar(
           backgroundColor: Color(0xFF10B981),
           content: Text(
-            '✓ تم تسجيل القراءة في AWS RDS — التنبيهات تُولّد تلقائياً إذا تجاوزت الحدود',
+            '✓ تم تسجيل القراءة في السيرفر — التنبيهات تُولّد تلقائياً إذا تجاوزت الحدود',
             style: TextStyle(fontFamily: 'Cairo'),
           ),
         ),
@@ -180,7 +180,7 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
-                    'POST /health/vitals · AWS RDS',
+                    'POST /health/vitals · السيرفر',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
@@ -215,7 +215,7 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
                   const Center(child: CircularProgressIndicator())
                 else if (_residents.isEmpty)
                   const Text(
-                    'لا يوجد مقيمين في AWS RDS — أضف مقيماً أولاً',
+                    'لا يوجد مقيمين في السيرفر — أضف مقيماً أولاً',
                     style: TextStyle(
                       color: Color(0xFFEF4444),
                       fontFamily: 'Cairo',
@@ -280,7 +280,7 @@ class _RecordVitalsSheetState extends State<RecordVitalsSheet> {
                           )
                         : const Icon(Icons.cloud_upload_rounded),
                     label: Text(
-                      _isSubmitting ? 'جاري الحفظ...' : 'حفظ في AWS RDS',
+                      _isSubmitting ? 'جاري الحفظ...' : 'حفظ في السيرفر',
                       style: const TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,

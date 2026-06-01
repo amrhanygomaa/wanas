@@ -104,19 +104,32 @@ class AlbumDetailsScreen extends ConsumerWidget {
               (provider.residentFiles.isNotEmpty
                   ? provider.residentFiles.first.id
                   : null);
+          final localPath = await provider.persistAlbumImage(image.path);
+          final itemId = provider.addPhotoToAlbum(albumName, localPath);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم حفظ الصورة في الألبوم'),
+                backgroundColor: Color(0xFF16A34A),
+              ),
+            );
+          }
           try {
             final uploaded = await AiMediaService.instance.uploadFile(
               filePath: image.path,
               residentId: residentId,
             );
-            final s3Url = uploaded.mediaUrl ?? image.path;
-            provider.addPhotoToAlbum(albumName, s3Url);
+            final s3Url = uploaded.mediaUrl;
+            if (s3Url != null && s3Url.isNotEmpty) {
+              provider.updateMemoryItemAssetPath(itemId, s3Url);
+            }
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('فشل رفع الصورة: $e'),
-                  backgroundColor: Colors.red.shade700,
+                  content:
+                      Text('تم حفظ الصورة محلياً، لكن تعذر رفعها للسيرفر: $e'),
+                  backgroundColor: Colors.orange.shade700,
                 ),
               );
             }
@@ -166,11 +179,15 @@ class AlbumDetailsScreen extends ConsumerWidget {
         image: url != null
             ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
             : (assetPath != null && assetPath.isNotEmpty)
-                ? (assetPath.startsWith('assets/')
+                ? (assetPath.startsWith('http')
                     ? DecorationImage(
-                        image: AssetImage(assetPath), fit: BoxFit.cover)
-                    : DecorationImage(
-                        image: FileImage(File(assetPath)), fit: BoxFit.cover))
+                        image: NetworkImage(assetPath), fit: BoxFit.cover)
+                    : assetPath.startsWith('assets/')
+                        ? DecorationImage(
+                            image: AssetImage(assetPath), fit: BoxFit.cover)
+                        : DecorationImage(
+                            image: FileImage(File(assetPath)),
+                            fit: BoxFit.cover))
                 : null,
         boxShadow: [
           BoxShadow(

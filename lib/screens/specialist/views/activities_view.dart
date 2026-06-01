@@ -41,7 +41,7 @@ class _SpecialistActivitiesViewState
               'icon': activity.emoji,
               'color': const Color(0xFF3b82f6),
               'bg': const Color(0xFFdbeafe),
-              'target': 'من AWS',
+              'target': 'من السيرفر',
               'location': activity.location,
               'supervisor': provider.currentAccount?.name ?? 'فريق الرعاية',
             })

@@ -183,7 +183,7 @@ class _MedicalAdminViewState extends ConsumerState<MedicalAdminView> {
                     value: residentNames.contains(_selectedResident)
                         ? _selectedResident
                         : null,
-                    hint: const Text('لا توجد بيانات مقيمين من AWS'),
+                    hint: const Text('لا توجد بيانات مقيمين من السيرفر'),
                     items: residents
                         .map(
                           (resident) => DropdownMenuItem(

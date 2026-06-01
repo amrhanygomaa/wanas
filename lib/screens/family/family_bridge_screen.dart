@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
+import '../../config/api_config.dart';
 import '../../services/family_media_service.dart';
 import '../../widgets/taptaba_scaffold.dart';
 
@@ -63,6 +65,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
     });
 
     final provider = ref.read(appRiverpod);
+    provider.backendSyncError = null;
     final residentId = provider.currentAccount?.linkedResidentId ??
         (provider.residentFiles.isNotEmpty
             ? provider.residentFiles.first.id
@@ -71,10 +74,24 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
         ? provider.residentFiles.first.name
         : 'المقيم';
 
+    var completed = false;
     if (residentId == null || residentId.isEmpty) {
-      provider.backendSyncError = 'لا يوجد مقيم مربوط من AWS';
+      provider.backendSyncError = 'لا يوجد مقيم مربوط من السيرفر';
     } else if (type == 'صورة' && imagePath != null) {
-      setState(() => _uploadProgress = 0.3);
+      final localPath = await provider.persistAlbumImage(imagePath);
+      final localId = 'local_family_${DateTime.now().millisecondsSinceEpoch}';
+      final localMoment = MemoryMoment(
+        id: localId,
+        residentId: residentId,
+        residentName: residentName,
+        imageUrl: localPath,
+        activityTitle: title,
+        date: 'الآن',
+        appreciations: 0,
+      );
+      provider.upsertMemoryMoment(localMoment);
+      completed = true;
+      setState(() => _uploadProgress = 0.35);
       try {
         final uploaded = await FamilyMediaService.instance.uploadImage(
           residentId: residentId,
@@ -82,17 +99,34 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
           caption: title,
         );
         setState(() => _uploadProgress = 0.7);
-        await provider.addMemoryMoment(MemoryMoment(
-          id: 'm${DateTime.now().millisecondsSinceEpoch}',
-          residentId: residentId,
-          residentName: residentName,
-          imageUrl: uploaded.mediaUrl ?? '',
-          activityTitle: title,
-          date: 'الآن',
-          appreciations: 0,
-        ));
+        final remoteUrl = (uploaded.mediaUrl ?? '').trim();
+        provider.upsertMemoryMoment(
+          MemoryMoment(
+            id: uploaded.id.isEmpty ? localId : 'fb_${uploaded.id}',
+            residentId: residentId,
+            residentName: residentName,
+            imageUrl: remoteUrl.isNotEmpty ? remoteUrl : localPath,
+            activityTitle: uploaded.caption?.trim().isNotEmpty == true
+                ? uploaded.caption!.trim()
+                : title,
+            date: 'الآن',
+            appreciations: 0,
+          ),
+          replaceId: localId,
+        );
+        provider.backendSyncError = null;
+        unawaited(provider.syncBackendData());
       } catch (e) {
-        provider.backendSyncError = e.toString();
+        provider.backendSyncError =
+            'تم حفظ الصورة محلياً، لكن تعذر رفعها للسيرفر: $e';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(provider.backendSyncError!),
+              backgroundColor: Colors.orange.shade700,
+            ),
+          );
+        }
       }
     } else {
       setState(() => _uploadProgress = 0.4);
@@ -100,11 +134,12 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
         title,
         durationSeconds: 0,
       );
+      completed = true;
     }
 
     setState(() {
-      _uploadProgress = provider.backendSyncError == null ? 1.0 : 0.0;
-      _showDoneAnimation = provider.backendSyncError == null;
+      _uploadProgress = completed ? 1.0 : 0.0;
+      _showDoneAnimation = completed;
     });
 
     await Future.delayed(const Duration(seconds: 2));
@@ -197,11 +232,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
         (provider.residentFiles.isNotEmpty
             ? provider.residentFiles.first.id
             : null);
-    final moments = residentId == null || residentId.isEmpty
-        ? provider.memoryMoments
-        : provider.memoryMoments
-            .where((m) => m.residentId == residentId)
-            .toList();
+    final moments = provider.memoryWallMoments(residentId: residentId);
 
     return TaptabaScaffold(
       title: 'جسر العائلة',
@@ -472,6 +503,44 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
 
   // بناء معرض الصور والرسائل المرفوعة (Grid View)
   Widget _buildGallery(List<MemoryMoment> moments) {
+    if (moments.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF7ED),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.photo_library_outlined,
+                    color: Color(0xFFEA580C), size: 34),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'لا توجد صور عائلية بعد',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'شارك أول صورة لتظهر في حائط الذكريات.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -505,13 +574,7 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(24)),
-                        child: kIsWeb
-                            ? Image.network(m.imageUrl, fit: BoxFit.cover)
-                            : (m.imageUrl.startsWith('http') ||
-                                    m.imageUrl.startsWith('blob')
-                                ? Image.network(m.imageUrl, fit: BoxFit.cover)
-                                : Image.file(File(m.imageUrl),
-                                    fit: BoxFit.cover)),
+                        child: _buildMemoryMomentImage(m.imageUrl),
                       ),
                     ),
                     Positioned(
@@ -558,6 +621,51 @@ class _FamilyBridgeScreenState extends ConsumerState<FamilyBridgeScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMemoryMomentImage(String imageUrl) {
+    final path = imageUrl.trim();
+    if (path.isEmpty) return _buildImageFallback();
+
+    if (!kIsWeb) {
+      final file = File(path);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildImageFallback(),
+        );
+      }
+    }
+
+    final resolvedUrl = _resolveImageUrl(path);
+    if (resolvedUrl.startsWith('http') ||
+        resolvedUrl.startsWith('blob') ||
+        resolvedUrl.startsWith('data:image')) {
+      return Image.network(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildImageFallback(),
+      );
+    }
+    return _buildImageFallback();
+  }
+
+  String _resolveImageUrl(String raw) {
+    if (raw.startsWith('/') && !raw.startsWith('//')) {
+      return '${ApiConfig.baseUrl}$raw';
+    }
+    return raw;
+  }
+
+  Widget _buildImageFallback() {
+    return Container(
+      color: const Color(0xFFFFF7ED),
+      child: const Center(
+        child: Icon(Icons.broken_image_outlined,
+            color: Color(0xFFEA580C), size: 30),
+      ),
     );
   }
 

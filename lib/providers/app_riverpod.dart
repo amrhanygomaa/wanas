@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // للوصول إلى الملفات (مثل الخطوط)
@@ -40,6 +41,8 @@ import '../services/user_preferences_service.dart';
 import '../services/complaints_service.dart';
 import '../services/ai_media_service.dart';
 import '../services/messages_service.dart';
+import '../services/profile_image_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 final appRiverpod = ChangeNotifierProvider((ref) => AppRiverpod());
 
@@ -56,8 +59,8 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
-  String facilityName = ''; // اسم المنشأة من AWS
-  String managerName = ''; // اسم المدير من AWS
+  String facilityName = ''; // اسم المنشأة من السيرفر
+  String managerName = ''; // اسم المدير من السيرفر
   String splashStatus = ''; // حالة التحميل للعرض في شاشة البداية
   Set<String> earnedBadgeIds = {}; // معرّفات الأوسمة التي فتحها المسن
   BadgeDefinition?
@@ -79,7 +82,7 @@ class AppRiverpod extends ChangeNotifier {
     }
   }
 
-  String currentRole = ''; // الدور الحالي للمستخدم بعد تسجيل الدخول من AWS
+  String currentRole = ''; // الدور الحالي للمستخدم بعد تسجيل الدخول من السيرفر
   bool hasSeenOnboarding = false; // هل شاهد المستخدم شاشات الترحيب؟
   bool isAuthenticated = false; // هل المستخدم مسجل دخوله؟
   bool isInitialized = false; // هل تم تحميل البيانات من الذاكرة؟
@@ -120,7 +123,7 @@ class AppRiverpod extends ChangeNotifier {
     }
   }
 
-  // دالة للمدير لإنشاء حسابات جديدة عبر AWS.
+  // دالة للمدير لإنشاء حسابات جديدة عبر السيرفر.
   Future<bool> createAccount({
     required String name,
     required String email,
@@ -141,7 +144,7 @@ class AppRiverpod extends ChangeNotifier {
     return synced;
   }
 
-  // دالة للتسجيل الذاتي (للمتطوعين والأهالي) عبر AWS Cognito.
+  // دالة للتسجيل الذاتي (للمتطوعين والأهالي) عبر السيرفر.
   Future<void> selfRegister({
     required String name,
     required String email,
@@ -152,7 +155,7 @@ class AppRiverpod extends ChangeNotifier {
     if (facilityId.isEmpty) {
       throw ApiException(
         400,
-        'لا يوجد FACILITY_ID مضبوط للتسجيل الذاتي على AWS',
+        'لا يوجد FACILITY_ID مضبوط للتسجيل الذاتي على السيرفر',
       );
     }
 
@@ -167,7 +170,7 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
-  // دالة تسجيل المدير مع بيانات المنشأة عبر AWS.
+  // دالة تسجيل المدير مع بيانات المنشأة عبر السيرفر.
   Future<void> registerAdmin({
     required String name,
     required String email,
@@ -184,7 +187,7 @@ class AppRiverpod extends ChangeNotifier {
     if (setupSecret.isEmpty) {
       throw ApiException(
         400,
-        'ADMIN_REG_SECRET غير مضبوط، لا يمكن تسجيل مدير منشأة على AWS',
+        'ADMIN_REG_SECRET غير مضبوط، لا يمكن تسجيل مدير منشأة على السيرفر',
       );
     }
 
@@ -213,7 +216,7 @@ class AppRiverpod extends ChangeNotifier {
   }
 
   // ربط عائلة بمسن
-  Future<void> linkFamilyToResident(
+  Future<bool> linkFamilyToResident(
       String residentId, String familyEmail) async {
     final synced = await _runBackendMutation(() {
       return BackendMutationService.instance.createFamilyMemberForEmail(
@@ -221,41 +224,15 @@ class AppRiverpod extends ChangeNotifier {
         email: familyEmail,
       );
     });
-    if (!synced) return;
+    if (!synced) return false;
     final idx = residentFiles.indexWhere((r) => r.id == residentId);
     if (idx != -1) {
       final r = residentFiles[idx];
-      residentFiles[idx] = SpecialistResidentFile(
-        id: r.id,
-        name: r.name,
-        nameEn: r.nameEn,
-        room: r.room,
-        status: r.status,
-        lastUpdate: r.lastUpdate,
-        categories: r.categories,
-        initials: r.initials,
-        phone: r.phone,
-        age: r.age,
-        familyMembers: r.familyMembers,
-        familyEmail: familyEmail, // الحقل الجديد للربط
-        bloodType: r.bloodType,
-        chronicDiseases: r.chronicDiseases,
-        allergies: r.allergies,
-        insuranceInfo: r.insuranceInfo,
-        mobilityStatus: r.mobilityStatus,
-        assistiveDevices: r.assistiveDevices,
-        cognitiveStatus: r.cognitiveStatus,
-        dietType: r.dietType,
-        foodRestrictions: r.foodRestrictions,
-        foodPreferences: r.foodPreferences,
-        previousProfession: r.previousProfession,
-        hobbies: r.hobbies,
-        socialStatus: r.socialStatus,
-        uploadedDocuments: r.uploadedDocuments,
-      );
+      residentFiles[idx] = r.copyWith(familyEmail: familyEmail);
       notifyListeners();
     }
     unawaited(syncBackendData());
+    return true;
   }
 
   void updateResidentSocialHistory({
@@ -267,33 +244,10 @@ class AppRiverpod extends ChangeNotifier {
     final idx = residentFiles.indexWhere((r) => r.id == residentId);
     if (idx == -1) return;
     final r = residentFiles[idx];
-    residentFiles[idx] = SpecialistResidentFile(
-      id: r.id,
-      name: r.name,
-      nameEn: r.nameEn,
-      room: r.room,
-      status: r.status,
-      lastUpdate: r.lastUpdate,
-      categories: r.categories,
-      initials: r.initials,
-      phone: r.phone,
-      age: r.age,
-      familyMembers: r.familyMembers,
-      familyEmail: r.familyEmail,
-      bloodType: r.bloodType,
-      chronicDiseases: r.chronicDiseases,
-      allergies: r.allergies,
-      insuranceInfo: r.insuranceInfo,
-      mobilityStatus: r.mobilityStatus,
-      assistiveDevices: r.assistiveDevices,
-      cognitiveStatus: r.cognitiveStatus,
-      dietType: r.dietType,
-      foodRestrictions: r.foodRestrictions,
-      foodPreferences: r.foodPreferences,
+    residentFiles[idx] = r.copyWith(
       previousProfession: previousProfession,
       hobbies: hobbies,
       socialStatus: socialStatus,
-      uploadedDocuments: r.uploadedDocuments,
     );
     notifyListeners();
   }
@@ -312,35 +266,54 @@ class AppRiverpod extends ChangeNotifier {
     final r = residentFiles[idx];
     final updated = List<String>.from(r.uploadedDocuments ?? [])
       ..add(documentUrl);
-    residentFiles[idx] = SpecialistResidentFile(
-      id: r.id,
-      name: r.name,
-      nameEn: r.nameEn,
-      room: r.room,
-      status: r.status,
-      lastUpdate: r.lastUpdate,
-      categories: r.categories,
-      initials: r.initials,
-      phone: r.phone,
-      age: r.age,
-      familyMembers: r.familyMembers,
-      familyEmail: r.familyEmail,
-      bloodType: r.bloodType,
-      chronicDiseases: r.chronicDiseases,
-      allergies: r.allergies,
-      insuranceInfo: r.insuranceInfo,
-      mobilityStatus: r.mobilityStatus,
-      assistiveDevices: r.assistiveDevices,
-      cognitiveStatus: r.cognitiveStatus,
-      dietType: r.dietType,
-      foodRestrictions: r.foodRestrictions,
-      foodPreferences: r.foodPreferences,
-      previousProfession: r.previousProfession,
-      hobbies: r.hobbies,
-      socialStatus: r.socialStatus,
-      uploadedDocuments: updated,
-    );
+    residentFiles[idx] = r.copyWith(uploadedDocuments: updated);
     notifyListeners();
+  }
+
+  Future<bool> deleteFamilyMemberFromResident({
+    required String residentId,
+    required FamilyMember member,
+  }) async {
+    final residentIndex = residentFiles.indexWhere((r) => r.id == residentId);
+    final previousResident =
+        residentIndex == -1 ? null : residentFiles[residentIndex];
+
+    if (previousResident != null) {
+      final updatedMembers = previousResident.familyMembers
+          .where((m) => m.id != member.id)
+          .toList();
+      residentFiles[residentIndex] =
+          previousResident.copyWith(familyMembers: updatedMembers);
+    }
+    final globalIndex = familyMembersList.indexWhere((m) => m.id == member.id);
+    FamilyMember? previousGlobal;
+    if (globalIndex != -1) {
+      previousGlobal = familyMembersList[globalIndex];
+      familyMembersList.removeAt(globalIndex);
+    }
+    notifyListeners();
+
+    final synced = await _runBackendMutation(() {
+      return BackendMutationService.instance.deleteFamilyMember(member.id);
+    });
+    if (!synced) {
+      if (previousResident != null && residentIndex < residentFiles.length) {
+        residentFiles[residentIndex] = previousResident;
+      } else if (previousResident != null) {
+        residentFiles.add(previousResident);
+      }
+      if (previousGlobal != null) {
+        final restoreAt = globalIndex > familyMembersList.length
+            ? familyMembersList.length
+            : globalIndex;
+        familyMembersList.insert(restoreAt, previousGlobal);
+      }
+      notifyListeners();
+      return false;
+    }
+
+    unawaited(syncBackendData());
+    return true;
   }
 
   AppRiverpod() {
@@ -502,7 +475,7 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
-  // تحديث فلتر التاريخ للوحة تحكم المدير وإعادة بناء المؤشرات المحملة من AWS.
+  // تحديث فلتر التاريخ للوحة تحكم المدير وإعادة بناء المؤشرات المحملة من السيرفر.
   void updateAdminDateFilter(String filter) {
     selectedAdminDateFilter = filter;
     // ملاحظة: هنا يمكن إضافة استدعاء للـ API لتحديث قائمة الإحصائيات (adminStats)
@@ -529,7 +502,7 @@ class AppRiverpod extends ChangeNotifier {
       final residentId = _residentIdForName(assessment.residentName);
       if (residentId == null) {
         backendSyncError =
-            'لا يوجد residentId من AWS للتقييم الخاص بـ ${assessment.residentName}';
+            'لا يوجد residentId من السيرفر للتقييم الخاص بـ ${assessment.residentName}';
         remaining.add(assessment);
         continue;
       }
@@ -631,7 +604,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(note.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لملاحظة ${note.residentName}';
+          'لا يوجد residentId من السيرفر لملاحظة ${note.residentName}';
       notifyListeners();
       return;
     }
@@ -665,7 +638,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(newInfo.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS للملف الطبي الخاص بـ ${newInfo.residentName}';
+          'لا يوجد residentId من السيرفر للملف الطبي الخاص بـ ${newInfo.residentName}';
       notifyListeners();
       return;
     }
@@ -688,7 +661,7 @@ class AppRiverpod extends ChangeNotifier {
   }
 
   // عملية تسجيل الدخول وحفظ البيانات آمنياً مع ضبط موعد انتهاء الجلسة (US-SmartLogin)
-  // تسجيل الدخول عبر الـ Backend الحقيقي (AWS Cognito)
+  // تسجيل الدخول عبر الـ Backend الحقيقي (السيرفر)
   // يستخدمه LoginScreen بعد نجاح AuthService.login()
   String? backendUserId;
   String? backendFacilityId;
@@ -957,7 +930,7 @@ class AppRiverpod extends ChangeNotifier {
     final token = await AuthService.instance.restoreSession();
     if (token == null) {
       if (isAuthenticated) {
-        backendSyncError = 'لا توجد جلسة AWS نشطة';
+        backendSyncError = 'لا توجد جلسة السيرفر نشطة';
         notifyListeners();
       }
       return;
@@ -975,6 +948,7 @@ class AppRiverpod extends ChangeNotifier {
         role: currentRole,
       );
       _applyBackendSnapshot(snapshot);
+      unawaited(loadLocalAlbums());
       lastBackendSyncAt = DateTime.now();
     } catch (e) {
       backendSyncError = e.toString();
@@ -1060,7 +1034,10 @@ class AppRiverpod extends ChangeNotifier {
       familyBills = snapshot.familyBills!;
     }
     if (snapshot.memoryMoments != null) {
-      memoryMoments = snapshot.memoryMoments!;
+      final localMoments =
+          memoryMoments.where(_shouldPersistMemoryMoment).toList();
+      memoryMoments =
+          _dedupeMemoryMoments([...localMoments, ...snapshot.memoryMoments!]);
     }
     if (snapshot.memories != null) {
       memoriesList = snapshot.memories!;
@@ -1268,14 +1245,24 @@ class AppRiverpod extends ChangeNotifier {
       final call = calls.first;
       activeVideoCallId = call.id;
       activeVideoCallJoinUrl = call.joinUrl;
-      activeCallerName = call.calleeName?.isNotEmpty == true
-          ? call.calleeName!
-          : 'مكالمة فيديو';
-      activeCallerInitials =
-          activeCallerName.isNotEmpty ? activeCallerName.substring(0, 1) : '؟';
       final isOutgoing = call.callerId == backendUserId;
       isIncomingCall = !isOutgoing && call.status == 'ringing';
       isVideoCallActive = call.status == 'accepted' || isOutgoing;
+      if (isIncomingCall) {
+        // اسم المتصل = اسم المقيم (الطرف الذي بدأ المكالمة)
+        final residentName = residentFiles
+            .where((r) => r.id == call.residentId)
+            .map((r) => r.name)
+            .firstOrNull;
+        activeCallerName =
+            residentName?.isNotEmpty == true ? residentName! : 'المقيم';
+      } else {
+        activeCallerName = call.calleeName?.isNotEmpty == true
+            ? call.calleeName!
+            : 'مكالمة فيديو';
+      }
+      activeCallerInitials =
+          activeCallerName.isNotEmpty ? activeCallerName[0] : '؟';
       backendSyncError = null;
     } catch (e) {
       backendSyncError = e.toString();
@@ -1529,7 +1516,7 @@ class AppRiverpod extends ChangeNotifier {
 
   Future<bool> _runBackendMutation(Future<void> Function() mutation) async {
     if (AuthService.instance.currentUser == null) {
-      backendSyncError = 'لا توجد جلسة AWS نشطة';
+      backendSyncError = 'لا توجد جلسة السيرفر نشطة';
       notifyListeners();
       return false;
     }
@@ -1564,6 +1551,62 @@ class AppRiverpod extends ChangeNotifier {
         linkedResidentId: user.linkedResidentId,
         facilityName: user.facilityName,
       );
+      return true;
+    } on ApiException catch (e) {
+      backendSyncError = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      backendSyncError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<CognitoNewPasswordChallenge?> beginTemporaryPasswordActivation(
+    String idRaw,
+    String passRaw,
+  ) async {
+    final identifier = idRaw.trim();
+    final password = passRaw.trim();
+
+    try {
+      final challenge = await AuthService.instance.detectNewPasswordChallenge(
+        identifier,
+        password,
+      );
+      if (challenge != null) backendSyncError = null;
+      return challenge;
+    } on ApiException catch (e) {
+      backendSyncError = e.message;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      backendSyncError = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> completeTemporaryPasswordActivation(
+    CognitoNewPasswordChallenge challenge,
+    String newPassword,
+  ) async {
+    try {
+      final user = await AuthService.instance.completeNewPasswordChallenge(
+        challenge: challenge,
+        newPassword: newPassword,
+      );
+      await markBackendAuthenticated(
+        email: user.email,
+        role: user.arabicRole,
+        userId: user.userId,
+        facilityId: user.facilityId,
+        name: user.name,
+        linkedResidentId: user.linkedResidentId,
+        facilityName: user.facilityName,
+      );
+      backendSyncError = null;
       return true;
     } on ApiException catch (e) {
       backendSyncError = e.message;
@@ -1792,7 +1835,7 @@ class AppRiverpod extends ChangeNotifier {
     final resolvedResidentId = residentId ?? backendResidentId;
     if (resolvedResidentId == null || resolvedResidentId.isEmpty) {
       aiInsightMode = 'error';
-      aiInsightError = 'لا يوجد معرف مقيم من AWS لجلب توصية الذكاء الاصطناعي';
+      aiInsightError = 'لا يوجد معرف مقيم من السيرفر لجلب توصية الذكاء الاصطناعي';
       backendSyncError = aiInsightError;
       notifyListeners();
       return false;
@@ -1900,17 +1943,24 @@ class AppRiverpod extends ChangeNotifier {
   List<MemoryItem> memoriesList = [];
 
   // --- Albums Management ---
+  static const String defaultPhotoAlbumName = 'صوري';
   List<String> customAlbums = [];
   Map<String, String> albumCovers = {}; // albumName -> assetPath or url
 
   List<String> get allAlbums {
-    return customAlbums;
+    return [
+      defaultPhotoAlbumName,
+      ...customAlbums.where((name) => name != defaultPhotoAlbumName),
+    ];
   }
 
   void createAlbum(String name) {
-    if (!customAlbums.contains(name)) {
-      customAlbums.add(name);
+    final cleanName = name.trim();
+    if (cleanName.isEmpty || cleanName == defaultPhotoAlbumName) return;
+    if (!customAlbums.contains(cleanName)) {
+      customAlbums.add(cleanName);
       notifyListeners();
+      unawaited(_saveLocalAlbums());
     }
   }
 
@@ -1928,6 +1978,7 @@ class AppRiverpod extends ChangeNotifier {
         albumCovers[newName] = albumCovers.remove(oldName)!;
       }
       notifyListeners();
+      unawaited(_saveLocalAlbums());
     }
   }
 
@@ -1936,13 +1987,16 @@ class AppRiverpod extends ChangeNotifier {
     memoriesList.removeWhere((item) => item.category == name);
     albumCovers.remove(name);
     notifyListeners();
+    unawaited(_saveLocalAlbums());
   }
 
-  void addPhotoToAlbum(String albumName, String photoPath,
+  String addPhotoToAlbum(String albumName, String photoPath,
       {String type = 'image'}) {
+    final cleanAlbum =
+        albumName.trim().isEmpty ? defaultPhotoAlbumName : albumName.trim();
     final newItem = MemoryItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      category: albumName,
+      id: 'local_album_${DateTime.now().millisecondsSinceEpoch}',
+      category: cleanAlbum,
       title: 'صورة جديدة',
       date:
           '${DateTime.now().day} / ${DateTime.now().month} / ${DateTime.now().year}',
@@ -1951,16 +2005,196 @@ class AppRiverpod extends ChangeNotifier {
     );
     memoriesList.insert(0, newItem);
     notifyListeners();
+    unawaited(_saveLocalAlbums());
+    return newItem.id;
+  }
+
+  Future<String> persistAlbumImage(String sourcePath) async {
+    try {
+      final source = File(sourcePath);
+      if (!await source.exists()) return sourcePath;
+      final dir = await getApplicationDocumentsDirectory();
+      final albumDir = Directory('${dir.path}/album_images');
+      if (!await albumDir.exists()) {
+        await albumDir.create(recursive: true);
+      }
+      final extension = sourcePath.split('.').last.toLowerCase();
+      final safeExtension = extension.length <= 5 ? extension : 'jpg';
+      final fileName =
+          'memory_${DateTime.now().millisecondsSinceEpoch}.$safeExtension';
+      final copied = await source.copy('${albumDir.path}/$fileName');
+      return copied.path;
+    } catch (e) {
+      debugPrint('Error persisting album image: $e');
+      return sourcePath;
+    }
+  }
+
+  void updateMemoryItemAssetPath(String id, String assetPath) {
+    final index = memoriesList.indexWhere((item) => item.id == id);
+    if (index == -1) return;
+    final item = memoriesList[index];
+    memoriesList[index] = MemoryItem(
+      id: item.id,
+      category: item.category,
+      title: item.title,
+      date: item.date,
+      type: item.type,
+      assetPath: assetPath,
+      content: item.content,
+    );
+    notifyListeners();
+    unawaited(_saveLocalAlbums());
   }
 
   void setAlbumCover(String albumName, String imagePath) {
     albumCovers[albumName] = imagePath;
     notifyListeners();
+    unawaited(_saveLocalAlbums());
   }
 
   void deleteMemoryItem(String id) {
     memoriesList.removeWhere((item) => item.id == id);
     notifyListeners();
+    unawaited(_saveLocalAlbums());
+  }
+
+  Future<File> _localAlbumsFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/custom_albums.json');
+  }
+
+  Future<void> _saveLocalAlbums() async {
+    try {
+      final file = await _localAlbumsFile();
+      final localPhotos = memoriesList
+          .where(_shouldPersistMemoryItem)
+          .map((m) => {
+                'id': m.id,
+                'category': m.category,
+                'title': m.title,
+                'date': m.date,
+                'type': m.type,
+                'assetPath': m.assetPath,
+                if (m.content != null) 'content': m.content,
+              })
+          .toList();
+      final localFamilyMoments = memoryMoments
+          .where(_shouldPersistMemoryMoment)
+          .map((m) => {
+                'id': m.id,
+                'residentId': m.residentId,
+                'residentName': m.residentName,
+                'imageUrl': m.imageUrl,
+                'activityTitle': m.activityTitle,
+                'date': m.date,
+                'appreciations': m.appreciations,
+              })
+          .toList();
+      final data = {
+        'albums': customAlbums,
+        'photos': localPhotos,
+        'familyMemoryMoments': localFamilyMoments,
+        'albumCovers': albumCovers,
+      };
+      await file.writeAsString(jsonEncode(data));
+    } catch (e) {
+      debugPrint('Error saving local albums: $e');
+    }
+  }
+
+  Future<void> loadLocalAlbums() async {
+    try {
+      final file = await _localAlbumsFile();
+      if (!await file.exists()) return;
+      final content = await file.readAsString();
+      final data = jsonDecode(content) as Map<String, dynamic>;
+
+      final albums = (data['albums'] as List?)?.cast<String>() ?? [];
+      for (final album in albums) {
+        if (!customAlbums.contains(album)) {
+          customAlbums.add(album);
+        }
+      }
+
+      final photos = (data['photos'] as List?) ?? [];
+      for (final photo in photos) {
+        if (photo is! Map) continue;
+        final map = Map<String, dynamic>.from(photo);
+        final id = map['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        if (!memoriesList.any((m) => m.id == id)) {
+          memoriesList.insert(
+            0,
+            MemoryItem(
+              id: id,
+              category: map['category']?.toString() ?? defaultPhotoAlbumName,
+              title: map['title']?.toString() ?? 'صورة جديدة',
+              date: map['date']?.toString() ?? 'اليوم',
+              type: map['type']?.toString() ?? 'image',
+              assetPath: map['assetPath']?.toString() ?? '',
+              content: map['content']?.toString(),
+            ),
+          );
+        }
+      }
+
+      final familyMoments = (data['familyMemoryMoments'] as List?) ?? [];
+      for (final rawMoment in familyMoments) {
+        if (rawMoment is! Map) continue;
+        final map = Map<String, dynamic>.from(rawMoment);
+        final id = map['id']?.toString() ?? '';
+        final imageUrl = map['imageUrl']?.toString() ?? '';
+        if (id.isEmpty || imageUrl.isEmpty) continue;
+        upsertMemoryMoment(
+          MemoryMoment(
+            id: id,
+            residentId: map['residentId']?.toString() ??
+                currentAccount?.linkedResidentId ??
+                backendResidentId ??
+                '',
+            residentName: map['residentName']?.toString() ??
+                (residentFiles.isNotEmpty
+                    ? residentFiles.first.name
+                    : 'المقيم'),
+            imageUrl: imageUrl,
+            activityTitle:
+                map['activityTitle']?.toString() ?? 'صورة عائلية جديدة',
+            date: map['date']?.toString() ?? 'اليوم',
+            appreciations: map['appreciations'] is num
+                ? (map['appreciations'] as num).toInt()
+                : 0,
+          ),
+          notify: false,
+          save: false,
+        );
+      }
+
+      final covers = (data['albumCovers'] as Map<String, dynamic>?) ?? {};
+      albumCovers.addAll(covers.map((k, v) => MapEntry(k, v as String)));
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading local albums: $e');
+    }
+  }
+
+  bool _shouldPersistMemoryItem(MemoryItem item) {
+    final isLocalItem = item.id.startsWith('local_album_') ||
+        item.id.startsWith('wall_') ||
+        item.id.startsWith('mem_custom_') ||
+        item.id.startsWith('mem_med_');
+    final isAlbumPhoto = item.category == defaultPhotoAlbumName ||
+        customAlbums.contains(item.category);
+    final isFamilyMessage = item.category == 'أسرة' &&
+        (item.type == 'text' || item.type == 'voice');
+    final isFamilyImage = item.category == 'أسرة' && item.type == 'image';
+    return isLocalItem && (isAlbumPhoto || isFamilyMessage || isFamilyImage);
+  }
+
+  bool _shouldPersistMemoryMoment(MemoryMoment moment) {
+    return moment.imageUrl.trim().isNotEmpty &&
+        (moment.id.startsWith('local_family_') || moment.id.startsWith('fb_'));
   }
 
   // --- VOLUNTEER STATE ---
@@ -2079,7 +2313,7 @@ class AppRiverpod extends ChangeNotifier {
           id: 'k2',
           label: 'مشاركة الأنشطة',
           value: '${_toArabicDigits(activityRate)}٪',
-          trend: activityRate > 0 ? 'من بيانات AWS' : 'لا توجد بيانات',
+          trend: activityRate > 0 ? 'من بيانات السيرفر' : 'لا توجد بيانات',
           isPositive: activityRate >= 60),
       SocialSpecialistKPI(
           id: 'k3',
@@ -2408,11 +2642,34 @@ class AppRiverpod extends ChangeNotifier {
     unawaited(syncBackendData());
   }
 
-  Future<void> pickAndSetResidentImage(String residentId) async {
+  Future<bool?> pickAndSetResidentImage(String residentId) async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      updateResidentImage(residentId, image.path);
+    if (image == null) return null;
+
+    updateResidentImage(residentId, image.path);
+    try {
+      final uploaded = await ProfileImageService.instance.uploadResidentImage(
+        residentId: residentId,
+        image: image,
+      );
+      final remoteUrl = uploaded.imageUrl.trim();
+      if (remoteUrl.isEmpty) {
+        throw ApiException(500, 'لم يرجع الباك اند رابط صورة المقيم');
+      }
+      updateResidentImage(residentId, remoteUrl);
+      backendSyncError = null;
+      notifyListeners();
+      unawaited(syncBackendData());
+      return true;
+    } on ApiException catch (e) {
+      backendSyncError = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      backendSyncError = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 
@@ -2786,7 +3043,7 @@ class AppRiverpod extends ChangeNotifier {
     if (triggeredBy.isEmpty) {
       isEmergencyActive = false;
       isEmergencySyncing = false;
-      backendSyncError = 'لا توجد جلسة AWS نشطة لإرسال نداء الطوارئ';
+      backendSyncError = 'لا توجد جلسة السيرفر نشطة لإرسال نداء الطوارئ';
       notifyListeners();
       return;
     }
@@ -2944,21 +3201,40 @@ class AppRiverpod extends ChangeNotifier {
       });
 
       try {
-        // Ray-style voice: use OpenAI TTS directly when the backend has a key,
-        // otherwise the backend falls back to Polly and then device TTS.
-        final speech = await AiService.instance.synthesizeSpeech(
-          text: cleanText,
-          provider: 'openai',
-          openAiVoice: 'cedar',
-          voiceInstructions:
-              'تكلم بالعربية المصرية بصوت مساعد شخصي هادئ وواثق ودافئ، قريب من أسلوب Ray/JARVIS. اجعل النبرة طبيعية، سريعة قليلًا، بدون أداء آلي، وبوقفات قصيرة.',
-        );
+        AiSpeechResponse? speech;
+        Object? lastError;
+        for (var attempt = 0; attempt < 2; attempt++) {
+          try {
+            speech = await AiService.instance.synthesizeSpeech(
+              text: cleanText,
+              provider: 'google-cloud-gemini-tts',
+              model: 'gemini-2.5-pro-tts',
+              voiceName: 'Kore',
+              languageCode: 'ar-EG',
+              audioEncoding: 'MP3',
+              prompt:
+                  'تحدث بالعربية المصرية بلهجة طبيعية ودافئة ومطمئنة. النبرة عاطفية هادئة ومناسبة لكبار السن، مع ابتسامة مسموعة، وقفات قصيرة، وسرعة متوسطة. لا تجعل الصوت آلياً أو مسرحياً.',
+              voiceInstructions:
+                  'استخدم Google Cloud Gemini-TTS model gemini-2.5-pro-tts. صوت مصري إنساني دافئ، قريب ومتعاطف، مناسب لمقيم كبير السن. عبّر عن الطمأنينة والاهتمام بدون مبالغة.',
+              timeout: const Duration(seconds: 45),
+            );
+            if (speech.audioBase64.trim().isEmpty) {
+              throw const FormatException('Empty Gemini-TTS audio');
+            }
+            break;
+          } catch (e) {
+            lastError = e;
+            if (attempt == 0) {
+              await Future.delayed(const Duration(milliseconds: 700));
+            }
+          }
+        }
+        if (speech == null) throw lastError ?? 'Gemini-TTS failed';
         final bytes = base64Decode(speech.audioBase64);
         await _companionPlayer
             .play(BytesSource(bytes, mimeType: speech.contentType));
       } catch (backendErr) {
-        // fallback: device TTS لو الباك اند فشل
-        debugPrint('Backend TTS failed → device TTS fallback: $backendErr');
+        debugPrint('Gemini-TTS failed -> device TTS fallback: $backendErr');
         _companionPlayerCompleteSub?.cancel();
         _companionPlayerCompleteSub = null;
         await _initTts();
@@ -3097,6 +3373,8 @@ class AppRiverpod extends ChangeNotifier {
     if (category == 'الكل') {
       results.addAll(memoriesList);
       results.addAll(memoryMoments);
+    } else if (cleanCategory == defaultPhotoAlbumName) {
+      results.addAll(_allPhotoMemories());
     } else if (cleanCategory == 'أسرة') {
       results.addAll(memoriesList.where((m) => m.category == 'أسرة'));
     } else if (category == '🎬 فيديو' || cleanCategory == 'فيديو') {
@@ -3108,7 +3386,22 @@ class AppRiverpod extends ChangeNotifier {
     } else if (cleanCategory == 'مناسبات') {
       results.addAll(memoriesList.where((m) => m.category == 'مناسبات'));
     } else {
-      results.addAll(memoriesList.where((m) => m.category == cleanCategory));
+      results.addAll(memoriesList
+          .where((m) => m.category == category || m.category == cleanCategory));
+    }
+    return results;
+  }
+
+  List<dynamic> _allPhotoMemories() {
+    final results = <dynamic>[];
+    final seen = <String>{};
+    for (final item in memoriesList.where((m) => m.type == 'image')) {
+      final key = item.assetPath.isNotEmpty ? item.assetPath : item.id;
+      if (seen.add(key)) results.add(item);
+    }
+    for (final moment in memoryMoments.where((m) => m.imageUrl.isNotEmpty)) {
+      final key = moment.imageUrl.isNotEmpty ? moment.imageUrl : moment.id;
+      if (seen.add(key)) results.add(moment);
     }
     return results;
   }
@@ -3193,7 +3486,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة دواء لـ $residentName';
+          'لا يوجد residentId من السيرفر لإضافة دواء لـ $residentName';
       notifyListeners();
       return;
     }
@@ -3222,7 +3515,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(session.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لتسجيل جلسة ${session.residentName}';
+          'لا يوجد residentId من السيرفر لتسجيل جلسة ${session.residentName}';
       notifyListeners();
       return;
     }
@@ -3242,7 +3535,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(p.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة روشتة لـ ${p.residentName}';
+          'لا يوجد residentId من السيرفر لإضافة روشتة لـ ${p.residentName}';
       notifyListeners();
       return;
     }
@@ -3294,8 +3587,8 @@ class AppRiverpod extends ChangeNotifier {
           label: 'نسبة الإشغال',
           value: '${occupancy.toInt()}٪',
           trend: lastBackendSyncAt == null
-              ? 'بانتظار مزامنة AWS'
-              : 'آخر تحديث من AWS',
+              ? 'بانتظار مزامنة السيرفر'
+              : 'آخر تحديث من السيرفر',
           isPositive: occupancy <= 100,
           history: [occupancy / 100]),
       CenterOperationalStat(
@@ -3306,8 +3599,8 @@ class AppRiverpod extends ChangeNotifier {
                   : 'إيرادات الشهر'),
           value: '$revenueStr ج.م',
           trend: lastBackendSyncAt == null
-              ? 'بانتظار مزامنة AWS'
-              : 'من فواتير AWS المدفوعة',
+              ? 'بانتظار مزامنة السيرفر'
+              : 'من فواتير السيرفر المدفوعة',
           isPositive: revenueValue > 0,
           history: [revenueValue / 1000]),
       CenterOperationalStat(
@@ -3320,8 +3613,8 @@ class AppRiverpod extends ChangeNotifier {
           label: 'رضا الأهالي',
           value: '${satisfactionValue.toStringAsFixed(1)} / ٥',
           trend: volunteerRatings.isEmpty
-              ? 'لا توجد تقييمات من AWS'
-              : 'آخر تقييمات AWS',
+              ? 'لا توجد تقييمات من السيرفر'
+              : 'آخر تقييمات السيرفر',
           isPositive: satisfactionValue >= 3.5,
           history: [satisfactionValue]),
     ];
@@ -3535,7 +3828,7 @@ class AppRiverpod extends ChangeNotifier {
             ? residentFiles.first.id
             : null;
     if (residentId == null || !_looksLikeBackendId(residentId)) {
-      backendSyncError = 'لا يوجد residentId من AWS لحجز الزيارة';
+      backendSyncError = 'لا يوجد residentId من السيرفر لحجز الزيارة';
       notifyListeners();
       return;
     }
@@ -3654,6 +3947,40 @@ class AppRiverpod extends ChangeNotifier {
 
     notifyListeners();
     unawaited(syncBackendData());
+  }
+
+  Future<bool> deleteResident(String residentId) async {
+    final index = residentFiles.indexWhere((r) => r.id == residentId);
+    if (index == -1) return false;
+
+    final removedResident = residentFiles[index];
+    final removedFamilyMembers =
+        familyMembersList.where((m) => m.residentId == residentId).toList();
+    final previousNotifications = List<TaptabaNotification>.from(notifications);
+    residentFiles.removeAt(index);
+    familyMembersList.removeWhere((m) => m.residentId == residentId);
+    notifications.removeWhere((n) =>
+        n.body.contains(removedResident.name) ||
+        n.title.contains(removedResident.name) ||
+        (removedResident.room.isNotEmpty &&
+            n.body.contains(removedResident.room)));
+    notifyListeners();
+
+    final synced = await _runBackendMutation(() {
+      return BackendMutationService.instance.deleteResident(residentId);
+    });
+    if (!synced) {
+      final restoreAt =
+          index > residentFiles.length ? residentFiles.length : index;
+      residentFiles.insert(restoreAt, removedResident);
+      familyMembersList.addAll(removedFamilyMembers);
+      notifications = previousNotifications;
+      notifyListeners();
+      return false;
+    }
+
+    unawaited(syncBackendData());
+    return true;
   }
 
   double get medicationComplianceRate {
@@ -3914,6 +4241,112 @@ class AppRiverpod extends ChangeNotifier {
 
   List<MemoryMoment> memoryMoments = [];
 
+  List<MemoryMoment> memoryWallMoments({String? residentId}) {
+    final filtered = memoryMoments.where((moment) {
+      final matchesResident = residentId == null ||
+          residentId.isEmpty ||
+          moment.residentId == residentId;
+      return matchesResident && moment.imageUrl.trim().isNotEmpty;
+    }).toList();
+    return _dedupeMemoryMoments(filtered);
+  }
+
+  void upsertMemoryMoment(
+    MemoryMoment moment, {
+    String? replaceId,
+    bool notify = true,
+    bool save = true,
+  }) {
+    final existingIndex = memoryMoments.indexWhere((m) {
+      if (replaceId != null && m.id == replaceId) return true;
+      if (m.id == moment.id) return true;
+      return m.imageUrl.trim().isNotEmpty &&
+          moment.imageUrl.trim().isNotEmpty &&
+          m.imageUrl == moment.imageUrl;
+    });
+    if (existingIndex == -1) {
+      memoryMoments.insert(0, moment);
+    } else {
+      final existing = memoryMoments[existingIndex];
+      memoryMoments[existingIndex] =
+          replaceId != null && existing.id == replaceId
+              ? moment
+              : _preferDisplayableMemoryMoment(existing, moment);
+    }
+    _upsertMemoryItemFromMoment(moment, replaceId: replaceId);
+    memoryMoments = _dedupeMemoryMoments(memoryMoments);
+    if (notify) notifyListeners();
+    if (save) unawaited(_saveLocalAlbums());
+  }
+
+  void _upsertMemoryItemFromMoment(MemoryMoment moment, {String? replaceId}) {
+    if (moment.imageUrl.trim().isEmpty) return;
+    final itemId = 'wall_${moment.id}';
+    final replaceItemId = replaceId == null ? null : 'wall_$replaceId';
+    final existingIndex = memoriesList.indexWhere((item) =>
+        item.id == itemId ||
+        (replaceItemId != null && item.id == replaceItemId) ||
+        (item.assetPath.isNotEmpty && item.assetPath == moment.imageUrl));
+    final item = MemoryItem(
+      id: itemId,
+      category: 'أسرة',
+      title: moment.activityTitle,
+      date: moment.date,
+      type: 'image',
+      assetPath: moment.imageUrl,
+    );
+    if (existingIndex == -1) {
+      memoriesList.insert(0, item);
+    } else {
+      memoriesList[existingIndex] = item;
+    }
+  }
+
+  List<MemoryMoment> _dedupeMemoryMoments(List<MemoryMoment> moments) {
+    final results = <MemoryMoment>[];
+    final indexes = <String, int>{};
+    for (final moment in moments) {
+      final keys = _memoryMomentKeys(moment);
+      final existingIndex =
+          keys.map((key) => indexes[key]).whereType<int>().firstOrNull;
+      if (existingIndex == null) {
+        for (final key in keys) {
+          indexes[key] = results.length;
+        }
+        results.add(moment);
+      } else {
+        results[existingIndex] =
+            _preferDisplayableMemoryMoment(results[existingIndex], moment);
+        for (final key in keys) {
+          indexes[key] = existingIndex;
+        }
+      }
+    }
+    return results;
+  }
+
+  List<String> _memoryMomentKeys(MemoryMoment moment) {
+    final keys = <String>[];
+    if (moment.id.isNotEmpty) keys.add('id:${moment.id}');
+    final imageUrl = moment.imageUrl.trim();
+    if (imageUrl.isNotEmpty) keys.add('url:$imageUrl');
+    if (keys.isEmpty) {
+      keys.add('${moment.residentId}|${moment.activityTitle}|${moment.date}');
+    }
+    return keys;
+  }
+
+  MemoryMoment _preferDisplayableMemoryMoment(
+    MemoryMoment current,
+    MemoryMoment candidate,
+  ) {
+    if (current.imageUrl.trim().isEmpty &&
+        candidate.imageUrl.trim().isNotEmpty) {
+      return candidate;
+    }
+    return current;
+  }
+
   Future<void> addMemoryMoment(MemoryMoment moment) async {
     setUploadState(uploading: true, progress: 0.1);
     final residentId = _looksLikeBackendId(moment.residentId)
@@ -3923,7 +4356,7 @@ class AppRiverpod extends ChangeNotifier {
       setUploadState(
         uploading: false,
         error:
-            'لا يوجد residentId من AWS لإضافة ذكرى لـ ${moment.residentName}',
+            'لا يوجد residentId من السيرفر لإضافة ذكرى لـ ${moment.residentName}',
       );
       backendSyncError = uploadError;
       notifyListeners();
@@ -3941,7 +4374,7 @@ class AppRiverpod extends ChangeNotifier {
       return;
     }
     setUploadState(uploading: false, progress: 1.0);
-    memoryMoments.insert(0, moment);
+    upsertMemoryMoment(moment, notify: false, save: true);
 
     triggerNotification(
       title: 'لحظة سعادة جديدة 📸',
@@ -3951,23 +4384,15 @@ class AppRiverpod extends ChangeNotifier {
       targetRole: 'أهل',
     );
 
-    final newItem = MemoryItem(
-      id: 'mem_custom_${DateTime.now().millisecondsSinceEpoch}',
-      category: 'أسرة',
-      title: moment.activityTitle,
-      date: 'اليوم',
-      type: 'image',
-      assetPath: moment.imageUrl,
-    );
-    memoriesList.insert(0, newItem);
-
     notifyListeners();
     unawaited(syncBackendData());
   }
 
   void deleteMemoryMoment(String id) {
     memoryMoments.removeWhere((m) => m.id == id);
+    memoriesList.removeWhere((m) => m.id == 'wall_$id');
     notifyListeners();
+    unawaited(_saveLocalAlbums());
   }
 
   void addAppreciation(String momentId) {
@@ -4108,10 +4533,12 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
-  void acceptCall() {
+  Future<void> acceptCall() async {
     isVideoCallActive = true;
     isIncomingCall = false;
     notifyListeners();
+    final url = activeVideoCallJoinUrl;
+    if ((url ?? '').isNotEmpty) await launchZoom(url);
   }
 
   void rejectCall() {
@@ -4124,10 +4551,13 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sendVoiceMessageFromResident(
+  Future<VoiceMessage?> sendVoiceMessageFromResident(
     String title, {
     String? audioPath,
     int durationSeconds = 0,
+    String? recipientId,
+    String? recipientName,
+    String? familyMemberId,
   }) async {
     final residentId = _looksLikeBackendId(backendResidentId)
         ? backendResidentId
@@ -4135,29 +4565,73 @@ class AppRiverpod extends ChangeNotifier {
             ? residentFiles.first.id
             : null;
     if (residentId == null) {
-      backendSyncError = 'لا يوجد residentId من AWS لإرسال الرسالة الصوتية';
+      backendSyncError = 'لا يوجد residentId من السيرفر لإرسال الرسالة الصوتية';
       notifyListeners();
-      return;
+      return null;
     }
+    final localId = DateTime.now().millisecondsSinceEpoch.toString();
+    Map<String, dynamic>? backendMessage;
     try {
-      await VoiceMessageService.instance.create(
+      final uploaded = await VoiceMessageService.instance.create(
         residentId: residentId,
         title: title,
         senderType: 'resident',
+        recipientId: recipientId,
+        familyMemberId: familyMemberId,
         filePath: audioPath,
         durationSeconds: durationSeconds,
       );
+      backendMessage = uploaded.message;
       backendSyncError = null;
     } catch (e) {
       backendSyncError = e.toString();
+      final failedMsg = VoiceMessage(
+        id: localId,
+        senderId: 'resident',
+        title: title,
+        timeDescription: 'الآن',
+        audioUrl: audioPath,
+        durationSeconds: durationSeconds,
+        recipientId: recipientId ?? familyMemberId,
+        recipientName: recipientName,
+        deliveryStatus: 'failed',
+        moderationStatus: 'pending',
+      );
+      voiceMessagesList.insert(0, failedMsg);
       notifyListeners();
-      return;
+      return failedMsg;
     }
+    String field(List<String> keys, String fallback) {
+      for (final key in keys) {
+        final value = backendMessage?[key];
+        if (value != null && value.toString().trim().isNotEmpty) {
+          return value.toString();
+        }
+      }
+      return fallback;
+    }
+
     final newMsg = VoiceMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: field(['id'], localId),
       senderId: 'resident', // Special ID for the resident themselves
       title: title,
       timeDescription: 'الآن',
+      audioUrl: field(['audioUrl', 'audio_url', 'mediaUrl', 'media_url'],
+                  audioPath ?? '')
+              .trim()
+              .isEmpty
+          ? audioPath
+          : field(['audioUrl', 'audio_url', 'mediaUrl', 'media_url'],
+              audioPath ?? ''),
+      durationSeconds: durationSeconds,
+      recipientId: recipientId ?? familyMemberId,
+      recipientName: recipientName,
+      deliveryStatus:
+          field(['deliveryStatus', 'delivery_status', 'status'], 'sent'),
+      moderationStatus: field(
+        ['moderationStatus', 'moderation_status', 'approvalStatus'],
+        'pending',
+      ),
     );
     voiceMessagesList.insert(0, newMsg);
 
@@ -4172,6 +4646,8 @@ class AppRiverpod extends ChangeNotifier {
     );
 
     notifyListeners();
+    unawaited(syncBackendData());
+    return newMsg;
   }
 
   Future<void> sendVoiceMessageFromFamily(
@@ -4185,7 +4661,7 @@ class AppRiverpod extends ChangeNotifier {
             ? residentFiles.first.id
             : null;
     if (residentId == null || !_looksLikeBackendId(residentId)) {
-      backendSyncError = 'لا يوجد residentId من AWS لإرسال الرسالة الصوتية';
+      backendSyncError = 'لا يوجد residentId من السيرفر لإرسال الرسالة الصوتية';
       notifyListeners();
       return;
     }
@@ -4258,7 +4734,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(task.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة مهمة لـ ${task.residentName}';
+          'لا يوجد residentId من السيرفر لإضافة مهمة لـ ${task.residentName}';
       notifyListeners();
       return;
     }
@@ -4308,7 +4784,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(visit.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة زيارة طبيب لـ ${visit.residentName}';
+          'لا يوجد residentId من السيرفر لإضافة زيارة طبيب لـ ${visit.residentName}';
       notifyListeners();
       return;
     }
@@ -4338,7 +4814,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(plan.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة خطة وجبات لـ ${plan.residentName}';
+          'لا يوجد residentId من السيرفر لإضافة خطة وجبات لـ ${plan.residentName}';
       notifyListeners();
       return;
     }
@@ -4357,7 +4833,7 @@ class AppRiverpod extends ChangeNotifier {
   Future<void> deleteMealPlan(String residentName) async {
     final id = mealPlanIdsByResidentName[residentName];
     if (id == null || id.isEmpty) {
-      backendSyncError = 'لا يوجد mealPlanId من AWS لحذف خطة $residentName';
+      backendSyncError = 'لا يوجد mealPlanId من السيرفر لحذف خطة $residentName';
       notifyListeners();
       return;
     }
@@ -4849,6 +5325,7 @@ class AppRiverpod extends ChangeNotifier {
       );
     }
     notifyListeners();
+    unawaited(_saveLocalAlbums());
   }
 
   void sendMedicationReminder(String medName) {
