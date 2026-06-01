@@ -89,6 +89,26 @@ mcolors
 decs
 mdecs
 
+# Local agent/workspace files
+.claude/
+.codex-logs/
+.trash/
+CLAUDE_CODE_PLAN.md
+IMPLEMENTATION_PROMPT.md
+external/
+
+# Temporary root-level analysis outputs
+after_move.txt
+analysis_errors.txt
+colors.txt
+decs.txt
+files.txt
+final_lint.txt
+flutter_01.png
+mcolors.txt
+mdecs.txt
+mem_test.txt
+
 # Large media & assets (optional - uncomment if assets are large)
 # assets/videos/
 # assets/images/*.png
