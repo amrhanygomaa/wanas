@@ -392,10 +392,10 @@ class _FamilyResidentChatScreenState
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: widget.accentColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(20),
-                      topRight: const Radius.circular(20),
-                      bottomLeft: const Radius.circular(20),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
                       bottomRight: Radius.zero,
                     ),
                     border: Border.all(

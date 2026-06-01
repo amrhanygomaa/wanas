@@ -15,7 +15,6 @@ class _SentReportsHistoryScreenState
     extends ConsumerState<SentReportsHistoryScreen> {
   String _selectedFilter = 'الكل'; // Filter: All, By Date, By Nurse
   DateTime? _selectedDate;
-  String? _selectedNurse;
 
   @override
   Widget build(BuildContext context) {

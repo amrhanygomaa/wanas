@@ -821,7 +821,6 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
   String _aiResponse = '';
   String _errorMessage = '';
 
-  static const _colorError = Color(0xFFEF4444);
 
   bool get _isMicPermissionError =>
       _errorMessage.contains('ميكروفون') ||

@@ -1520,10 +1520,10 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                         ),
                         elevation: 0,
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             'عرض المزيد',
                             style: TextStyle(
                               fontFamily: 'Cairo',
@@ -1531,7 +1531,7 @@ class _NurseReportsScreenState extends ConsumerState<NurseReportsScreen>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Icon(
                             Icons.arrow_forward_rounded,
                             size: 18,
