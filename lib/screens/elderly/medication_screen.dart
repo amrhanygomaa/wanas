@@ -724,8 +724,11 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
                 const SizedBox(width: 12),
                 // Left: Interactive Icon
                 GestureDetector(
-                  onTap: () {
-                    provider.elderlyConfirmMedication(med.id);
+                  onTap: () async {
+                    await provider.elderlyConfirmMedication(med.id);
+                    if (!mounted || provider.backendSyncError != null) {
+                      return;
+                    }
 
                     // Show central animation instead of SnackBar
                     setState(() => _showSuccessAnimation = true);
@@ -824,8 +827,11 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
-                provider.elderlyConfirmMedication(med.id);
+              onTap: () async {
+                await provider.elderlyConfirmMedication(med.id);
+                if (!mounted || provider.backendSyncError != null) {
+                  return;
+                }
 
                 // Show central animation
                 setState(() => _showSuccessAnimation = true);
@@ -897,14 +903,24 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
               child: Text('لا توجد مواعيد مسجلة حالياً',
                   style: TextStyle(color: Colors.white70, fontSize: 13)))
         else
-          ...provider.medicalSessions.map((s) => _buildAppointmentCard(
-                s.date == 'اليوم' ? '٢١' : '٢٠',
-                'أبريل',
-                s.specialistName,
-                '${s.type == 'doctor' ? 'كشف طبي' : 'جلسة علاج'} · ${s.time}',
-                s.type == 'doctor',
-                0,
-              )),
+          ...provider.medicalSessions.map((s) {
+            final parsed = DateTime.tryParse(s.date);
+            final day =
+                parsed != null ? parsed.day.toString() : s.date;
+            const months = [
+              'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+              'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+            ];
+            final month = parsed != null ? months[parsed.month - 1] : '';
+            return _buildAppointmentCard(
+              day,
+              month,
+              s.specialistName,
+              '${s.type == 'doctor' ? 'كشف طبي' : 'جلسة علاج'} · ${s.time}',
+              s.type == 'doctor',
+              0,
+            );
+          }),
       ],
     );
   }

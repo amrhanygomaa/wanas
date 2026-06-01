@@ -104,7 +104,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
                             child: const Icon(
                               Icons.arrow_forward_ios_rounded,
                               size: 20,
-                              color: Color(0xFF1e1b4b),
+                              color: Color(0xFF5A4B31),
                             ),
                           ),
                         ),
@@ -120,7 +120,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
                           errorBuilder: (context, error, stackTrace) {
                             return Icon(Icons.business_rounded,
                                 size: 80,
-                                color: const Color(0xFF6C63FF)
+                                color: const Color(0xFF9B7E4B)
                                     .withValues(alpha: 0.3));
                           },
                         ),
@@ -133,7 +133,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1e1b4b),
+                        color: Color(0xFF5A4B31),
                       ),
                     ),
                     const Text(
@@ -246,11 +246,11 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
                             });
                           },
                           selectedColor:
-                              const Color(0xFF6C63FF).withValues(alpha: 0.1),
-                          checkmarkColor: const Color(0xFF6C63FF),
+                              const Color(0xFF9B7E4B).withValues(alpha: 0.1),
+                          checkmarkColor: const Color(0xFF9B7E4B),
                           labelStyle: TextStyle(
                             color: isSelected
-                                ? const Color(0xFF6C63FF)
+                                ? const Color(0xFF9B7E4B)
                                 : const Color(0xFF64748b),
                             fontWeight: isSelected
                                 ? FontWeight.bold
@@ -261,7 +261,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
                               color: isSelected
-                                  ? const Color(0xFF6C63FF)
+                                  ? const Color(0xFF9B7E4B)
                                   : const Color(0xFFE2E8F0),
                               width: 1.5,
                             ),
@@ -278,7 +278,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleRegister,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6C63FF),
+                          backgroundColor: const Color(0xFF9B7E4B),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -313,7 +313,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
           width: 4,
           height: 24,
           decoration: BoxDecoration(
-            color: const Color(0xFF6C63FF),
+            color: const Color(0xFF9B7E4B),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -323,7 +323,7 @@ class _AdminRegisterScreenState extends ConsumerState<AdminRegisterScreen>
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1e1b4b),
+            color: Color(0xFF5A4B31),
           ),
         ),
       ],

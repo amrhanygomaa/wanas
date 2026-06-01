@@ -870,12 +870,12 @@ class _VolunteerOpportunitiesViewState
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
                         _buildDetailChip(
                             opp.dateInfo, 'assets/icons/calendar.png'),
-                        const SizedBox(width: 12),
                         _buildDetailChip(
                             'المقاعد: ${opp.filledSlots}/${opp.totalSlots}',
                             Icons.people_outline),
@@ -981,6 +981,7 @@ class _VolunteerOpportunitiesViewState
 
   Widget _buildDetailChip(String label, dynamic icon) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
           color: const Color(0xFFf8fafc),
@@ -989,11 +990,15 @@ class _VolunteerOpportunitiesViewState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF475569))),
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF475569))),
+          ),
           const SizedBox(width: 8),
           if (icon is IconData)
             Icon(icon, size: 16, color: const Color(0xFF059669))

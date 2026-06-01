@@ -268,89 +268,73 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                 },
               ),
               // 3. نبض ضوئي خفيف في المنتصف
-              AnimatedBuilder(
-                animation: _floatController,
-                builder: (context, child) {
-                  return Center(
-                    child: Opacity(
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, child) {
+                    return Opacity(
                       opacity: 0.05 + (0.05 * sin(_floatController.value * pi)),
                       child: Container(
-                        width: MediaQuery.of(context).size.width,
-                        height: 200,
                         decoration: const BoxDecoration(
                           gradient: RadialGradient(
                             colors: [Colors.white, Colors.transparent],
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
               // المحتوى الأساسي للـ Hero
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    const ProfileScreen(overrideRole: 'إدارة')),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(15),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const ProfileScreen(overrideRole: 'إدارة')),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: MarqueeText(
-                                      text: provider
-                                              .currentAccount?.facilityName ??
-                                          (provider.facilityName.isEmpty
-                                              ? 'المنشأة'
-                                              : provider.facilityName),
-                                      style: const TextStyle(
-                                          color: Color(0xFF94a3b8),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                      provider.currentAccount?.name ?? 'المدير',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text('مدير الدار',
-                                style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.55),
+                            MarqueeText(
+                                text: provider.currentAccount?.facilityName ??
+                                    (provider.facilityName.isEmpty
+                                        ? 'المنشأة'
+                                        : provider.facilityName),
+                                style: const TextStyle(
+                                    color: Color(0xFF94a3b8),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 2),
+                            Text(
+                                provider.currentAccount?.name ?? 'المدير',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 1),
+                            Text('مدير الدار',
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400)),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

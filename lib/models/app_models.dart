@@ -14,7 +14,10 @@ bool isUuid(String text) {
 
 /// Strips UUID patterns from [text], collapsing any double-spaces left behind.
 String stripUuids(String text) {
-  return text.replaceAll(_uuidPattern, '').replaceAll(RegExp(r'  +'), ' ').trim();
+  return text
+      .replaceAll(_uuidPattern, '')
+      .replaceAll(RegExp(r'  +'), ' ')
+      .trim();
 }
 
 // نموذج يمثل بيانات المستخدم (المسن) ونظام النقاط التحفيزي
@@ -46,7 +49,8 @@ class Medication {
   final String dayTag; // تصنيف اليوم: 'أمس', 'اليوم', 'غداً'
   final String? residentName; // اسم المقيم (يستخدم في واجهة الممرض)
   final DateTime? scheduledTime; // الوقت المحدد للجرعة بدقة
-  final String? mealRelation; // 'before_breakfast', 'after_breakfast', 'after_lunch', 'after_dinner', 'empty_stomach'
+  final String?
+      mealRelation; // 'before_breakfast', 'after_breakfast', 'after_lunch', 'after_dinner', 'empty_stomach'
 
   Medication({
     required this.id,
@@ -64,14 +68,52 @@ class Medication {
     this.mealRelation,
   });
 
+  Medication copyWith({
+    String? id,
+    String? name,
+    String? dosage,
+    String? timeDescription,
+    String? timeOfDay,
+    bool? isTaken,
+    bool? isElderlyConfirmed,
+    bool? isSkipped,
+    String? skipReason,
+    String? dayTag,
+    String? residentName,
+    DateTime? scheduledTime,
+    String? mealRelation,
+  }) {
+    return Medication(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      dosage: dosage ?? this.dosage,
+      timeDescription: timeDescription ?? this.timeDescription,
+      timeOfDay: timeOfDay ?? this.timeOfDay,
+      isTaken: isTaken ?? this.isTaken,
+      isElderlyConfirmed: isElderlyConfirmed ?? this.isElderlyConfirmed,
+      isSkipped: isSkipped ?? this.isSkipped,
+      skipReason: skipReason ?? this.skipReason,
+      dayTag: dayTag ?? this.dayTag,
+      residentName: residentName ?? this.residentName,
+      scheduledTime: scheduledTime ?? this.scheduledTime,
+      mealRelation: mealRelation ?? this.mealRelation,
+    );
+  }
+
   String get mealRelationArabic {
     switch (mealRelation) {
-      case 'before_breakfast': return 'قبل الإفطار';
-      case 'after_breakfast': return 'بعد الإفطار';
-      case 'after_lunch': return 'بعد الغذاء';
-      case 'after_dinner': return 'بعد العشاء';
-      case 'empty_stomach': return 'على معدة فارغة';
-      default: return '';
+      case 'before_breakfast':
+        return 'قبل الإفطار';
+      case 'after_breakfast':
+        return 'بعد الإفطار';
+      case 'after_lunch':
+        return 'بعد الغذاء';
+      case 'after_dinner':
+        return 'بعد العشاء';
+      case 'empty_stomach':
+        return 'على معدة فارغة';
+      default:
+        return '';
     }
   }
 
@@ -85,11 +127,14 @@ class Medication {
 // نموذج يمثل فرد من أفراد العائلة وسهولة الوصول إليه
 class FamilyMember {
   String id;
+  String? residentId;
   String name; // اسم قريب المسن
   String relation; // صلة القرابة (ابن، حفيدة، إلخ)
   String avatarPath; // مسار الصورة الشخصية
   String initials; // الحروف الأولى من الاسم (للعرض البديل)
   String phoneNumber; // رقم الهاتف لإجراء مكالمات حقيقية
+  String? email; // البريد المستخدم لدعوة فرد العائلة
+  String inviteStatus; // pending, confirmed, failed, skipped
   String? zoomLink; // رابط زووم للمكالمات المرئية
   bool isAvailable; // هل القريب متاح حالياً للمكالمة؟
   bool isPinned; // هل تم اختياره ليظهر في الشاشة الرئيسية؟
@@ -97,11 +142,14 @@ class FamilyMember {
 
   FamilyMember({
     required this.id,
+    this.residentId,
     required this.name,
     required this.relation,
     required this.avatarPath,
     required this.initials,
     required this.phoneNumber,
+    this.email,
+    this.inviteStatus = 'pending',
     this.zoomLink,
     this.isAvailable = false,
     this.isPinned = true,
@@ -1082,6 +1130,7 @@ class ActivitySession {
 
 class AIInsight {
   final String id;
+  final String? residentId;
   final String residentName;
   final String? roomNumber;
   final String summary;
@@ -1092,6 +1141,7 @@ class AIInsight {
 
   AIInsight({
     required this.id,
+    this.residentId,
     required this.residentName,
     this.roomNumber,
     required this.summary,
@@ -1106,7 +1156,9 @@ class AIInsight {
     final safeName = isUuid(residentName) ? '' : residentName.trim();
     if (safeName.isEmpty) return 'مشكلة عامة في النظام / الدار';
     final room = roomNumber?.trim();
-    if (room != null && room.isNotEmpty) return 'المقيم: $safeName — الغرفة $room';
+    if (room != null && room.isNotEmpty) {
+      return 'المقيم: $safeName — الغرفة $room';
+    }
     return safeName;
   }
 }
@@ -1166,7 +1218,7 @@ class CognitiveGameResult {
   final DateTime date;
   final int score;
   final String feedback;
-  
+
   CognitiveGameResult({
     required this.id,
     required this.residentId,

@@ -495,17 +495,17 @@ class _NumberMemoryGameState extends State<_NumberMemoryGame> {
             Text('${_userInput.length} / ${_sequence.length}',
                 style: const TextStyle(color: Color(0xFF64748B))),
             const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
               children: List.generate(9, (i) {
                 final n = i + 1;
                 return GestureDetector(
                   onTap: () => _tap(n),
                   child: Container(
-                    width: 70,
-                    height: 70,
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(14),

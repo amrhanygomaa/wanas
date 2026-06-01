@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
 import 'nurse_resident_detail_screen.dart';
-import 'nurse_residents_screen.dart';
 import 'package:lottie/lottie.dart';
 
 // شاشة جدول الأدوية للممرض - المحرك الأساسي لمتابعة الحالة الدوائية للمقيمين
@@ -22,6 +21,8 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
   late AnimationController _pulseController; // متحكم حركات النبض البصرية
   late AnimationController _shimmerController; // متحكم حركات التحميل للعناصر
   String _selectedPeriod = 'الظهر'; // الفترة الزمنية المحددة
+  bool _showAllMedicationResidents = false;
+  static const int _initialResidentCardsCount = 2;
 
   @override
   void initState() {
@@ -150,6 +151,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
         onTap: () {
           setState(() {
             _selectedPeriod = label;
+            _showAllMedicationResidents = false;
           });
         },
         child: Container(
@@ -334,52 +336,96 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
       if (!groupedMeds.containsKey(name)) groupedMeds[name] = [];
       groupedMeds[name]!.add(med);
     }
+    final residentEntries = groupedMeds.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final visibleEntries = _showAllMedicationResidents
+        ? residentEntries
+        : residentEntries.take(_initialResidentCardsCount).toList();
+    final remainingCount = residentEntries.length - visibleEntries.length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         children: [
-          ...groupedMeds.entries.map((entry) {
-            final name = entry.key;
-            final meds = entry.value;
-            final matchedResidents = provider.residentFiles
-                .where((resident) => resident.name == name);
-            final isCritical = matchedResidents.any((resident) =>
-                resident.status.toLowerCase().contains('critical') ||
-                resident.status.contains('حرج'));
-            return _buildResidentCard(name, meds, isCritical);
-          }),
-          const SizedBox(height: 10),
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NurseResidentsScreen(),
+          if (residentEntries.isEmpty)
+            _buildEmptyMedicationResidentsState()
+          else
+            ...visibleEntries.map((entry) {
+              final name = entry.key;
+              final meds = entry.value;
+              final matchedResidents = provider.residentFiles
+                  .where((resident) => resident.name == name);
+              final isCritical = matchedResidents.any((resident) =>
+                  resident.status.toLowerCase().contains('critical') ||
+                  resident.status.contains('حرج'));
+              return _buildResidentCard(name, meds, isCritical);
+            }),
+          if (remainingCount > 0) ...[
+            const SizedBox(height: 10),
+            InkWell(
+              onTap: () {
+                setState(() => _showAllMedicationResidents = true);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBAE6FD)),
                 ),
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
-              ),
-              child: const Text(
-                '+ ٢١ مقيم آخر — اضغط لعرض الكل',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0369A1)),
+                child: Text(
+                  '${_remainingResidentsText(remainingCount)} — اضغط لعرض الكل',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0369A1)),
+                ),
               ),
             ),
-          )
+          ],
         ],
       ),
     );
+  }
+
+  Widget _buildEmptyMedicationResidentsState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE0F2FE), width: 1.5),
+      ),
+      child: const Text(
+        'لا توجد جرعات مسجلة لهذه الفترة',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
+
+  String _remainingResidentsText(int count) {
+    final formattedCount = _toArabicDigits(count);
+    if (count == 1) return '+ مقيم آخر';
+    if (count == 2) return '+ مقيمان آخران';
+    if (count <= 10) return '+ $formattedCount مقيمين آخرين';
+    return '+ $formattedCount مقيم آخر';
+  }
+
+  String _toArabicDigits(num value) {
+    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return value.toString().replaceAllMapped(
+          RegExp(r'\d'),
+          (match) => digits[int.parse(match.group(0)!)],
+        );
   }
 
   Widget _buildResidentCard(

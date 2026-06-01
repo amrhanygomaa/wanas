@@ -60,7 +60,8 @@ class AppRiverpod extends ChangeNotifier {
   String managerName = ''; // اسم المدير من AWS
   String splashStatus = ''; // حالة التحميل للعرض في شاشة البداية
   Set<String> earnedBadgeIds = {}; // معرّفات الأوسمة التي فتحها المسن
-  BadgeDefinition? newlyUnlockedBadge; // آخر وسام انفتح — يُمسح بعد عرض الاحتفال
+  BadgeDefinition?
+      newlyUnlockedBadge; // آخر وسام انفتح — يُمسح بعد عرض الاحتفال
 
   void scheduleMedicationReminders(NotificationService service) {
     for (var med in medications) {
@@ -297,11 +298,20 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDocumentsForResident(String residentId, List<String> documentUrls) {
+    final idx = residentFiles.indexWhere((r) => r.id == residentId);
+    if (idx == -1) return;
+    final r = residentFiles[idx];
+    residentFiles[idx] = r.copyWith(uploadedDocuments: documentUrls);
+    notifyListeners();
+  }
+
   void addDocumentToResident(String residentId, String documentUrl) {
     final idx = residentFiles.indexWhere((r) => r.id == residentId);
     if (idx == -1) return;
     final r = residentFiles[idx];
-    final updated = List<String>.from(r.uploadedDocuments ?? [])..add(documentUrl);
+    final updated = List<String>.from(r.uploadedDocuments ?? [])
+      ..add(documentUrl);
     residentFiles[idx] = SpecialistResidentFile(
       id: r.id,
       name: r.name,
@@ -720,6 +730,7 @@ class AppRiverpod extends ChangeNotifier {
     uploadError = error;
     notifyListeners();
   }
+
   Future<void>? _backendSyncFuture;
   Map<String, String> mealPlanIdsByResidentName = {};
 
@@ -1374,37 +1385,51 @@ class AppRiverpod extends ChangeNotifier {
     return _looksLikeBackendId(backendResidentId) ? backendResidentId : null;
   }
 
-  Future<void> _syncMedicationDose(
+  Future<String?> _syncMedicationDose(
     Medication medication,
     String status, {
     String? notes,
   }) async {
-    if (AuthService.instance.currentUser == null) return;
+    if (AuthService.instance.currentUser == null) return null;
 
     try {
       final parts = medication.id.split('|');
       if (parts.length >= 4 && parts[0] == 'schedule') {
-        await MedicationsService.instance.logDose(
+        final dose = await MedicationsService.instance.logDose(
           scheduleId: parts[1],
           residentId: parts[2],
           scheduledTime: medication.scheduledTime ?? DateTime.now(),
           status: status,
           notes: notes,
         );
+        backendSyncError = null;
+        return dose?['id']?.toString();
       } else if (parts.length >= 2 && parts[0] == 'dose') {
-        await MedicationsService.instance.updateDose(
+        final dose = await MedicationsService.instance.updateDose(
           doseId: parts[1],
           status: status,
           notes: notes,
         );
+        backendSyncError = null;
+        return dose?['id']?.toString() ?? parts[1];
       } else {
-        return;
+        return null;
       }
-      backendSyncError = null;
     } catch (e) {
       backendSyncError = e.toString();
     }
     notifyListeners();
+    return null;
+  }
+
+  String? _residentIdFromMedicationId(Medication medication) {
+    final parts = medication.id.split('|');
+    if (parts.length >= 3 &&
+        (parts[0] == 'schedule' || parts[0] == 'dose') &&
+        _looksLikeBackendId(parts[2])) {
+      return parts[2];
+    }
+    return _residentIdForName(medication.residentName ?? '');
   }
 
   Future<void> _syncVitals({
@@ -1761,26 +1786,27 @@ class AppRiverpod extends ChangeNotifier {
   bool isAIInsightsEnabled = true;
   bool isLoadingAiInsight = false;
   String aiInsightMode = 'backend';
+  String? aiInsightError;
 
-  Future<void> refreshAiInsightFromBackend({String? residentId}) async {
+  Future<bool> refreshAiInsightFromBackend({String? residentId}) async {
     final resolvedResidentId = residentId ?? backendResidentId;
     if (resolvedResidentId == null || resolvedResidentId.isEmpty) {
       aiInsightMode = 'error';
-      backendSyncError =
-          'لا يوجد residentId من AWS لجلب توصية الذكاء الاصطناعي';
+      aiInsightError = 'لا يوجد معرف مقيم من AWS لجلب توصية الذكاء الاصطناعي';
+      backendSyncError = aiInsightError;
       notifyListeners();
-      return;
+      return false;
     }
     isLoadingAiInsight = true;
+    aiInsightError = null;
     notifyListeners();
     try {
       final rec =
           await AiService.instance.getRecommendations(resolvedResidentId);
 
       // Resolve human-readable name and room from the residents list.
-      final residentFile = residentFiles
-          .where((r) => r.id == resolvedResidentId)
-          .firstOrNull;
+      final residentFile =
+          residentFiles.where((r) => r.id == resolvedResidentId).firstOrNull;
       final safeName = residentFile?.name.isNotEmpty == true
           ? residentFile!.name
           : (currentUser.name.isNotEmpty ? currentUser.name : 'مقيم');
@@ -1789,12 +1815,18 @@ class AppRiverpod extends ChangeNotifier {
       // Strip any UUID patterns the backend may have included in text fields.
       final safeSummary = stripUuids(rec.summary);
       final safeRationale = stripUuids(rec.rationale);
+      final existingIndex = aiInsights.indexWhere(
+        (i) =>
+            i.residentId == resolvedResidentId ||
+            (i.residentId == null && i.residentName == safeName),
+      );
 
-      if (aiInsights.isNotEmpty) {
-        aiInsights[0] = AIInsight(
-          id: aiInsights[0].id,
-          residentName: aiInsights[0].residentName,
-          roomNumber: aiInsights[0].roomNumber ?? roomNumber,
+      if (existingIndex != -1) {
+        aiInsights[existingIndex] = AIInsight(
+          id: aiInsights[existingIndex].id,
+          residentId: resolvedResidentId,
+          residentName: safeName,
+          roomNumber: roomNumber ?? aiInsights[existingIndex].roomNumber,
           summary: safeSummary,
           rationale: safeRationale,
           generationDate: DateTime.tryParse(rec.generatedAt) ?? DateTime.now(),
@@ -1803,6 +1835,7 @@ class AppRiverpod extends ChangeNotifier {
       } else {
         aiInsights.add(AIInsight(
           id: 'ai_${DateTime.now().millisecondsSinceEpoch}',
+          residentId: resolvedResidentId,
           residentName: safeName,
           roomNumber: roomNumber,
           summary: safeSummary,
@@ -1810,15 +1843,32 @@ class AppRiverpod extends ChangeNotifier {
           generationDate: DateTime.tryParse(rec.generatedAt) ?? DateTime.now(),
         ));
       }
-      aiInsightMode = 'bedrock';
+      aiInsightMode = rec.mode.isEmpty ? 'bedrock' : rec.mode;
+      aiInsightError = aiInsightMode == 'fallback'
+          ? 'تعذر الاتصال بخدمة الذكاء الاصطناعي، فتم عرض توصية احتياطية قابلة للمراجعة.'
+          : null;
       backendSyncError = null;
+      return true;
     } catch (e) {
       aiInsightMode = 'error';
-      backendSyncError = e.toString();
+      aiInsightError = _friendlyAiError(e);
+      backendSyncError = aiInsightError;
+      return false;
     } finally {
       isLoadingAiInsight = false;
       notifyListeners();
     }
+  }
+
+  String _friendlyAiError(Object error) {
+    final raw = error.toString();
+    if (raw.contains('لا يوجد اتصال') || raw.contains('Timeout')) {
+      return 'تعذر الاتصال بالسيرفر. تحقق من الشبكة ثم حاول مرة أخرى.';
+    }
+    if (raw.contains('AI_ENABLED') || raw.contains('Bedrock')) {
+      return 'خدمة الذكاء الاصطناعي غير متاحة حالياً. حاول لاحقاً أو راجع إعدادات السيرفر.';
+    }
+    return 'تعذر جلب توصيات الذكاء الاصطناعي حالياً. حاول مرة أخرى.';
   }
 
   List<AIInsight> aiInsights = [];
@@ -2084,8 +2134,8 @@ class AppRiverpod extends ChangeNotifier {
       }
     }
     if (allCriteria.isEmpty) return '—';
-    final avgs = allCriteria.map(
-        (k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
+    final avgs = allCriteria
+        .map((k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
     final best = avgs.entries.reduce((a, b) => a.value >= b.value ? a : b);
     return '${best.key} ⭐ ${best.value.toStringAsFixed(1)}';
   }
@@ -2099,8 +2149,8 @@ class AppRiverpod extends ChangeNotifier {
       }
     }
     if (allCriteria.isEmpty) return '—';
-    final avgs = allCriteria.map(
-        (k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
+    final avgs = allCriteria
+        .map((k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
     final worst = avgs.entries.reduce((a, b) => a.value <= b.value ? a : b);
     return '${worst.key} ${worst.value.toStringAsFixed(1)}';
   }
@@ -2391,13 +2441,26 @@ class AppRiverpod extends ChangeNotifier {
     }
   }
 
-  void elderlyConfirmMedication(String id) {
+  Future<void> elderlyConfirmMedication(String id) async {
     final idx = medications.indexWhere((m) => m.id == id);
     if (idx != -1 &&
         !medications[idx].isTaken &&
         !medications[idx].isElderlyConfirmed) {
-      medications[idx].isElderlyConfirmed = true;
-      medications[idx].isSkipped = false;
+      final med = medications[idx];
+      final doseId = await _syncMedicationDose(
+        med,
+        'pending',
+        notes: MedicationsService.elderlyConfirmationNote,
+      );
+      if (backendSyncError != null) return;
+      final residentId = _residentIdFromMedicationId(med);
+      medications[idx] = med.copyWith(
+        id: doseId != null && residentId != null
+            ? 'dose|$doseId|$residentId'
+            : null,
+        isElderlyConfirmed: true,
+        isSkipped: false,
+      );
 
       // إرسال تنبيه للممرض لتأكيد الدواء
       triggerNotification(
@@ -2407,9 +2470,6 @@ class AppRiverpod extends ChangeNotifier {
         type: 'medical',
         targetRole: 'ممرض',
       );
-      if (backendSyncError != null) return;
-      medications[idx].isElderlyConfirmed = true;
-      medications[idx].isSkipped = false;
 
       notifyListeners();
     }
@@ -2551,9 +2611,8 @@ class AppRiverpod extends ChangeNotifier {
   // Checks for missed medications and triggers alerts for the resident and
   // the nursing team. Called automatically after each sync for resident role.
   Future<void> checkMedicationAdherence() async {
-    final missed = medications
-        .where((m) => m.isMissed && m.dayTag == 'اليوم')
-        .toList();
+    final missed =
+        medications.where((m) => m.isMissed && m.dayTag == 'اليوم').toList();
     if (missed.isEmpty) return;
 
     final names = missed.map((m) => m.name).join('، ');
@@ -2576,9 +2635,7 @@ class AppRiverpod extends ChangeNotifier {
     );
 
     // Add proactive AI message to companion chat if it's empty or old
-    final lastAiMsg = companionChatHistory
-        .where((m) => m.isFromAI)
-        .lastOrNull;
+    final lastAiMsg = companionChatHistory.where((m) => m.isFromAI).lastOrNull;
     final isRecent = lastAiMsg != null &&
         DateTime.now().difference(lastAiMsg.timestamp).inMinutes < 30;
     if (!isRecent) {
@@ -3865,7 +3922,8 @@ class AppRiverpod extends ChangeNotifier {
     if (residentId == null) {
       setUploadState(
         uploading: false,
-        error: 'لا يوجد residentId من AWS لإضافة ذكرى لـ ${moment.residentName}',
+        error:
+            'لا يوجد residentId من AWS لإضافة ذكرى لـ ${moment.residentName}',
       );
       backendSyncError = uploadError;
       notifyListeners();
@@ -4928,7 +4986,8 @@ class AppRiverpod extends ChangeNotifier {
   // AI Shift Handoff
   Future<String> generateShiftSummary(String residentName) async {
     final notes = getNotesForResident(residentName);
-    final tasks = careTasks.where((t) => t.residentName == residentName).toList();
+    final tasks =
+        careTasks.where((t) => t.residentName == residentName).toList();
     return await AiService.instance.summarizeShiftHandoff(notes, tasks);
   }
 
@@ -4950,11 +5009,13 @@ class AppRiverpod extends ChangeNotifier {
   List<AIInsight> predictiveAlerts = [];
   Future<void> fetchPredictiveAlerts() async {
     if (backendResidentId != null) {
-      predictiveAlerts = await AiService.instance.getPredictiveHealthAlerts(backendResidentId!);
+      predictiveAlerts = await AiService.instance
+          .getPredictiveHealthAlerts(backendResidentId!);
       notifyListeners();
     } else {
       if (residentFiles.isNotEmpty) {
-        predictiveAlerts = await AiService.instance.getPredictiveHealthAlerts(residentFiles.first.id);
+        predictiveAlerts = await AiService.instance
+            .getPredictiveHealthAlerts(residentFiles.first.id);
         notifyListeners();
       }
     }

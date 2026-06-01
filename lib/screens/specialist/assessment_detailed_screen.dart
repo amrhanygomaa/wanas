@@ -1606,11 +1606,13 @@ class _AssessmentDetailedScreenState
   }
 
   Widget _buildAiRecommendationsCard(AppRiverpod provider) {
-    final residentId = widget.resident.id;
+    final residentId = _resolvedResidentId(provider);
     final insights = provider.aiInsights
         .where((i) =>
+            i.residentId == residentId ||
             i.residentName.contains(widget.resident.name.split(' ').first))
         .toList();
+    final feedback = provider.aiInsightError;
 
     return Container(
       decoration: BoxDecoration(
@@ -1655,8 +1657,10 @@ class _AssessmentDetailedScreenState
                           strokeWidth: 2, color: Color(0xFF6366F1)))
                 else
                   GestureDetector(
-                    onTap: () => provider.refreshAiInsightFromBackend(
-                        residentId: residentId),
+                    onTap: () => _refreshAiRecommendations(
+                      provider,
+                      residentId,
+                    ),
                     child: const Icon(Icons.refresh_rounded,
                         color: Color(0xFF6366F1), size: 20),
                   ),
@@ -1664,6 +1668,14 @@ class _AssessmentDetailedScreenState
             ),
           ),
           const Divider(height: 20),
+          if (feedback != null && feedback.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: _buildAiFeedbackBanner(
+                feedback,
+                isError: provider.aiInsightMode == 'error',
+              ),
+            ),
           if (insights.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1742,6 +1754,79 @@ class _AssessmentDetailedScreenState
                 }).toList(),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  String _resolvedResidentId(AppRiverpod provider) {
+    final direct = widget.resident.id.trim();
+    if (provider.residentFiles.any((r) => r.id == direct)) return direct;
+    for (final resident in provider.residentFiles) {
+      if (resident.name.trim() == widget.resident.name.trim() ||
+          (widget.resident.room.isNotEmpty &&
+              resident.room == widget.resident.room)) {
+        return resident.id;
+      }
+    }
+    return direct;
+  }
+
+  Future<void> _refreshAiRecommendations(
+    AppRiverpod provider,
+    String residentId,
+  ) async {
+    final ok =
+        await provider.refreshAiInsightFromBackend(residentId: residentId);
+    if (!mounted) return;
+    final message = ok
+        ? (provider.aiInsightMode == 'fallback'
+            ? 'تم عرض توصية احتياطية لحين عودة خدمة الذكاء الاصطناعي'
+            : 'تم جلب توصيات الذكاء الاصطناعي')
+        : (provider.aiInsightError ?? 'تعذر جلب توصيات الذكاء الاصطناعي');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontFamily: 'Cairo'),
+        ),
+        backgroundColor: ok ? const Color(0xFF6366F1) : const Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildAiFeedbackBanner(String message, {required bool isError}) {
+    final color = isError ? const Color(0xFFDC2626) : const Color(0xFFD97706);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isError ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.4,
+                color: color,
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -192,12 +192,15 @@ class BackendSyncService {
             '/family-members',
             query: {'residentId': primaryResidentId},
           );
-    final medicationSchedulesFuture =
-        listWhen(loadMedicationData, '/medications/schedules',
-            query: (isResident || isFamily) ? scopedResidentQuery : null);
-    final overdueDosesFuture =
-        listWhen(loadMedicationData, '/medications/overdue',
-            query: (isResident || isFamily) ? scopedResidentQuery : null);
+    final medicationSchedulesFuture = listWhen(
+        loadMedicationData, '/medications/schedules',
+        query: (isResident || isFamily) ? scopedResidentQuery : null);
+    final medicationDoseLogsFuture = listWhen(
+        loadMedicationData, '/medications/doses',
+        query: (isResident || isFamily) ? scopedResidentQuery : null);
+    final overdueDosesFuture = listWhen(
+        loadMedicationData, '/medications/overdue',
+        query: (isResident || isFamily) ? scopedResidentQuery : null);
     final activitiesFuture = listWhen(loadActivitiesData, '/activities');
     final complaintsFuture = listWhen(loadSocialData || isAdmin, '/complaints');
     final visitsFuture = noScopedResident
@@ -264,8 +267,15 @@ class BackendSyncService {
     );
 
     final vitalsJson = await vitalsFuture;
-    final familyMembersJson = await familyMembersFuture;
+    var familyMembersJson = await familyMembersFuture;
+    if ((loadAll || isAdmin) &&
+        familyMembersJson == null &&
+        scopedResidentsJson != null &&
+        scopedResidentsJson.isNotEmpty) {
+      familyMembersJson = await _familyMembersForResidents(scopedResidentsJson);
+    }
     final medicationSchedulesJson = await medicationSchedulesFuture;
+    final medicationDoseLogsJson = await medicationDoseLogsFuture;
     final overdueDosesJson = await overdueDosesFuture;
     final activitiesJson = await activitiesFuture;
     final complaintsJson = await complaintsFuture;
@@ -296,14 +306,31 @@ class BackendSyncService {
     final careReportJson = await careReportFuture;
     final assessmentHistoryJson = await assessmentHistoryFuture;
 
+    final familyMembers =
+        familyMembersJson?.map(_familyMemberFromJson).toList();
+    final familyMembersByResidentId = <String, List<FamilyMember>>{};
+    for (final member in familyMembers ?? const <FamilyMember>[]) {
+      final residentId = member.residentId;
+      if (residentId == null || residentId.isEmpty) continue;
+      familyMembersByResidentId
+          .putIfAbsent(residentId, () => <FamilyMember>[])
+          .add(member);
+    }
+
     return BackendSyncSnapshot(
-      residentFiles: scopedResidentsJson?.map(_residentFileFromJson).toList(),
+      residentFiles: scopedResidentsJson
+          ?.map((j) => _residentFileFromJson(j).copyWith(
+                familyMembers: familyMembersByResidentId[_s(j['id'])] ??
+                    const <FamilyMember>[],
+              ))
+          .toList(),
       residents: scopedResidentsJson?.map(_residentFromJson).toList(),
       primaryResidentId: primaryResidentId,
       primaryResidentName:
           primaryResidentId == null ? null : residentMap[primaryResidentId],
       medications: _medicationsFromJson(
         medicationSchedulesJson,
+        medicationDoseLogsJson,
         overdueDosesJson,
         residentMap,
       ),
@@ -367,7 +394,7 @@ class BackendSyncService {
       familyHealthMetrics: primaryResidentId == null && requireResidentScope
           ? const []
           : _familyHealthMetricsFromVitals(vitalsJson),
-      familyMembers: familyMembersJson?.map(_familyMemberFromJson).toList(),
+      familyMembers: familyMembers,
       assessmentHistory:
           assessmentHistoryJson?.map(_assessmentHistoryEntryFromJson).toList(),
     );
@@ -386,13 +413,24 @@ class BackendSyncService {
   FamilyMember _familyMemberFromJson(Map<String, dynamic> j) {
     final name = _s(j['fullName'], fallback: 'قريب');
     final relation = _s(j['relationship'], fallback: 'other');
+    final userId = () {
+      final v = _s(j['userId'] ?? j['cognitoSub'] ?? j['user_id']);
+      return v.isEmpty ? null : v;
+    }();
+    final email = _s(j['email']);
+    final rawInviteStatus = _s(j['inviteStatus'] ?? j['invite_status']);
+    final inviteStatus = rawInviteStatus.isNotEmpty
+        ? rawInviteStatus
+        : email.isEmpty
+            ? 'none'
+            : userId == null
+                ? 'pending'
+                : 'confirmed';
     return FamilyMember(
       id: _s(j['id']),
+      residentId: _s(j['residentId'] ?? j['resident_id']),
       name: name,
-      userId: () {
-        final v = _s(j['userId'] ?? j['cognitoSub'] ?? j['user_id']);
-        return v.isEmpty ? null : v;
-      }(),
+      userId: userId,
       relation: switch (relation.toLowerCase()) {
         'son' => 'ابن',
         'daughter' => 'ابنة',
@@ -407,10 +445,29 @@ class BackendSyncService {
       avatarPath: '',
       initials: _initials(name),
       phoneNumber: _s(j['phone'], fallback: ''),
+      email: email.isEmpty ? null : email,
+      inviteStatus: inviteStatus,
       zoomLink: _s(j['zoomLink']).isEmpty ? null : _s(j['zoomLink']),
       isAvailable: false,
       isPinned: j['isPrimary'] == true,
     );
+  }
+
+  Future<List<Map<String, dynamic>>?> _familyMembersForResidents(
+    List<Map<String, dynamic>> residents,
+  ) async {
+    final result = <Map<String, dynamic>>[];
+    for (final resident in residents) {
+      final residentId = _s(resident['id']);
+      if (residentId.isEmpty) continue;
+      final members = await _list(
+        '/family-members',
+        query: {'residentId': residentId},
+      );
+      if (members == null) continue;
+      result.addAll(members);
+    }
+    return result;
   }
 
   Future<List<Map<String, dynamic>>?> _list(
@@ -572,38 +629,81 @@ class BackendSyncService {
 
   List<Medication>? _medicationsFromJson(
     List<Map<String, dynamic>>? schedules,
+    List<Map<String, dynamic>>? doseLogs,
     List<Map<String, dynamic>>? overdue,
     Map<String, String> residentMap,
   ) {
-    if (schedules == null && overdue == null) return null;
+    if (schedules == null && doseLogs == null && overdue == null) return null;
     final meds = <Medication>[];
+    final doseLogsBySlot = <String, Map<String, dynamic>>{};
+    final representedDoseIds = <String>{};
+    for (final row in doseLogs ?? const <Map<String, dynamic>>[]) {
+      final keys = _doseSlotKeys(
+        _s(row['scheduleId'] ?? row['schedule_id']),
+        _dateTime(_s(row['scheduledTime'] ?? row['scheduled_time'])),
+      );
+      for (final key in keys) {
+        doseLogsBySlot.putIfAbsent(key, () => row);
+      }
+    }
     for (final row in schedules ?? const <Map<String, dynamic>>[]) {
       final times = _listOfStrings(row['scheduledTimes']);
       final effectiveTimes = times.isEmpty ? [''] : times;
       for (final time in effectiveTimes) {
+        final scheduleId = _s(row['id']);
+        final residentId = _s(row['residentId']);
+        final scheduledTime = _todayAt(time);
+        final log = doseLogsBySlot[_doseSlotKey(scheduleId, scheduledTime)];
+        final logId = log == null ? '' : _s(log['id']);
+        final status = log == null ? '' : _s(log['status']);
+        final notes = log == null ? '' : _s(log['notes']);
+        final isGiven = status == 'given';
+        final isSkipped = status == 'skipped';
+        final isResidentConfirmed =
+            isGiven || (status == 'pending' && _isResidentConfirmedDose(notes));
+        if (logId.isNotEmpty) {
+          representedDoseIds.add(logId);
+        }
         meds.add(Medication(
-          id: 'schedule|${_s(row['id'])}|${_s(row['residentId'])}|$time',
+          id: logId.isNotEmpty
+              ? 'dose|$logId|$residentId'
+              : 'schedule|$scheduleId|$residentId|$time',
           name: _s(row['medicationName'], fallback: 'دواء'),
           dosage: _s(row['dosage'], fallback: ''),
           timeDescription: time.isEmpty ? _s(row['frequency']) : time,
           timeOfDay: _timeOfDay(time),
-          residentName: residentMap[_s(row['residentId'])],
-          scheduledTime: _todayAt(time),
+          isTaken: isGiven,
+          isElderlyConfirmed: isResidentConfirmed,
+          isSkipped: isSkipped,
+          skipReason: isSkipped ? notes : null,
+          residentName: residentMap[residentId],
+          scheduledTime: scheduledTime,
           dayTag: 'اليوم',
           mealRelation: () {
-            final v = _s(row['mealRelation'] ?? row['meal_relation'] ?? row['instructions']);
+            final v = _s(row['mealRelation'] ??
+                row['meal_relation'] ??
+                row['instructions']);
             return v.isEmpty ? null : v;
           }(),
         ));
       }
     }
     for (final row in overdue ?? const <Map<String, dynamic>>[]) {
+      final doseId = _s(row['id']);
+      if (representedDoseIds.contains(doseId)) continue;
+      final status = _s(row['status']);
+      final notes = _s(row['notes']);
       meds.add(Medication(
-        id: 'dose|${_s(row['id'])}|${_s(row['residentId'])}',
+        id: 'dose|$doseId|${_s(row['residentId'])}',
         name: _s(row['medicationName'], fallback: 'جرعة متأخرة'),
         dosage: _s(row['dosage'], fallback: ''),
         timeDescription: _time(_s(row['scheduledTime'])),
         timeOfDay: _timeOfDay(_time(_s(row['scheduledTime']))),
+        isTaken: status == 'given',
+        isElderlyConfirmed:
+            status == 'given' || _isResidentConfirmedDose(notes),
+        isSkipped: status == 'skipped',
+        skipReason: status == 'skipped' ? notes : null,
         residentName: residentMap[_s(row['residentId'])] ??
             '${_s(row['firstName'])} ${_s(row['lastName'])}'.trim(),
         scheduledTime: _dateTime(_s(row['scheduledTime'])),
@@ -611,6 +711,37 @@ class BackendSyncService {
       ));
     }
     return meds;
+  }
+
+  String? _doseSlotKey(String scheduleId, DateTime? scheduledTime) {
+    if (scheduleId.isEmpty || scheduledTime == null) return null;
+    final date = _dateOnly(scheduledTime);
+    final hour = scheduledTime.hour.toString().padLeft(2, '0');
+    final minute = scheduledTime.minute.toString().padLeft(2, '0');
+    return '$scheduleId|$date|$hour:$minute';
+  }
+
+  List<String> _doseSlotKeys(String scheduleId, DateTime? scheduledTime) {
+    final primary = _doseSlotKey(scheduleId, scheduledTime);
+    if (primary == null || scheduledTime == null) return const [];
+    final local = _doseSlotKey(scheduleId, scheduledTime.toLocal());
+    return {
+      primary,
+      if (local != null) local,
+    }.toList();
+  }
+
+  String _dateOnly(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
+  }
+
+  bool _isResidentConfirmedDose(String notes) {
+    final normalized = notes.toLowerCase();
+    return normalized.contains('resident_confirmed_pending_nurse') ||
+        normalized.contains('elderly_confirmed') ||
+        notes.contains('المقيم أكد');
   }
 
   Activity _activityFromJson(Map<String, dynamic> j) {
@@ -1047,9 +1178,8 @@ class BackendSyncService {
   ) {
     final firstName = _s(j['firstName'] ?? j['first_name']);
     final lastName = _s(j['lastName'] ?? j['last_name']);
-    final fullName = firstName.isNotEmpty
-        ? '$firstName $lastName'.trim()
-        : _s(j['name']);
+    final fullName =
+        firstName.isNotEmpty ? '$firstName $lastName'.trim() : _s(j['name']);
     final name = fullName.isEmpty ? 'مقيم' : fullName;
     final lastAssessment = _dateTime(_s(j['lastAssessment'])) ?? DateTime.now();
     return SocialSpecialistResidentScore(
@@ -1146,18 +1276,62 @@ class BackendSyncService {
 
   CareReport _careReportFromJson(Map<String, dynamic> j) {
     final notes = _listOfStrings(j['notes']);
+
+    // Parse metrics list of {label, value} objects into "label: value" lines
+    final rawMetrics = j['metrics'];
+    final metricsLines = <String>[];
+    final metricsMap = <String, String>{};
+    if (rawMetrics is List) {
+      for (final m in rawMetrics) {
+        if (m is Map) {
+          final label = (m['label'] ?? '').toString();
+          final value = (m['value'] ?? '').toString();
+          if (label.isNotEmpty) {
+            metricsLines.add('$label: $value');
+            metricsMap[label] = value;
+          }
+        }
+      }
+    }
+
+    // Derive interaction level from medication compliance metric
+    final complianceRaw =
+        (metricsMap['الالتزام بالأدوية'] ?? '').replaceAll('%', '').trim();
+    final compliance = int.tryParse(complianceRaw) ?? -1;
+    final interactionLevel = compliance < 0
+        ? '—'
+        : compliance >= 90
+            ? 'ممتاز'
+            : compliance >= 70
+                ? 'جيد'
+                : 'متوسط';
+
+    // Derive mood from critical alerts metric
+    final criticalRaw =
+        metricsMap['حالات حرجة نشطة'] ?? metricsMap['حالات حرجة'] ?? '0';
+    final critical = int.tryParse(criticalRaw.trim()) ?? 0;
+    final moodStatus = critical == 0 ? 'مستقر' : 'يحتاج متابعة';
+
+    // Report type label
+    final reportType = _s(j['reportType'], fallback: 'daily');
+    final authorRole = switch (reportType) {
+      'weekly' => 'التقرير الأسبوعي',
+      'critical' => 'تنبيه حرج',
+      'medications' => 'تقرير الأدوية',
+      _ => 'التقرير اليومي',
+    };
+
     return CareReport(
-      id: _s(j['reportType'], fallback: 'nursing-preview'),
+      id: reportType,
       title: _s(j['title'], fallback: 'تقرير رعاية'),
       date: _dateLabel(_s(j['generatedAt'])),
       summary: _s(j['summary'], fallback: ''),
       socialNotes: notes.join('\n'),
-      recommendations:
-          _listOfStrings(j['metrics']).map((e) => e.toString()).join('\n'),
-      authorName: 'AWS',
-      authorRole: 'Backend',
-      interactionLevel: '',
-      moodStatus: '',
+      recommendations: metricsLines.join('\n'),
+      authorName: 'نظام الرعاية',
+      authorRole: authorRole,
+      interactionLevel: interactionLevel,
+      moodStatus: moodStatus,
     );
   }
 
@@ -1243,21 +1417,29 @@ class BackendSyncService {
       return raw; // Already an emoji — pass through
     }
     final lower = raw.toLowerCase();
-    if (lower.contains('psych') || lower.contains('mental') ||
-        lower.contains('cogni') || lower.contains('brain')) {
+    if (lower.contains('psych') ||
+        lower.contains('mental') ||
+        lower.contains('cogni') ||
+        lower.contains('brain')) {
       return '🧠';
     }
-    if (lower.contains('social') || lower.contains('group') ||
-        lower.contains('family') || lower.contains('relation')) {
+    if (lower.contains('social') ||
+        lower.contains('group') ||
+        lower.contains('family') ||
+        lower.contains('relation')) {
       return '🤝';
     }
-    if (lower.contains('physic') || lower.contains('mobil') ||
-        lower.contains('activ') || lower.contains('sport') ||
+    if (lower.contains('physic') ||
+        lower.contains('mobil') ||
+        lower.contains('activ') ||
+        lower.contains('sport') ||
         lower.contains('exerc')) {
       return '🏃';
     }
-    if (lower.contains('health') || lower.contains('vital') ||
-        lower.contains('medical') || lower.contains('care')) {
+    if (lower.contains('health') ||
+        lower.contains('vital') ||
+        lower.contains('medical') ||
+        lower.contains('care')) {
       return '❤️';
     }
     return '📋'; // Generic assessment fallback — renders cleanly

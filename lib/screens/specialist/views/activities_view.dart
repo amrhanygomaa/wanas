@@ -856,7 +856,82 @@ class _SpecialistActivitiesViewState
                               .read(appRiverpod)
                               .staffPerformanceList;
                           if (staff.isEmpty) {
-                            // No staff loaded — fall back to free text
+                            await showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (ctx) => Padding(
+                                padding: EdgeInsets.only(
+                                    bottom: MediaQuery.of(ctx).viewInsets.bottom),
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(24)),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                          width: 40,
+                                          height: 4,
+                                          margin: const EdgeInsets.only(bottom: 16),
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                              color: const Color(0xFFE2E8F0),
+                                              borderRadius:
+                                                  BorderRadius.circular(4))),
+                                      const Text('اسم المشرف المسؤول',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0f172a))),
+                                      const SizedBox(height: 12),
+                                      TextField(
+                                        controller: supervisorController,
+                                        autofocus: true,
+                                        textAlign: TextAlign.right,
+                                        textDirection: TextDirection.rtl,
+                                        decoration: InputDecoration(
+                                          hintText: 'اكتب اسم المشرف...',
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: const BorderSide(
+                                                color: Color(0xFFea580c)),
+                                          ),
+                                        ),
+                                        onSubmitted: (_) => Navigator.pop(ctx),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFFea580c),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12)),
+                                          ),
+                                          child: const Text('تأكيد',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                            setStateModal(() {});
                             return;
                           }
                           final query = ValueNotifier('');

@@ -241,28 +241,7 @@ class _VolunteerDashboardScreenState
                       ),
                     ),
                     const SizedBox(width: 12),
-                    if (isCertTab)
-                      GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('مشاركة سجل الشهادات والإنجازات... 🏆'),
-                              backgroundColor: Color(0xFF059669),
-                            ));
-                        },
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.share_outlined,
-                              color: Colors.white),
-                        ),
-                      )
-                    else
-                      const SizedBox(width: 40),
+                    const SizedBox(width: 40),
                   ],
                 ),
                 if (_selectedTab == 0) ...[

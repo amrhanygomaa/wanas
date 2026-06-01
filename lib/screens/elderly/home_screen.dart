@@ -516,8 +516,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
@@ -607,8 +606,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildTakeMedButton(
       AppRiverpod provider, Medication nextMed, BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        provider.elderlyConfirmMedication(nextMed.id);
+      onTap: () async {
+        await provider.elderlyConfirmMedication(nextMed.id);
+        if (!context.mounted || provider.backendSyncError != null) {
+          return;
+        }
         setState(() {
           _successMessage = 'تم تسجيل أخذ الدواء';
           _showSuccessAnimation = true;
@@ -773,7 +775,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
+              color:
+                  const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -803,9 +806,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _buildPerson(
                   members[i],
-                  gradients[i % gradients.length]
-                      .map((c) => c)
-                      .toList(),
+                  gradients[i % gradients.length].map((c) => c).toList(),
                   provider,
                 ),
               );
@@ -815,7 +816,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-
 
   Widget _buildPerson(
       FamilyMember member, List<Color> gradient, AppRiverpod provider) {
@@ -871,10 +871,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (isOnline
-                                  ? gradient[0]
-                                  : const Color(0xFF9CA3AF))
-                              .withValues(alpha: 0.35),
+                          color:
+                              (isOnline ? gradient[0] : const Color(0xFF9CA3AF))
+                                  .withValues(alpha: 0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         )
@@ -959,9 +958,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Divider(
               height: 1,
               thickness: 1,
-              color: hc
-                  ? Colors.white12
-                  : const Color(0xFFF3F4F6)),
+              color: hc ? Colors.white12 : const Color(0xFFF3F4F6)),
           const SizedBox(height: 10),
 
           // ── Bottom: three action buttons ─────────────────────────

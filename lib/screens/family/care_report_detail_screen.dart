@@ -59,9 +59,9 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
                   const SizedBox(height: 12),
                   _buildContentCard(widget.report.socialNotes),
                   const SizedBox(height: 32),
-                  _buildSectionHeader('التوصيات'),
+                  _buildSectionHeader('المؤشرات'),
                   const SizedBox(height: 12),
-                  _buildContentCard(widget.report.recommendations),
+                  _buildMetricsCard(widget.report.recommendations),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -200,7 +200,23 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
     );
   }
 
+  String get _reportTypeLabel {
+    switch (widget.report.id) {
+      case 'weekly':
+        return 'تقرير أسبوعي';
+      case 'critical':
+        return 'تنبيه حرج';
+      case 'medications':
+        return 'تقرير أدوية';
+      default:
+        return 'تقرير يومي';
+    }
+  }
+
   Widget _buildMainCard() {
+    final initial = widget.report.authorName.isNotEmpty
+        ? widget.report.authorName.substring(0, 1)
+        : 'ن';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -220,8 +236,8 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('تقرير تقييم دوري',
-                  style: TextStyle(
+              Text(_reportTypeLabel,
+                  style: const TextStyle(
                       color: Color(0xFFea580c),
                       fontSize: 12,
                       fontWeight: FontWeight.bold)),
@@ -263,9 +279,9 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
                 height: 50,
                 decoration: const BoxDecoration(
                     color: Color(0xFFfee2e2), shape: BoxShape.circle),
-                child: const Center(
-                    child: Text('ن',
-                        style: TextStyle(
+                child: Center(
+                    child: Text(initial,
+                        style: const TextStyle(
                             color: Color(0xFFef4444),
                             fontSize: 20,
                             fontWeight: FontWeight.bold))),
@@ -351,6 +367,96 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
               style: TextStyle(
                   color: fg, fontSize: 20, fontWeight: FontWeight.bold)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMetricsCard(String text) {
+    if (text.isEmpty) return _buildContentCard('لا توجد مؤشرات متاحة');
+
+    final lines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 15,
+              offset: const Offset(0, 5))
+        ],
+      ),
+      child: Column(
+        children: List.generate(lines.length, (i) {
+          final parts = lines[i].split(':');
+          final label = parts.first.trim();
+          final value = parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
+          final isLast = i == lines.length - 1;
+
+          final isHighValue = value.contains('%') &&
+              (int.tryParse(value.replaceAll('%', '').trim()) ?? 0) >= 80;
+          final isCritical = label.contains('حرج') && value != '0';
+
+          return Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // القيمة على اليسار
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isCritical
+                            ? const Color(0xFFfee2e2)
+                            : isHighValue
+                                ? const Color(0xFFdcfce7)
+                                : const Color(0xFFf1f5f9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        value.isEmpty ? '—' : value,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isCritical
+                              ? const Color(0xFFdc2626)
+                              : isHighValue
+                                  ? const Color(0xFF16a34a)
+                                  : const Color(0xFF1e293b),
+                        ),
+                      ),
+                    ),
+                    // التسمية على اليمين
+                    Text(
+                      label,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748b),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                const Divider(
+                    height: 1, thickness: 1, color: Color(0xFFf8fafc),
+                    indent: 20, endIndent: 20),
+            ],
+          );
+        }),
       ),
     );
   }

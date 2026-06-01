@@ -740,6 +740,9 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   }
 
   Widget _buildStatsCard(AppRiverpod provider) {
+    final pendingCount =
+        provider.volunteerReviews.where((r) => r.isPending).length;
+    final pendingLabel = pendingCount > 0 ? '$pendingCount تقييم' : 'لا يوجد';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -752,44 +755,58 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
             child: Column(
               children: [
                 _buildStatTextRow(
-                    'إجمالي التقييمات', '${provider.totalReviews} تقييم'),
-                _buildStatTextRow('أعلى نقطة', provider.topSkill,
-                    isShimmer: true),
-                _buildStatTextRow('يحتاج تحسين', provider.skillNeedsImprovement,
+                    'إجمالي التقييمات',
+                    provider.totalReviews > 0
+                        ? '${provider.totalReviews} تقييم'
+                        : '—'),
+                _buildStatTextRow(
+                    'أعلى نقطة',
+                    provider.topSkill.isNotEmpty ? provider.topSkill : '—',
+                    isShimmer: provider.topSkill.isNotEmpty),
+                _buildStatTextRow(
+                    'يحتاج تحسين',
+                    provider.skillNeedsImprovement.isNotEmpty
+                        ? provider.skillNeedsImprovement
+                        : '—',
                     valColor: const Color(0xFF10b981)),
-                _buildStatTextRow('معلّقة للإرسال', '١ تقييم',
-                    valColor: Colors.red),
+                _buildStatTextRow('معلّقة للإرسال', pendingLabel,
+                    valColor:
+                        pendingCount > 0 ? Colors.red : const Color(0xFF94a3b8)),
               ],
             ),
           ),
           const SizedBox(width: 20),
-          _buildPerformanceRing(),
+          _buildPerformanceRing(provider),
         ],
       ),
     );
   }
 
-  Widget _buildPerformanceRing() {
-    return const SizedBox(
+  Widget _buildPerformanceRing(AppRiverpod provider) {
+    final hasRatings = provider.totalReviews > 0;
+    final ratio = hasRatings ? provider.averageRating / 5.0 : 0.0;
+    final pctLabel =
+        hasRatings ? '${(ratio * 100).round()}٪' : '—';
+    return SizedBox(
       width: 65,
       height: 65,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CircularProgressIndicator(
-              value: 0.85,
+              value: ratio,
               strokeWidth: 6,
-              backgroundColor: Color(0xFFd1fae5),
-              color: Color(0xFF10b981)),
+              backgroundColor: const Color(0xFFd1fae5),
+              color: const Color(0xFF10b981)),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('٨٥٪',
-                  style: TextStyle(
+              Text(pctLabel,
+                  style: const TextStyle(
                       color: Color(0xFF065f46),
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold)),
-              Text('أداء',
+              const Text('أداء',
                   style: TextStyle(color: Color(0xFF64748b), fontSize: 8)),
             ],
           ),

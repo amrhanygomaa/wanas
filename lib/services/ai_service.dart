@@ -37,6 +37,7 @@ class AiRecommendation {
   final String generatedAt;
   final String flag;
   final String disclaimer;
+  final String mode;
 
   AiRecommendation({
     required this.residentId,
@@ -45,6 +46,7 @@ class AiRecommendation {
     required this.generatedAt,
     required this.flag,
     required this.disclaimer,
+    this.mode = 'bedrock',
   });
 
   factory AiRecommendation.fromJson(Map<String, dynamic> json) {
@@ -55,6 +57,7 @@ class AiRecommendation {
       generatedAt: (json['generatedAt'] ?? '').toString(),
       flag: (json['flag'] ?? '').toString(),
       disclaimer: (json['disclaimer'] ?? '').toString(),
+      mode: (json['mode'] ?? 'bedrock').toString(),
     );
   }
 }
@@ -184,7 +187,8 @@ class AiService {
   }
 
   // 1. تلخيص الشيفت
-  Future<String> summarizeShiftHandoff(List<NursingNote> notes, List<CareTask> tasks) async {
+  Future<String> summarizeShiftHandoff(
+      List<NursingNote> notes, List<CareTask> tasks) async {
     try {
       final res = await ApiClient.instance.post(
         '/ai/summarize-shift',
@@ -202,7 +206,8 @@ class AiService {
     return _buildLocalShiftSummary(notes, tasks);
   }
 
-  String _buildLocalShiftSummary(List<NursingNote> notes, List<CareTask> tasks) {
+  String _buildLocalShiftSummary(
+      List<NursingNote> notes, List<CareTask> tasks) {
     final buffer = StringBuffer();
 
     if (notes.isEmpty && tasks.isEmpty) {
@@ -221,7 +226,11 @@ class AiService {
     final total = tasks.length;
     if (total > 0) {
       buffer.writeln('مهام الرعاية: $completed/$total مهمة مكتملة.');
-      final pending = tasks.where((t) => !t.isCompleted).take(3).map((t) => t.title).toList();
+      final pending = tasks
+          .where((t) => !t.isCompleted)
+          .take(3)
+          .map((t) => t.title)
+          .toList();
       if (pending.isNotEmpty) {
         buffer.writeln('المهام المعلقة: ${pending.join('، ')}.');
       }
@@ -248,19 +257,22 @@ class AiService {
       lunch: res['lunch'] ?? 'دجاج مشوي مع خضار مسلوق',
       dinner: res['dinner'] ?? 'زبادي وخيار',
       isAiGenerated: true,
-      aiRationale: res['rationale'] ?? 'تم اختيار هذه الوجبات لتقليل نسبة السكر.',
+      aiRationale:
+          res['rationale'] ?? 'تم اختيار هذه الوجبات لتقليل نسبة السكر.',
     );
   }
 
   // 3. التنبؤ الصحي
   Future<List<AIInsight>> getPredictiveHealthAlerts(String residentId) async {
-    final res = await ApiClient.instance.get('/ai/predictive-alerts/$residentId', auth: true);
+    final res = await ApiClient.instance
+        .get('/ai/predictive-alerts/$residentId', auth: true);
     if (res['alerts'] is List) {
       return (res['alerts'] as List).map((e) {
         final rawName = (e['residentName'] ?? '').toString();
         final safeName = isUuid(rawName) ? 'مقيم' : rawName;
         return AIInsight(
-          id: e['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: e['id']?.toString() ??
+              DateTime.now().millisecondsSinceEpoch.toString(),
           residentName: safeName.isEmpty ? 'مقيم' : safeName,
           roomNumber: e['roomNumber']?.toString(),
           summary: stripUuids((e['summary'] ?? '').toString()),
@@ -274,7 +286,8 @@ class AiService {
   }
 
   // 4. التدريب الذهني
-  Future<AiChatResponse> playCognitiveGame(String residentId, String input) async {
+  Future<AiChatResponse> playCognitiveGame(
+      String residentId, String input) async {
     final res = await ApiClient.instance.post(
       '/ai/cognitive-game',
       body: {'residentId': residentId, 'input': input},
@@ -285,12 +298,14 @@ class AiService {
 
   // 5. التحديث العائلي التلقائي
   Future<String> generateFamilyWeeklyUpdate(String residentId) async {
-    final res = await ApiClient.instance.post('/ai/family-update', body: {'residentId': residentId}, auth: true);
+    final res = await ApiClient.instance.post('/ai/family-update',
+        body: {'residentId': residentId}, auth: true);
     return res['update']?.toString() ?? '';
   }
 
   // 6. التحليل الصوتي للمشاعر
-  Future<AiChatResponse> analyzeVoiceSentiment(String base64Audio, String residentId) async {
+  Future<AiChatResponse> analyzeVoiceSentiment(
+      String base64Audio, String residentId) async {
     final res = await ApiClient.instance.post(
       '/ai/voice-sentiment',
       body: {'audio': base64Audio, 'residentId': residentId},

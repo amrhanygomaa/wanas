@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/ai_media_service.dart';
+import '../../services/resident_document_service.dart';
 import '../../services/backend_mutation_service.dart';
 import '../../widgets/taptaba_scaffold.dart';
 
@@ -28,12 +28,29 @@ class _AdminResidentDetailScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 8, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDocuments());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDocuments() async {
+    try {
+      final docs = await ResidentDocumentService.instance
+          .fetchDocuments(widget.residentId);
+      if (!mounted) return;
+      ref
+          .read(appRiverpod)
+          .setDocumentsForResident(
+            widget.residentId,
+            docs.map((d) => d.url).toList(),
+          );
+    } catch (_) {
+      // silently ignore — documents show empty if backend unreachable
+    }
   }
 
   @override
@@ -422,17 +439,19 @@ class _AdminResidentDetailScreenState
       children: [
         _buildDirectEditCard(
           title: 'التاريخ الاجتماعي والنشاطات',
-          onEdit: resident != null
-              ? () => _showSocialHistoryForm(resident)
-              : null,
+          onEdit:
+              resident != null ? () => _showSocialHistoryForm(resident) : null,
           children: [
-            _infoRow('المهنة السابقة',
+            _infoRow(
+                'المهنة السابقة',
                 resident?.previousProfession ?? r.previousProfession,
                 Icons.work_outline_rounded),
-            _infoRow('الهوايات والنشاطات',
+            _infoRow(
+                'الهوايات والنشاطات',
                 (resident?.hobbies ?? r.hobbies).join('، '),
                 Icons.interests_outlined),
-            _infoRow('الحالة الاجتماعية',
+            _infoRow(
+                'الحالة الاجتماعية',
                 resident?.socialStatus ?? r.socialStatus,
                 Icons.family_restroom_rounded),
           ],
@@ -487,8 +506,7 @@ class _AdminResidentDetailScreenState
                   ),
               ],
             ),
-            const Divider(
-                height: 25, color: Color(0xFFf1f5f9), thickness: 1.5),
+            const Divider(height: 25, color: Color(0xFFf1f5f9), thickness: 1.5),
             ...children,
           ],
         ),
@@ -622,8 +640,7 @@ class _AdminResidentDetailScreenState
                 style: TextStyle(fontSize: 12, color: Color(0xFF94a3b8))),
             const SizedBox(height: 16),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF0ea5e9),
                 borderRadius: BorderRadius.circular(12),
@@ -631,8 +648,7 @@ class _AdminResidentDetailScreenState
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.person_add_rounded,
-                      color: Colors.white, size: 16),
+                  Icon(Icons.person_add_rounded, color: Colors.white, size: 16),
                   SizedBox(width: 6),
                   Text('إضافة فرد من العائلة',
                       style: TextStyle(
@@ -649,10 +665,10 @@ class _AdminResidentDetailScreenState
   }
 
   Widget _buildFamilyMemberCard(FamilyMember member, String residentId) {
-    final hasEmail = member.userId != null && member.userId!.isNotEmpty;
-    final email = member.userId;
-    // status: verified if userId (cognito sub) is populated
-    final isLinked = hasEmail;
+    final email = member.email?.trim() ?? '';
+    final hasEmail = email.isNotEmpty;
+    final isLinked = member.userId != null && member.userId!.isNotEmpty;
+    final isPendingConfirmation = hasEmail && !isLinked;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -702,7 +718,18 @@ class _AdminResidentDetailScreenState
                 Text(member.relation,
                     style: const TextStyle(
                         fontSize: 12, color: Color(0xFF64748b))),
-                if (email != null && email.isNotEmpty) ...[
+                if (hasEmail) ...[
+                  const SizedBox(height: 3),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF64748b)),
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -734,7 +761,7 @@ class _AdminResidentDetailScreenState
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              isLinked ? 'مرتبط' : 'قيد التحقق',
+                              isLinked ? 'تم التأكيد' : 'قيد انتظار التأكيد',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -756,20 +783,20 @@ class _AdminResidentDetailScreenState
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (email == null || email.isEmpty)
+              if (!hasEmail || isPendingConfirmation)
                 IconButton(
-                  onPressed: () =>
-                      _showSendInviteSheet(residentId, member),
+                  onPressed: () => _showSendInviteSheet(residentId, member),
                   icon: const Icon(Icons.send_rounded,
                       size: 18, color: Color(0xFF0ea5e9)),
-                  tooltip: 'إرسال دعوة',
+                  tooltip: isPendingConfirmation
+                      ? 'إعادة إرسال الدعوة'
+                      : 'إرسال دعوة',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               const SizedBox(width: 4),
               IconButton(
-                onPressed: () =>
-                    _showDeleteFamilyMemberDialog(member),
+                onPressed: () => _showDeleteFamilyMemberDialog(member),
                 icon: const Icon(Icons.delete_outline_rounded,
                     size: 18, color: Color(0xFFEF4444)),
                 tooltip: 'حذف',
@@ -827,14 +854,12 @@ class _AdminResidentDetailScreenState
                 const SizedBox(height: 6),
                 const Text(
                     'أدخل بيانات فرد العائلة. سيصله بريد دعوة للتحقق والربط بحساب المقيم.',
-                    style:
-                        TextStyle(fontSize: 12, color: Color(0xFF64748b))),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748b))),
                 const SizedBox(height: 20),
                 _sheetField('الاسم الكامل', nameCtrl,
                     icon: Icons.person_outline_rounded),
                 const SizedBox(height: 12),
-                _sheetField('صلة القرابة (مثال: ابن، أخت)',
-                    relationCtrl,
+                _sheetField('صلة القرابة (مثال: ابن، أخت)', relationCtrl,
                     icon: Icons.people_outline_rounded),
                 const SizedBox(height: 12),
                 _sheetField('البريد الإلكتروني (للدعوة)', emailCtrl,
@@ -856,21 +881,17 @@ class _AdminResidentDetailScreenState
                         : () async {
                             final name = nameCtrl.text.trim();
                             final email = emailCtrl.text.trim();
-                            final relation =
-                                relationCtrl.text.trim();
+                            final relation = relationCtrl.text.trim();
                             if (name.isEmpty) {
                               ScaffoldMessenger.of(ctx).showSnackBar(
                                   const SnackBar(
-                                      content:
-                                          Text('أدخل الاسم الكامل')));
+                                      content: Text('أدخل الاسم الكامل')));
                               return;
                             }
-                            if (email.isNotEmpty &&
-                                !email.contains('@')) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'أدخل بريداً إلكترونياً صحيحاً أو اتركه فارغاً')));
+                            if (email.isNotEmpty && !email.contains('@')) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                                  content: Text(
+                                      'أدخل بريداً إلكترونياً صحيحاً أو اتركه فارغاً')));
                               return;
                             }
                             setSheetState(() => saving = true);
@@ -880,9 +901,8 @@ class _AdminResidentDetailScreenState
                                 residentId: residentId,
                                 email: email.isNotEmpty ? email : null,
                                 fullName: name,
-                                relationship: relation.isNotEmpty
-                                    ? relation
-                                    : 'عائلة',
+                                relationship:
+                                    relation.isNotEmpty ? relation : 'عائلة',
                               );
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (mounted) {
@@ -892,18 +912,16 @@ class _AdminResidentDetailScreenState
                                     content: Text(email.isNotEmpty
                                         ? 'تمت الإضافة وتم إرسال بريد الدعوة إلى $email'
                                         : 'تمت إضافة $name بنجاح'),
-                                    backgroundColor:
-                                        const Color(0xFF0ea5e9),
+                                    backgroundColor: const Color(0xFF0ea5e9),
                                   ),
                                 );
                               }
                             } catch (e) {
                               setSheetState(() => saving = false);
                               if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red));
+                                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                    content: Text('خطأ: $e'),
+                                    backgroundColor: Colors.red));
                               }
                             }
                           },
@@ -914,9 +932,8 @@ class _AdminResidentDetailScreenState
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
                         : const Icon(Icons.send_rounded, size: 18),
-                    label: Text(saving
-                        ? 'جاري الإضافة...'
-                        : 'إضافة وإرسال الدعوة'),
+                    label: Text(
+                        saving ? 'جاري الإضافة...' : 'إضافة وإرسال الدعوة'),
                   ),
                 ),
               ],
@@ -928,7 +945,8 @@ class _AdminResidentDetailScreenState
   }
 
   void _showSendInviteSheet(String residentId, FamilyMember member) {
-    final emailCtrl = TextEditingController();
+    final existingEmail = member.email?.trim() ?? '';
+    final emailCtrl = TextEditingController(text: existingEmail);
     bool saving = false;
 
     showModalBottomSheet(
@@ -967,12 +985,10 @@ class _AdminResidentDetailScreenState
                         children: [
                           const Text('إرسال دعوة',
                               style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold)),
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                           Text('إلى: ${member.name}',
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748b))),
+                                  fontSize: 12, color: Color(0xFF64748b))),
                         ],
                       ),
                     ),
@@ -1016,20 +1032,17 @@ class _AdminResidentDetailScreenState
                                 ref.read(appRiverpod).syncBackendData();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(
-                                        'تم إرسال الدعوة إلى $email'),
-                                    backgroundColor:
-                                        const Color(0xFFF97316),
+                                    content: Text('تم إرسال الدعوة إلى $email'),
+                                    backgroundColor: const Color(0xFFF97316),
                                   ),
                                 );
                               }
                             } catch (e) {
                               setSheetState(() => saving = false);
                               if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red));
+                                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                    content: Text('خطأ: $e'),
+                                    backgroundColor: Colors.red));
                               }
                             }
                           },
@@ -1040,7 +1053,11 @@ class _AdminResidentDetailScreenState
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
                         : const Icon(Icons.send_rounded, size: 18),
-                    label: Text(saving ? 'جاري الإرسال...' : 'إرسال الدعوة'),
+                    label: Text(saving
+                        ? 'جاري الإرسال...'
+                        : existingEmail.isEmpty
+                            ? 'إرسال الدعوة'
+                            : 'إعادة إرسال الدعوة'),
                   ),
                 ),
               ],
@@ -1055,16 +1072,14 @@ class _AdminResidentDetailScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('حذف فرد العائلة',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         content: Text(
             'هل تريد حذف "${member.name}" من قائمة أفراد العائلة المرتبطين؟'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء')),
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
@@ -1080,8 +1095,7 @@ class _AdminResidentDetailScreenState
                   ref.read(appRiverpod).syncBackendData();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content:
-                            Text('تم حذف ${member.name} بنجاح'),
+                        content: Text('تم حذف ${member.name} بنجاح'),
                         backgroundColor: const Color(0xFFEF4444)),
                   );
                 }
@@ -1126,8 +1140,7 @@ class _AdminResidentDetailScreenState
             borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Color(0xFF0ea5e9), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF0ea5e9), width: 1.5)),
       ),
     );
   }
@@ -1249,7 +1262,9 @@ class _AdminResidentDetailScreenState
 
   void _editSection(String title) {
     final appData = ref.read(appRiverpod);
-    final resident = appData.residentFiles.where((r) => r.id == widget.residentId).firstOrNull;
+    final resident = appData.residentFiles
+        .where((r) => r.id == widget.residentId)
+        .firstOrNull;
     if (resident == null) return;
 
     switch (title) {
@@ -1292,9 +1307,7 @@ class _AdminResidentDetailScreenState
     // Birth year derived from age (approximate)
     final currentYear = DateTime.now().year;
     final birthYearCtrl = TextEditingController(
-        text: resident.age != null
-            ? '${currentYear - resident.age!}'
-            : '');
+        text: resident.age != null ? '${currentYear - resident.age!}' : '');
 
     showModalBottomSheet(
       context: context,
@@ -1304,21 +1317,21 @@ class _AdminResidentDetailScreenState
         bool saving = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) => Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('تعديل البيانات الشخصية',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   _field('الاسم الأول', firstCtrl),
                   const SizedBox(height: 12),
@@ -1365,13 +1378,11 @@ class _AdminResidentDetailScreenState
                                 }
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
-                                  ref
-                                      .read(appRiverpod)
-                                      .syncBackendData();
+                                  ref.read(appRiverpod).syncBackendData();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text(
-                                            'تم تحديث البيانات بنجاح')),
+                                        content:
+                                            Text('تم تحديث البيانات بنجاح')),
                                   );
                                 }
                               } catch (e) {
@@ -1405,8 +1416,8 @@ class _AdminResidentDetailScreenState
   }
 
   void _showMedicalInfoForm(SpecialistResidentFile resident) {
-    final allergiesCtrl = TextEditingController(
-        text: (resident.allergies ?? []).join('، '));
+    final allergiesCtrl =
+        TextEditingController(text: (resident.allergies ?? []).join('، '));
     final diseasesCtrl = TextEditingController(
         text: (resident.chronicDiseases ?? []).join('، '));
 
@@ -1434,8 +1445,8 @@ class _AdminResidentDetailScreenState
   }
 
   void _showMobilityForm(SpecialistResidentFile resident) {
-    final mobilityCtrl = TextEditingController(
-        text: resident.mobilityStatus ?? '');
+    final mobilityCtrl =
+        TextEditingController(text: resident.mobilityStatus ?? '');
 
     _showSimpleEditSheet(
       title: 'تعديل الحالة الحركية',
@@ -1452,8 +1463,7 @@ class _AdminResidentDetailScreenState
   }
 
   void _showDietForm(SpecialistResidentFile resident) {
-    final dietCtrl = TextEditingController(
-        text: resident.dietType ?? '');
+    final dietCtrl = TextEditingController(text: resident.dietType ?? '');
     final restrictionsCtrl = TextEditingController(text: '');
 
     _showSimpleEditSheet(
@@ -1480,8 +1490,8 @@ class _AdminResidentDetailScreenState
       .toList();
 
   void _showInsuranceForm(SpecialistResidentFile resident) {
-    final insuranceCtrl = TextEditingController(
-        text: resident.insuranceInfo ?? '');
+    final insuranceCtrl =
+        TextEditingController(text: resident.insuranceInfo ?? '');
     final doctorCtrl = TextEditingController(text: '');
 
     _showSimpleEditSheet(
@@ -1505,8 +1515,7 @@ class _AdminResidentDetailScreenState
         TextEditingController(text: resident.previousProfession ?? '');
     final hobbiesCtrl =
         TextEditingController(text: (resident.hobbies ?? []).join('، '));
-    final statusCtrl =
-        TextEditingController(text: resident.socialStatus ?? '');
+    final statusCtrl = TextEditingController(text: resident.socialStatus ?? '');
 
     _showSimpleEditSheet(
       title: 'تعديل التاريخ الاجتماعي والنشاطات',
@@ -1527,11 +1536,11 @@ class _AdminResidentDetailScreenState
         );
         if (mounted) {
           ref.read(appRiverpod).updateResidentSocialHistory(
-            residentId: resident.id,
-            previousProfession: professionCtrl.text.trim(),
-            socialStatus: statusCtrl.text.trim(),
-            hobbies: _splitCSV(hobbiesCtrl.text),
-          );
+                residentId: resident.id,
+                previousProfession: professionCtrl.text.trim(),
+                socialStatus: statusCtrl.text.trim(),
+                hobbies: _splitCSV(hobbiesCtrl.text),
+              );
         }
       },
     );
@@ -1556,9 +1565,9 @@ class _AdminResidentDetailScreenState
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1640,16 +1649,16 @@ class _AdminResidentDetailScreenState
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('تعديل بيانات الطوارئ والوصي',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   _field('اسم جهة الطوارئ', nameCtrl),
                   const SizedBox(height: 12),
@@ -1736,26 +1745,25 @@ class _AdminResidentDetailScreenState
         bool saving = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) => Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('إضافة ربط عائلة',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   const Text(
                       'أدخل البريد الإلكتروني لأحد أفراد العائلة لمنحه صلاحية متابعة المقيم.',
-                      style: TextStyle(
-                          fontSize: 13, color: Color(0xFF64748b))),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748b))),
                   const SizedBox(height: 20),
                   _field('البريد الإلكتروني', emailCtrl,
                       keyboardType: TextInputType.emailAddress),
@@ -1775,8 +1783,8 @@ class _AdminResidentDetailScreenState
                               if (email.isEmpty || !email.contains('@')) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
                                   const SnackBar(
-                                      content:
-                                          Text('أدخل بريداً إلكترونياً صحيحاً')),
+                                      content: Text(
+                                          'أدخل بريداً إلكترونياً صحيحاً')),
                                 );
                                 return;
                               }
@@ -1789,13 +1797,11 @@ class _AdminResidentDetailScreenState
                                 );
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
-                                  ref
-                                      .read(appRiverpod)
-                                      .syncBackendData();
+                                  ref.read(appRiverpod).syncBackendData();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text(
-                                            'تم إرسال دعوة الربط بنجاح')),
+                                        content:
+                                            Text('تم إرسال دعوة الربط بنجاح')),
                                   );
                                 }
                               } catch (e) {
@@ -1844,8 +1850,8 @@ class _AdminResidentDetailScreenState
                 size: 48, color: Color(0xFF94a3b8)),
             const SizedBox(height: 16),
             Text('تعديل: $title',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text(
               'سيتوفر هذا النموذج في التحديث القادم.',
@@ -1992,14 +1998,14 @@ class _AdminResidentDetailScreenState
 
     setState(() => _isUploading = true);
     try {
-      final uploaded = await AiMediaService.instance.uploadFile(
-        filePath: filePath,
+      final doc = await ResidentDocumentService.instance.uploadDocument(
         residentId: widget.residentId,
+        filePath: filePath,
       );
-      final url = uploaded.mediaUrl ?? filePath;
-      final provider = ref.read(appRiverpod);
-      provider.addDocumentToResident(widget.residentId, url);
       if (mounted) {
+        ref
+            .read(appRiverpod)
+            .addDocumentToResident(widget.residentId, doc.url);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('تم رفع "${file.name}" بنجاح'),
           backgroundColor: const Color(0xFF059669),
@@ -2085,9 +2091,8 @@ class _AdminResidentDetailScreenState
             _buildAIEmptyState()
           else ...[
             if (aiNotes.summary?.isNotEmpty == true)
-              _buildAISection(
-                  'الملخص', stripUuids(aiNotes.summary!), Icons.summarize_rounded,
-                  const Color(0xFF6366F1)),
+              _buildAISection('الملخص', stripUuids(aiNotes.summary!),
+                  Icons.summarize_rounded, const Color(0xFF6366F1)),
             if (aiNotes.recommendations?.isNotEmpty == true)
               _buildAISection('التوصيات', stripUuids(aiNotes.recommendations!),
                   Icons.recommend_rounded, const Color(0xFF059669)),
@@ -2095,15 +2100,16 @@ class _AdminResidentDetailScreenState
               _buildAISection('التحذيرات', stripUuids(aiNotes.warnings!),
                   Icons.warning_amber_rounded, const Color(0xFFDC2626)),
             if (aiNotes.moodInsights?.isNotEmpty == true)
-              _buildAISection('تحليل المزاج والحالة النفسية',
-                  stripUuids(aiNotes.moodInsights!), Icons.psychology_rounded,
+              _buildAISection(
+                  'تحليل المزاج والحالة النفسية',
+                  stripUuids(aiNotes.moodInsights!),
+                  Icons.psychology_rounded,
                   const Color(0xFF0EA5E9)),
             const SizedBox(height: 8),
             if (aiNotes.lastUpdated != null)
               Text(
                 'آخر تحديث: ${aiNotes.lastUpdated}',
-                style: const TextStyle(
-                    fontSize: 11, color: Color(0xFF94a3b8)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94a3b8)),
                 textAlign: TextAlign.end,
               ),
           ],
@@ -2176,17 +2182,13 @@ class _AdminResidentDetailScreenState
               const SizedBox(width: 8),
               Text(title,
                   style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: color)),
+                      fontSize: 13, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
           const SizedBox(height: 10),
           Text(content,
               style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF374151),
-                  height: 1.6)),
+                  fontSize: 14, color: Color(0xFF374151), height: 1.6)),
         ],
       ),
     );
