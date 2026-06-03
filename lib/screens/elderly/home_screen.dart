@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../chat/family_resident_chat_screen.dart';
 import 'cognitive_games_screen.dart';
+import 'elderly_chat_contacts_screen.dart';
 import '../../models/app_models.dart'; // نماذج البيانات (Medication, User, etc.)
 import 'package:lottie/lottie.dart';
 // ويدجت رفيق الذكاء الاصطناعي
@@ -88,7 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       children: [
         _buildAnimatedBackground(),
         SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 100), // مساحة إضافية في الأسفل
+          padding: const EdgeInsets.only(bottom: 120),
           child: Column(
             children: [
               // قسم الترحيب العلوي (Hero)
@@ -106,8 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     const SizedBox(height: 12),
                     _buildCognitiveGamesCard(provider, context),
                     const SizedBox(height: 12),
-                    _buildPointsCard(
-                        provider), // نقاط تظهر أولاً فوق جهات الاتصال
+                    _buildPointsCard(provider),
                     const SizedBox(height: 12),
                     _buildFamilyCard(provider, context),
                     const SizedBox(height: 12),
@@ -119,6 +119,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
         if (_showSuccessAnimation) _buildCentralSuccessAnimation(),
+        // ── Chat FAB ──────────────────────────────────────────────────────
+        _buildChatFab(provider, context),
       ],
     );
   }
@@ -1391,6 +1393,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatFab(AppRiverpod provider, BuildContext context) {
+    final hasChatContacts =
+        provider.familyMembers.any((m) => m.userId != null);
+    return Positioned(
+      bottom: 24,
+      left: 20,
+      child: GestureDetector(
+        onTap: () {
+          if (provider.familyMembers.isEmpty) {
+            _showFeedbackSnack('لا يوجد أفراد عائلة مضافون بعد');
+            return;
+          }
+          // إذا في فرد عائلة واحد فقط بالتطبيق، روح مباشرة للشات
+          final chatMembers =
+              provider.familyMembers.where((m) => m.userId != null).toList();
+          if (chatMembers.length == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FamilyResidentChatScreen(
+                  otherUserId: chatMembers.first.userId!,
+                  otherUserName: chatMembers.first.name,
+                  otherUserRole: chatMembers.first.relation,
+                  residentId: provider.backendResidentId,
+                  accentColor: const Color(0xFF6C63FF),
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ElderlyContactsScreen()),
+            );
+          }
+        },
+        child: Container(
+          height: 58,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: hasChatContacts
+                ? const LinearGradient(
+                    colors: [Color(0xFFEA580C), Color(0xFFDC2626)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: hasChatContacts ? null : const Color(0xFF9CA3AF),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: (hasChatContacts
+                        ? const Color(0xFFEA580C)
+                        : const Color(0xFF9CA3AF))
+                    .withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chat_bubble_rounded,
+                  color: Colors.white, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'راسل عائلتك',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
