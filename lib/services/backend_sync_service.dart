@@ -26,6 +26,7 @@ class BackendSyncSnapshot {
   final List<MedicalPrescription>? medicalPrescriptions;
   final List<VolunteerOpportunity>? volunteerOpportunities;
   final List<VolunteerBooking>? volunteerBookings;
+  final List<VolunteerApplication>? volunteerApplications;
   final List<VolunteerCertificate>? volunteerCertificates;
   final List<VolunteerRating>? volunteerRatings;
   final List<VolunteerReview>? volunteerReviews;
@@ -66,6 +67,7 @@ class BackendSyncSnapshot {
     this.medicalPrescriptions,
     this.volunteerOpportunities,
     this.volunteerBookings,
+    this.volunteerApplications,
     this.volunteerCertificates,
     this.volunteerRatings,
     this.volunteerReviews,
@@ -241,6 +243,8 @@ class BackendSyncService {
     final opportunitiesFuture =
         listWhen(loadVolunteerData, '/volunteers/opportunities');
     final bookingsFuture = listWhen(loadVolunteerData, '/volunteers/bookings');
+    final adminBookingsFuture =
+        listWhen(isAdmin, '/volunteers/admin/bookings');
     final certificatesFuture =
         listWhen(loadVolunteerData, '/volunteers/certificates');
     final ratingsFuture = listWhen(loadVolunteerData, '/volunteers/ratings');
@@ -297,6 +301,7 @@ class BackendSyncService {
     final prescriptionsJson = await prescriptionsFuture;
     final opportunitiesJson = await opportunitiesFuture;
     final bookingsJson = await bookingsFuture;
+    final adminBookingsJson = await adminBookingsFuture;
     final certificatesJson = await certificatesFuture;
     final ratingsJson = await ratingsFuture;
     final reviewsJson = await reviewsFuture;
@@ -380,6 +385,8 @@ class BackendSyncService {
       volunteerOpportunities:
           opportunitiesJson?.map(_volunteerOpportunityFromJson).toList(),
       volunteerBookings: bookingsJson?.map(_volunteerBookingFromJson).toList(),
+      volunteerApplications:
+          adminBookingsJson?.map(_volunteerApplicationFromJson).toList(),
       volunteerCertificates:
           certificatesJson?.map(_volunteerCertificateFromJson).toList(),
       volunteerRatings: ratingsJson?.map(_volunteerRatingFromJson).toList(),
@@ -961,7 +968,7 @@ class BackendSyncService {
     if (raw.isEmpty) return '';
     final mapped = participantNameMap[raw];
     if (mapped != null && mapped.trim().isNotEmpty) return mapped.trim();
-    return _looksLikeId(raw) ? 'مشارك غير معروف' : raw;
+    return raw;
   }
 
   bool _looksLikeId(String value) {
@@ -1289,6 +1296,17 @@ class BackendSyncService {
       location: _s(j['location'], fallback: ''),
       points: _int(j['points'], fallback: 10),
       startTime: date,
+    );
+  }
+
+  VolunteerApplication _volunteerApplicationFromJson(Map<String, dynamic> j) {
+    return VolunteerApplication(
+      id: _s(j['id']),
+      opportunityId: _s(j['opportunityId'] ?? j['opportunity_id']),
+      opportunityTitle: _s(j['title'], fallback: 'فرصة تطوعية'),
+      volunteerName: _s(j['volunteerName'] ?? j['volunteer_name'], fallback: 'متطوع'),
+      status: _s(j['status'], fallback: 'pending'),
+      createdAt: _dateLabel(_s(j['createdAt'] ?? j['created_at'])),
     );
   }
 

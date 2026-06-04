@@ -464,16 +464,32 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
     );
   }
 
+  SpecialistResidentFile? _lookupResident(
+      AppRiverpod provider, String idOrName) {
+    final clean = idOrName.trim();
+    if (clean.isEmpty) return null;
+    for (final r in provider.residentFiles) {
+      if (r.id == clean || r.name == clean || r.nameEn == clean) return r;
+    }
+    return null;
+  }
+
   Widget _buildResidentBlocks() {
     final provider = ref.watch(appRiverpod);
+    // Group meds by resolved display name so UUIDs show as resident names.
     final groupedMeds = <String, List<Medication>>{};
+    final nameToResident = <String, SpecialistResidentFile?>{};
     for (var med in provider.medications) {
-      // فلترة الأدوية حسب الفترة الزمنية المحددة (الصباح، الظهر، إلخ)
       if (_periodForMedication(med) != _selectedPeriod) continue;
-
-      final name = med.residentName ?? 'غير محدد';
-      if (!groupedMeds.containsKey(name)) groupedMeds[name] = [];
-      groupedMeds[name]!.add(med);
+      final raw = med.residentName ?? '';
+      final resident = _lookupResident(provider, raw);
+      final resolvedName = resident?.name ?? '';
+      final displayName = resolvedName.isNotEmpty
+          ? resolvedName
+          : (raw.isEmpty || raw.contains('-') ? 'مقيم' : raw);
+      final safeName = displayName.isNotEmpty ? displayName : 'مقيم';
+      groupedMeds.putIfAbsent(safeName, () => []).add(med);
+      nameToResident[safeName] ??= resident;
     }
     final residentEntries = groupedMeds.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
@@ -488,15 +504,15 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
             ...residentEntries.map((entry) {
               final name = entry.key;
               final meds = entry.value;
-              final matchedResidents = provider.residentFiles.where(
-                (resident) => resident.name == name,
-              );
-              final isCritical = matchedResidents.any(
-                (resident) =>
-                    resident.status.toLowerCase().contains('critical') ||
-                    resident.status.contains('حرج'),
-              );
-              return _buildResidentCard(name, meds, isCritical);
+              final resident = nameToResident[name];
+              final room =
+                  (resident?.room.isNotEmpty == true && resident!.room != '-')
+                      ? resident.room
+                      : '';
+              final isCritical = resident != null &&
+                  (resident.status.toLowerCase().contains('critical') ||
+                      resident.status.contains('حرج'));
+              return _buildResidentCard(name, room, meds, isCritical);
             }),
         ],
       ),
@@ -534,6 +550,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
 
   Widget _buildResidentCard(
     String name,
+    String room,
     List<Medication> meds,
     bool isCritical,
   ) {
@@ -568,7 +585,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
                 MaterialPageRoute(
                   builder: (context) => NurseResidentDetailScreen(
                     residentName: name,
-                    roomNumber: isCritical ? '١٠٣' : '١١٢',
+                    roomNumber: room,
                   ),
                 ),
               );
@@ -592,7 +609,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
                         ? const Color(0xFFFFE4E6)
                         : const Color(0xFFE0F2FE),
                     child: Text(
-                      name.substring(0, 2),
+                      name.length >= 2 ? name.substring(0, 2) : name,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -608,7 +625,7 @@ class _NurseMedicationsScreenState extends ConsumerState<NurseMedicationsScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$name — غرفة ${isCritical ? '١٠٣' : '١١٢'}',
+                          room.isNotEmpty ? '$name — غرفة $room' : name,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,

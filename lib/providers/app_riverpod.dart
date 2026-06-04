@@ -1078,6 +1078,9 @@ class AppRiverpod extends ChangeNotifier {
     if (snapshot.volunteerBookings != null) {
       volunteerBookings = snapshot.volunteerBookings!;
     }
+    if (snapshot.volunteerApplications != null) {
+      volunteerApplications = snapshot.volunteerApplications!;
+    }
     if (snapshot.volunteerCertificates != null) {
       volunteerCertificates = snapshot.volunteerCertificates!;
     }
@@ -1780,6 +1783,7 @@ class AppRiverpod extends ChangeNotifier {
     medicalPrescriptions = [];
     volunteerOpportunities = [];
     volunteerBookings = [];
+    volunteerApplications = [];
     volunteerCertificates = [];
     volunteerRatings = [];
     volunteerReviews = [];
@@ -2397,6 +2401,8 @@ class AppRiverpod extends ChangeNotifier {
 
   List<VolunteerBooking> volunteerBookings = [];
 
+  List<VolunteerApplication> volunteerApplications = [];
+
   List<VolunteerCertificate> volunteerCertificates = [];
 
   List<VolunteerRating> volunteerRatings = [];
@@ -2678,8 +2684,25 @@ class AppRiverpod extends ChangeNotifier {
   List<SocialSpecialistResidentScore> socialResidentScores = [];
 
   List<SocialSpecialistResidentScore> get filteredResidentScores {
-    return socialResidentScores.where((r) {
-      final matchQuery = r.name.contains(residentSearchQuery) ||
+    // Sort by most recent assessment first so dedup keeps the latest
+    final sorted = List<SocialSpecialistResidentScore>.from(socialResidentScores)
+      ..sort((a, b) => b.lastAssessment.compareTo(a.lastAssessment));
+
+    // Deduplicate by resident name, filter invalid/test entries
+    final seenNames = <String>{};
+    final deduped = sorted.where((r) {
+      final nameClean = r.name.trim().toLowerCase();
+      if (nameClean.isEmpty || r.name == 'مقيم') return false;
+      if (r.name.contains('?')) return false;
+      if (nameClean.startsWith('test') || nameClean.contains('test ')) {
+        return false;
+      }
+      return seenNames.add(nameClean);
+    }).toList();
+
+    return deduped.where((r) {
+      final matchQuery = residentSearchQuery.isEmpty ||
+          r.name.contains(residentSearchQuery) ||
           r.room.contains(residentSearchQuery);
       final matchStatus = selectedHealthStatus == null ||
           r.healthStatus == selectedHealthStatus;
@@ -3939,63 +3962,60 @@ class AppRiverpod extends ChangeNotifier {
     try {
       await _tts.stop();
       await _companionPlayer.stop();
-      _companionPlayerCompleteSub ??=
-          _companionPlayer.onPlayerComplete.listen((_) {
-        isReadingAudio = false;
-        notifyListeners();
-      });
+      _companionPlayerCompleteSub?.cancel();
+      _companionPlayerCompleteSub = null;
 
+      // Try Gemini TTS (10s), then device TTS as instant fallback.
+      // We AWAIT true completion so the caller knows audio is done.
+      bool usedCloudTts = false;
       try {
-        AiSpeechResponse? speech;
-        Object? lastError;
-        for (var attempt = 0; attempt < 2; attempt++) {
-          try {
-            speech = await AiService.instance.synthesizeSpeech(
-              text: cleanText,
-              provider: 'google-cloud-gemini-tts',
-              model: 'gemini-2.5-pro-tts',
-              voiceName: 'Kore',
-              languageCode: 'ar-EG',
-              audioEncoding: 'MP3',
-              prompt:
-                  'تحدث بالعربية المصرية بلهجة طبيعية ودافئة ومطمئنة. النبرة عاطفية هادئة ومناسبة لكبار السن، مع ابتسامة مسموعة، وقفات قصيرة، وسرعة متوسطة. لا تجعل الصوت آلياً أو مسرحياً.',
-              voiceInstructions:
-                  'استخدم Google Cloud Gemini-TTS model gemini-2.5-pro-tts. صوت مصري إنساني دافئ، قريب ومتعاطف، مناسب لمقيم كبير السن. عبّر عن الطمأنينة والاهتمام بدون مبالغة.',
-              timeout: const Duration(seconds: 45),
-            );
-            if (speech.audioBase64.trim().isEmpty) {
-              throw const FormatException('Empty Gemini-TTS audio');
-            }
-            break;
-          } catch (e) {
-            lastError = e;
-            if (attempt == 0) {
-              await Future.delayed(const Duration(milliseconds: 700));
-            }
-          }
-        }
-        if (speech == null) throw lastError ?? 'Gemini-TTS failed';
+        final speech = await AiService.instance.synthesizeSpeech(
+          text: cleanText,
+          provider: 'google-cloud-gemini-tts',
+          model: 'gemini-2.5-pro-tts',
+          voiceName: 'Kore',
+          languageCode: 'ar-EG',
+          audioEncoding: 'MP3',
+          prompt:
+              'تحدث بالعربية المصرية بلهجة طبيعية ودافئة ومطمئنة. النبرة هادئة مناسبة لكبار السن، سرعة متوسطة.',
+          timeout: const Duration(seconds: 10),
+        );
+        if (speech.audioBase64.trim().isEmpty) throw const FormatException('Empty Gemini audio');
+
         final bytes = base64Decode(speech.audioBase64);
-        await _companionPlayer
-            .play(BytesSource(bytes, mimeType: speech.contentType));
-      } catch (backendErr) {
-        debugPrint('Gemini-TTS failed -> device TTS fallback: $backendErr');
-        _companionPlayerCompleteSub?.cancel();
-        _companionPlayerCompleteSub = null;
+        final completer = Completer<void>();
+        _companionPlayerCompleteSub =
+            _companionPlayer.onPlayerComplete.listen((_) {
+          if (!completer.isCompleted) completer.complete();
+        });
+        await _companionPlayer.play(BytesSource(bytes, mimeType: speech.contentType));
+        await completer.future;
+        usedCloudTts = true;
+      } catch (cloudErr) {
+        debugPrint('Cloud TTS failed -> device TTS: $cloudErr');
+      }
+
+      if (!usedCloudTts) {
+        // Device TTS — instant start, await actual completion
         await _initTts();
+        final completer = Completer<void>();
         _tts.setCompletionHandler(() {
-          isReadingAudio = false;
-          notifyListeners();
+          if (!completer.isCompleted) completer.complete();
+        });
+        _tts.setErrorHandler((msg) {
+          if (!completer.isCompleted) completer.complete();
         });
         final result = await _tts.speak(cleanText);
-        if (result == 0) {
-          isReadingAudio = false;
-          notifyListeners();
+        if (result == 1) {
+          await completer.future;
         }
       }
     } catch (e) {
+      debugPrint('startCompanionSpeech error: $e');
+    } finally {
       isReadingAudio = false;
-      debugPrint('startCompanionSpeech outer error: $e');
+      _companionPlayerCompleteSub?.cancel();
+      _companionPlayerCompleteSub = null;
       notifyListeners();
     }
   }
@@ -6176,6 +6196,50 @@ class AppRiverpod extends ChangeNotifier {
       notifyListeners();
     }
     unawaited(syncBackendData());
+  }
+
+  Future<bool> approveVolunteerApplication(String applicationId) async {
+    final synced = await _runBackendMutation(() {
+      return BackendMutationService.instance
+          .approveVolunteerApplication(applicationId);
+    });
+    if (!synced) return false;
+    final idx = volunteerApplications.indexWhere((a) => a.id == applicationId);
+    if (idx != -1) {
+      final a = volunteerApplications[idx];
+      volunteerApplications[idx] = VolunteerApplication(
+        id: a.id,
+        opportunityId: a.opportunityId,
+        opportunityTitle: a.opportunityTitle,
+        volunteerName: a.volunteerName,
+        status: 'confirmed',
+        createdAt: a.createdAt,
+      );
+      notifyListeners();
+    }
+    return true;
+  }
+
+  Future<bool> rejectVolunteerApplication(String applicationId) async {
+    final synced = await _runBackendMutation(() {
+      return BackendMutationService.instance
+          .rejectVolunteerApplication(applicationId);
+    });
+    if (!synced) return false;
+    final idx = volunteerApplications.indexWhere((a) => a.id == applicationId);
+    if (idx != -1) {
+      final a = volunteerApplications[idx];
+      volunteerApplications[idx] = VolunteerApplication(
+        id: a.id,
+        opportunityId: a.opportunityId,
+        opportunityTitle: a.opportunityTitle,
+        volunteerName: a.volunteerName,
+        status: 'cancelled',
+        createdAt: a.createdAt,
+      );
+      notifyListeners();
+    }
+    return true;
   }
 
   Future<void> rateVolunteerSession(String volunteerId, int ratingScore,

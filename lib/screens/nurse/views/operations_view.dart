@@ -17,6 +17,7 @@ class OperationsView extends ConsumerStatefulWidget {
 class _OperationsViewState extends ConsumerState<OperationsView>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  final Set<String> _expandedActivities = {};
 
   @override
   void initState() {
@@ -209,7 +210,7 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${task.residentName} · ${task.time}',
+                            '${_resolveResidentLabel(provider, task.residentName)} · ${task.time}',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -961,7 +962,8 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                 ],
               ),
               const SizedBox(height: 12),
-              Text('${visit.specialty} · لمتابعة حالة ${visit.residentName}',
+              Text(
+                  '${visit.specialty} · لمتابعة حالة ${_resolveResidentLabel(provider, visit.residentName)}',
                   style: TextStyle(
                       fontSize: 13,
                       color:
@@ -1937,117 +1939,224 @@ class _OperationsViewState extends ConsumerState<OperationsView>
 
   // --- 5. Activities ---
   Widget _buildActivities(AppRiverpod provider) {
+    if (provider.activitySessions.isEmpty) {
+      return const Center(
+        child: Text('لا توجد أنشطة', style: TextStyle(color: Color(0xFF94A3B8))),
+      );
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(20),
       itemCount: provider.activitySessions.length,
       itemBuilder: (context, index) {
         final session = provider.activitySessions[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4))
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                    color: Color(0xFFEEF2FF),
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24))),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.local_activity_rounded,
-                          color: Color(0xFF4F46E5), size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(session.title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: Color(0xFF312E81))),
-                          const SizedBox(height: 2),
-                          Text(
-                              '${session.startTime.hour}:${session.startTime.minute.toString().padLeft(2, '0')} · في ${session.location}',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Color(0xFF4338CA))),
-                        ],
+        final isExpanded = _expandedActivities.contains(session.id);
+        final participantCount = session.participants.length;
+        final resolvedNames = session.participants
+            .map((p) => _activityParticipantName(provider, p))
+            .where((n) => n.isNotEmpty)
+            .toList();
+
+        return GestureDetector(
+          onTap: () => setState(() {
+            if (isExpanded) {
+              _expandedActivities.remove(session.id);
+            } else {
+              _expandedActivities.add(session.id);
+            }
+          }),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                  color: isExpanded
+                      ? const Color(0xFF6366F1)
+                      : const Color(0xFFE2E8F0),
+                  width: isExpanded ? 1.5 : 1.0),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4))
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                      color: Color(0xFFEEF2FF),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(24))),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                            color: Colors.white, shape: BoxShape.circle),
+                        child: const Icon(Icons.local_activity_rounded,
+                            color: Color(0xFF4F46E5), size: 20),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(session.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Color(0xFF312E81))),
+                            const SizedBox(height: 2),
+                            Text(
+                                '${session.startTime.hour}:${session.startTime.minute.toString().padLeft(2, '0')} · في ${session.location}',
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF4338CA))),
+                          ],
+                        ),
+                      ),
+                      // Participant count badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: participantCount > 0
+                              ? const Color(0xFF4F46E5)
+                              : const Color(0xFF94A3B8),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.people_rounded,
+                                size: 13, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$participantCount',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: const Color(0xFF6366F1),
+                        size: 22,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(session.description,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF475569),
-                            height: 1.5)),
-                    const SizedBox(height: 20),
-                    const Text('المشاركين:',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: Color(0xFF0F172A))),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: session.participants
-                          .map((p) => _activityParticipantName(provider, p))
-                          .map((p) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                        color: const Color(0xFFE2E8F0))),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.person_rounded,
-                                        size: 14, color: Color(0xFF94A3B8)),
-                                    const SizedBox(width: 6),
-                                    Text(p,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF334155),
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ],
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(session.description,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF475569),
+                              height: 1.5)),
+                      if (participantCount > 0) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.people_outline_rounded,
+                                size: 14, color: Color(0xFF6366F1)),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$participantCount مشارك${participantCount == 1 ? '' : 'ين'} · اضغط لعرض الأسماء',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF6366F1),
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (isExpanded && resolvedNames.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Divider(color: Color(0xFFE2E8F0)),
+                        const SizedBox(height: 12),
+                        const Text('المشاركين:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: resolvedNames
+                              .map((name) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                        color: const Color(0xFFF5F3FF),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: const Color(0xFFDDD6FE))),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.person_rounded,
+                                            size: 14,
+                                            color: Color(0xFF6366F1)),
+                                        const SizedBox(width: 6),
+                                        Text(name,
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF4338CA),
+                                                fontWeight:
+                                                    FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                      if (isExpanded && resolvedNames.isEmpty) ...[
+                        const SizedBox(height: 12),
+                        const Text('لا يوجد مشاركين مسجلين',
+                            style: TextStyle(
+                                fontSize: 12, color: Color(0xFF94A3B8))),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
+  }
+
+  String _resolveResidentLabel(AppRiverpod provider, String idOrName) {
+    final clean = idOrName.trim();
+    if (clean.isEmpty) return 'غير محدد';
+    for (final resident in provider.residentFiles) {
+      if (resident.id == clean ||
+          resident.name == clean ||
+          resident.nameEn == clean) {
+        final room =
+            resident.room.isNotEmpty && resident.room != '-'
+                ? ' · غرفة ${resident.room}'
+                : '';
+        return '${resident.name}$room';
+      }
+    }
+    if (_looksLikeIdentifier(clean)) return 'مقيم';
+    return clean;
   }
 
   String _activityParticipantName(AppRiverpod provider, String participant) {

@@ -1072,22 +1072,26 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
 
       debugPrint('[Voice] 📥 reply: "$cleanReply"');
       setState(() {
+        _userSpoken = '';
         _aiResponse = cleanReply;
         _state = _VoiceState.speaking;
       });
       unawaited(_sfx.wake());
 
-      if (!_isMuted) {
-        _startRecording(isBargeIn: true);
-      }
-
+      // Await true completion — startCompanionSpeech now waits for audio to end
       await ref.read(appRiverpod).startCompanionSpeech(cleanReply);
       _isSubmittingSpeech = false;
       if (!mounted) return;
-      if (!ref.read(appRiverpod).isReadingAudio &&
-          _state == _VoiceState.speaking) {
+
+      // Audio finished → auto-restart listening immediately
+      if (!_isMuted && _sessionActive && !_isPopping) {
+        setState(() {
+          _state = _VoiceState.listening;
+          _aiResponse = '';
+        });
+        unawaited(_startRecording());
+      } else {
         setState(() => _state = _VoiceState.done);
-        _scheduleRestartListening();
       }
     } catch (e, st) {
       debugPrint('[Voice] voice flow exception: $e\n$st');
@@ -1295,30 +1299,110 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
     }
   }
 
-  // ── منطقة النص (Transcript) ────────────────────────────────────────
+  // ── منطقة المحادثة ────────────────────────────────────────────────
   Widget _buildModernTranscript() {
-    final text = _userSpoken.isNotEmpty
-        ? _userSpoken
-        : (_aiResponse.isNotEmpty ? _aiResponse : _subLabel);
-        
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
+    final provider = ref.read(appRiverpod);
+    // Last 4 messages from history (2 pairs)
+    final history = provider.companionChatHistory.reversed.take(4).toList().reversed.toList();
+
+    final hasContent = history.isNotEmpty || _userSpoken.isNotEmpty || _aiResponse.isNotEmpty;
+
+    if (!hasContent) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Text(
-          text,
-          key: ValueKey(text),
+          _subLabel,
           textAlign: TextAlign.center,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(
-            color: Color(0xFF2B2D42),
+          style: const TextStyle(color: Color(0xFF8D99AE), fontFamily: 'Cairo', fontSize: 16, height: 1.5),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Chat history bubbles
+          ...history.map((msg) => _buildBubble(msg.text, msg.isFromAI)),
+          // Live user speech
+          if (_userSpoken.isNotEmpty)
+            _buildBubble(_userSpoken, false, isLive: true),
+          // Live AI response
+          if (_aiResponse.isNotEmpty && _userSpoken.isEmpty)
+            _buildBubble(_aiResponse, true, isLive: _state == _VoiceState.speaking),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBubble(String text, bool isAI, {bool isLive = false}) {
+    return Align(
+      alignment: isAI ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: const BoxConstraints(maxWidth: 260),
+        decoration: BoxDecoration(
+          color: isAI
+              ? const Color(0xFFEDE9FE)
+              : (isLive ? const Color(0xFFDCFCE7) : const Color(0xFFEFF6FF)),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isAI ? 4 : 16),
+            bottomRight: Radius.circular(isAI ? 16 : 4),
+          ),
+          border: isLive
+              ? Border.all(color: isAI ? const Color(0xFF8B5CF6) : const Color(0xFF10B981), width: 1.5)
+              : null,
+        ),
+        child: Text(
+          text,
+          textDirection: TextDirection.rtl,
+          style: TextStyle(
+            color: isAI ? const Color(0xFF4C1D95) : const Color(0xFF1E40AF),
             fontFamily: 'Cairo',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            fontWeight: isLive ? FontWeight.w700 : FontWeight.w500,
             height: 1.5,
           ),
         ),
       ),
+    );
+  }
+
+  // ── Waveform bars أثناء الاستماع ────────────────────────────────────
+  Widget _buildWaveform() {
+    final isActive = _state == _VoiceState.listening;
+    return AnimatedBuilder(
+      animation: _waveCtrl,
+      builder: (_, __) {
+        final t = _waveCtrl.value;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(7, (i) {
+            final phase = (t + i * 0.14) % 1.0;
+            final h = isActive
+                ? 8.0 + sin(phase * 2 * pi) * 14
+                : 4.0;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 100),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 5,
+              height: h.clamp(4.0, 28.0),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFF8B5CF6).withValues(alpha: 0.6 + 0.4 * sin(phase * 2 * pi))
+                    : const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 
@@ -1414,27 +1498,38 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
                   ),
                 ),
                 
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 Text(
                    _stateLabel,
                    style: const TextStyle(
                      color: Color(0xFF8D99AE),
                      fontFamily: 'Cairo',
-                     fontSize: 16,
+                     fontSize: 15,
                      fontWeight: FontWeight.bold,
                    ),
                 ),
-                
-                const Spacer(),
-                
+
+                const SizedBox(height: 16),
+
+                // Conversation history (scrollable)
+                Expanded(
+                  child: SingleChildScrollView(
+                    reverse: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: _buildModernTranscript(),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
                 _buildGlowingOrb(),
-                
-                const SizedBox(height: 70),
-                
-                _buildModernTranscript(),
-                
-                const Spacer(),
-                
+
+                const SizedBox(height: 16),
+
+                _buildWaveform(),
+
+                const SizedBox(height: 20),
+
                 _buildBottomControls(),
               ],
             ),

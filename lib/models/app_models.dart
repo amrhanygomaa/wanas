@@ -291,6 +291,24 @@ class VolunteerOpportunity {
       requiredSkills.isNotEmpty ? requiredSkills : tags;
 }
 
+class VolunteerApplication {
+  final String id;
+  final String opportunityId;
+  final String opportunityTitle;
+  final String volunteerName;
+  final String status; // 'pending', 'confirmed', 'cancelled', 'done'
+  final String createdAt;
+
+  VolunteerApplication({
+    required this.id,
+    required this.opportunityId,
+    required this.opportunityTitle,
+    required this.volunteerName,
+    required this.status,
+    required this.createdAt,
+  });
+}
+
 class VolunteerImpact {
   final int residentsServed;
   final int positiveRatings;

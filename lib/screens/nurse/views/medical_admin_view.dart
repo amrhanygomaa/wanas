@@ -801,6 +801,28 @@ class _MedicalAdminViewState extends ConsumerState<MedicalAdminView> {
     );
   }
 
+  String _resolveResidentLabel(AppRiverpod provider, String idOrName) {
+    final clean = idOrName.trim();
+    if (clean.isEmpty) return 'غير محدد';
+    for (final resident in provider.residentFiles) {
+      if (resident.id == clean ||
+          resident.name == clean ||
+          resident.nameEn == clean) {
+        final room =
+            resident.room.isNotEmpty && resident.room != '-'
+                ? ' · غرفة ${resident.room}'
+                : '';
+        return '${resident.name}$room';
+      }
+    }
+    if (RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(clean)) {
+      return 'مقيم';
+    }
+    return clean;
+  }
+
   Widget _buildSessionLog(MedicalSession s, AppRiverpod provider) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -830,7 +852,8 @@ class _MedicalAdminViewState extends ConsumerState<MedicalAdminView> {
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF0F172A))),
                 const SizedBox(height: 2),
-                Text('${s.residentName} · ${s.time}',
+                Text(
+                    '${_resolveResidentLabel(provider, s.residentName)} · ${s.time}',
                     style: const TextStyle(
                         fontSize: 13, color: Color(0xFF475569))),
               ],
@@ -895,7 +918,8 @@ class _MedicalAdminViewState extends ConsumerState<MedicalAdminView> {
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF0F172A))),
                 const SizedBox(height: 2),
-                Text('${p.residentName} · ${p.date}',
+                Text(
+                    '${_resolveResidentLabel(provider, p.residentName)} · ${p.date}',
                     style: const TextStyle(
                         fontSize: 13, color: Color(0xFF475569))),
               ],

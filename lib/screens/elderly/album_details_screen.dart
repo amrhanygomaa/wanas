@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/api_config.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/ai_media_service.dart';
 import '../../widgets/authenticated_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'full_screen_image_screen.dart';
@@ -102,40 +101,8 @@ class AlbumDetailsScreen extends ConsumerWidget {
           if (image == null) return;
 
           final provider = ref.read(appRiverpod);
-          final residentId = provider.backendResidentId ??
-              (provider.residentFiles.isNotEmpty
-                  ? provider.residentFiles.first.id
-                  : null);
           final localPath = await provider.persistAlbumImage(image.path);
-          final itemId = provider.addPhotoToAlbum(albumName, localPath);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('تم حفظ الصورة في الألبوم'),
-                backgroundColor: Color(0xFF16A34A),
-              ),
-            );
-          }
-          try {
-            final uploaded = await AiMediaService.instance.uploadFile(
-              filePath: image.path,
-              residentId: residentId,
-            );
-            final s3Url = uploaded.mediaUrl;
-            if (s3Url != null && s3Url.isNotEmpty) {
-              provider.updateMemoryItemAssetPath(itemId, s3Url);
-            }
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text('تم حفظ الصورة محلياً، لكن تعذر رفعها للسيرفر: $e'),
-                  backgroundColor: Colors.orange.shade700,
-                ),
-              );
-            }
-          }
+          provider.addPhotoToAlbum(albumName, localPath);
         },
         backgroundColor: const Color(0xFF6C63FF),
         icon: const Icon(Icons.add_a_photo_rounded, color: Colors.white),

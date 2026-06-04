@@ -753,6 +753,14 @@ class BackendMutationService {
     return ApiClient.instance.patch('/volunteers/bookings/$id/cancel');
   }
 
+  Future<void> approveVolunteerApplication(String id) {
+    return ApiClient.instance.patch('/volunteers/admin/bookings/$id/approve');
+  }
+
+  Future<void> rejectVolunteerApplication(String id) {
+    return ApiClient.instance.patch('/volunteers/admin/bookings/$id/reject');
+  }
+
   Future<void> confirmVolunteerAttendance(String id) {
     return ApiClient.instance
         .patch('/volunteers/bookings/$id/confirm-attendance');

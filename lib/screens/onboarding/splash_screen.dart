@@ -202,7 +202,7 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // أ) الشعار الفخم (الأصل التعبيري للوجو أو الرسم التلقائي)
+                      // أ) الشعار الجديد (FIRST.png)
                       AnimatedBuilder(
                         animation: _fadeController,
                         builder: (context, child) {
@@ -210,14 +210,12 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                             opacity: _logoOpacity.value,
                             child: Transform.scale(
                               scale: _logoScale.value,
-                              child: _useLogoAsset
-                                  ? Image.asset(
-                                      _splashLogoAsset,
-                                      width: size.width *
-                                          2.5, // تكبير الشعار أكثر وأكثر لتكبير الاسم والرمز للدرجة القصوى المطلوبة
-                                      fit: BoxFit.contain,
-                                    )
-                                  : _buildLogoWidget(),
+                              child: Image.asset(
+                                _splashLogoAsset,
+                                width: size.width * 0.55,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => _buildLogoWidget(),
+                              ),
                             ),
                           );
                         },
