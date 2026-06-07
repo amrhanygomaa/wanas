@@ -44,12 +44,36 @@
 
 ## 4. Architecture
 
-**No structural moves were made.** The app keeps its layer-first structure
-(`config/ models/ providers/ services/ widgets/ screens/<role>/`). A full
-feature-based restructure (`lib/features/<x>/{data,domain,presentation}`) was
-evaluated and rejected for this pass: it would require moving ~152 files and
-rewriting every import on an app that currently passes `flutter analyze` with
-zero issues — disproportionate risk for the benefit.
+The app keeps its layer-first structure (`config/ models/ providers/ services/
+widgets/ screens/<role>/`). A full feature-based restructure
+(`lib/features/<x>/{data,domain,presentation}`) was evaluated and rejected for
+this pass (would require moving ~152 files and rewriting every import).
+
+### God-file split — DONE
+The 6704-line `lib/providers/app_riverpod.dart` (single `AppRiverpod
+extends ChangeNotifier`, ~465 methods, 110 fields) was split **2638 lines
+(-61%)** by moving cohesive method groups into **9 `part`-file extensions** —
+no consumer import changes, all fields/constructor stay in the class:
+
+| Part file | Domain |
+|-----------|--------|
+| `app_riverpod_memories.dart` | local albums / memories |
+| `app_riverpod_facility.dart` | billing, audit trail, call history |
+| `app_riverpod_residents_family.dart` | display prefs, family activities, AI errors |
+| `app_riverpod_staff_reports.dart` | staff performance, reports, medical sessions |
+| `app_riverpod_nursing_ops.dart` | nursing ops, care tasks, inventory, visits |
+| `app_riverpod_family_reminders.dart` | family medication reminders |
+| `app_riverpod_assessments.dart` | GDS / detailed assessments |
+| `app_riverpod_memory_wall.dart` | family memory wall |
+| `app_riverpod_elderly_media.dart` | gallery permissions, elderly tabs, media |
+
+**Recipe per part file** (validated by `flutter analyze` after each batch):
+`extension AppRiverpodX on AppRiverpod {…}` in a `part of 'app_riverpod.dart'`
+file; `// ignore_for_file: invalid_use_of_protected_member,
+invalid_use_of_visible_for_testing_member` (because `notifyListeners()` is
+`@protected`); and qualify static members as `AppRiverpod.<name>`. The analyzer
+flagged one field hidden in a range (`totalCapacity`, trailing-comment line) —
+moved back into the class.
 
 ## 5. Security & secrets audit
 
@@ -71,29 +95,35 @@ zero issues — disproportionate risk for the benefit.
   the substring `toDouble`).
 - **Formatting:** 26 files brought to `dart format` standard.
 
-## 7. Remaining technical debt (intentionally deferred)
+## 7. Remaining technical debt
 
-| Item | Why deferred | Recommended approach |
-|------|--------------|----------------------|
-| `lib/providers/app_riverpod.dart` god-file (6700 lines, 465 methods, 110 fields) | Splitting risks breaking a working app; fields are interleaved with methods and Dart extensions can't hold fields | Dedicated, reviewed effort: separate fields into the core class, move cohesive method groups into `extension _X on AppRiverpod` blocks in `part of` files (keeps private access, no consumer changes), validating with `flutter analyze` after each group |
-| Large screen files (140 KB `family_dashboard_screen.dart`, etc.) | Lower risk but high churn + 4.6-min analyze cycles | Extract private widget classes into per-screen `widgets/` files incrementally |
-| Hardcoded UI strings | Arabic strings are inline; CONTRIBUTING mandates Arabic comments | Optional `core/constants/app_strings.dart` consolidation in a later pass |
+| Item | Status / approach |
+|------|-------------------|
+| `app_riverpod.dart` further reduction | Now 2638 lines (mostly fields/constructor/core + a few small method runs). Could shrink further with the same `part`-extension recipe; diminishing returns since fields must stay in the class. |
+| Large screen files (140 KB `family_dashboard_screen.dart`, etc.) | Not done. Extract private widget classes into per-screen `widgets/` files incrementally. |
+| Hardcoded UI strings | Not done. Arabic strings are inline; optional `core/constants/app_strings.dart` consolidation later. |
 
 ## 8. Verification
 
 | Command | Result |
 |---------|--------|
 | `flutter analyze --no-fatal-infos` (baseline, pre-change) | ✅ No issues found! (276 s) |
-| `dart format` (26 files) | ✅ Applied (whitespace only) |
-| `flutter analyze` + `flutter test` (final) | See commit log / CI — formatting cannot change analysis results |
+| `dart format` | ✅ Applied (whitespace only) |
+| `flutter test` | ✅ All tests passed |
+| `flutter analyze` after **each** god-file split batch | ✅ No issues found! |
 
 ## 9. Commits (this effort)
 
 ```
-chore: remove stray analyzer dump and ignore filled build config
-docs:  add professional README, LICENSE, Code of Conduct, and config template
-ci:    add issue templates and Dependabot configuration
-style: apply dart format to source files
+chore:    remove stray analyzer dump and ignore filled build config
+docs:     add professional README, LICENSE, Code of Conduct, and config template
+ci:       add issue templates and Dependabot configuration
+style:    apply dart format to source files
+fix:      add braces to if statement flagged after formatting
+refactor(state): extract Memories/Albums domain from AppRiverpod god-file
+refactor(state): split 4 more domains out of AppRiverpod god-file
+refactor(state): split 4 final domains out of AppRiverpod god-file
+docs:     add cleanup report and executive summary
 ```
 
 History was **not** rewritten (no leaked secrets; maintainer chose to keep history).
