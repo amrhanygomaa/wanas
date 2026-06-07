@@ -113,8 +113,6 @@ class AppRiverpod extends ChangeNotifier {
 
   // --- إدارة الحسابات (Account Management) ---
   List<AppAccount> accounts = [];
-    return true;
-  }
 
   AppRiverpod() {
     socialAssessmentTools = _fallbackAssessmentTools();
@@ -1110,6 +1108,7 @@ class AppRiverpod extends ChangeNotifier {
     }
   }
   bool _ttsInitialized = false;
+  final FlutterTts _tts = FlutterTts();
   final AudioPlayer _companionPlayer = AudioPlayer();
   StreamSubscription<void>? _companionPlayerCompleteSub;
 

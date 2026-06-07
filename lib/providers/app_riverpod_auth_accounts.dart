@@ -218,6 +218,8 @@ extension AppRiverpodAuthAccounts on AppRiverpod {
 
     _pruneFamilyCardFavorites(_familyCardPreferenceKey(residentId));
     unawaited(syncBackendData());
+    return true;
+  }
 
   // تحميل بيانات الدخول والجلسة من التخزين الآمن
   Future<void> _loadAuthState() async {

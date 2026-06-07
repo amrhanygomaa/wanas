@@ -283,6 +283,4 @@ extension AppRiverpodActivitiesAiEmergency on AppRiverpod {
     addPoints(5);
     notifyListeners();
   }
-
-  final FlutterTts _tts = FlutterTts();
 }
