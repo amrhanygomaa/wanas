@@ -16,7 +16,7 @@
 - CI workflow (`flutter-ci.yml`) already present (analyze + test + release APK).
 
 ## God-file split — DONE
-- **`app_riverpod.dart`: 6704 → 2638 lines (-61%)**, split into **9 domain `part`-file extensions** (memories, facility, residents/family, staff/reports, nursing-ops, family-reminders, assessments, memory-wall, elderly-media).
+- **`app_riverpod.dart`: 6704 → 1978 lines (-70%)**, split into **11 domain `part`-file extensions** (memories, facility, residents/family, staff/reports, nursing-ops, family-reminders, assessments, memory-wall, elderly-media, auth/accounts, activities/AI/emergency).
 - Zero consumer import changes; all fields/constructor stay in the class. `flutter analyze` clean after every batch.
 
 ## What was deliberately NOT done (and why)

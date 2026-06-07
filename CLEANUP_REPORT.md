@@ -2,8 +2,7 @@
 
 > Executed against the multi-phase cleanup prompt. Branch: `codex/app-fixes-ci`.
 > **Scope decisions (confirmed with maintainer):** targeted split only (no full feature-restructure),
-> git history left intact, and the `app_riverpod.dart` god-file split **deferred** as too risky to
-> rush on a working production app. See "Deferred / not done" below.
+> git history left intact. God-file split **complete** — see §4.
 
 ---
 
@@ -51,8 +50,8 @@ this pass (would require moving ~152 files and rewriting every import).
 
 ### God-file split — DONE
 The 6704-line `lib/providers/app_riverpod.dart` (single `AppRiverpod
-extends ChangeNotifier`, ~465 methods, 110 fields) was split **2638 lines
-(-61%)** by moving cohesive method groups into **9 `part`-file extensions** —
+extends ChangeNotifier`, ~465 methods, 110 fields) was split to **1978 lines
+(-70%)** by moving cohesive method groups into **11 `part`-file extensions** —
 no consumer import changes, all fields/constructor stay in the class:
 
 | Part file | Domain |
@@ -66,6 +65,8 @@ no consumer import changes, all fields/constructor stay in the class:
 | `app_riverpod_assessments.dart` | GDS / detailed assessments |
 | `app_riverpod_memory_wall.dart` | family memory wall |
 | `app_riverpod_elderly_media.dart` | gallery permissions, elderly tabs, media |
+| `app_riverpod_auth_accounts.dart` | account management, registration, session, dark mode |
+| `app_riverpod_activities_ai_emergency.dart` | family activity participation, AI insights, SOS |
 
 **Recipe per part file** (validated by `flutter analyze` after each batch):
 `extension AppRiverpodX on AppRiverpod {…}` in a `part of 'app_riverpod.dart'`
@@ -99,7 +100,7 @@ moved back into the class.
 
 | Item | Status / approach |
 |------|-------------------|
-| `app_riverpod.dart` further reduction | Now 2638 lines (mostly fields/constructor/core + a few small method runs). Could shrink further with the same `part`-extension recipe; diminishing returns since fields must stay in the class. |
+| `app_riverpod.dart` further reduction | Now 1978 lines (mostly fields/constructor/core init). Could shrink further with the same `part`-extension recipe; diminishing returns since fields must stay in the class. |
 | Large screen files (140 KB `family_dashboard_screen.dart`, etc.) | Not done. Extract private widget classes into per-screen `widgets/` files incrementally. |
 | Hardcoded UI strings | Not done. Arabic strings are inline; optional `core/constants/app_strings.dart` consolidation later. |
 
@@ -123,7 +124,8 @@ fix:      add braces to if statement flagged after formatting
 refactor(state): extract Memories/Albums domain from AppRiverpod god-file
 refactor(state): split 4 more domains out of AppRiverpod god-file
 refactor(state): split 4 final domains out of AppRiverpod god-file
-docs:     add cleanup report and executive summary
+refactor(state): split auth/accounts and activities/AI/emergency domains out of AppRiverpod god-file
+docs:     update cleanup report and executive summary (11 parts, -70%)
 ```
 
 History was **not** rewritten (no leaked secrets; maintainer chose to keep history).
