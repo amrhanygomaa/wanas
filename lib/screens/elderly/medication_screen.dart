@@ -905,11 +905,20 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen>
         else
           ...provider.medicalSessions.map((s) {
             final parsed = DateTime.tryParse(s.date);
-            final day =
-                parsed != null ? parsed.day.toString() : s.date;
+            final day = parsed != null ? parsed.day.toString() : s.date;
             const months = [
-              'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-              'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+              'يناير',
+              'فبراير',
+              'مارس',
+              'أبريل',
+              'مايو',
+              'يونيو',
+              'يوليو',
+              'أغسطس',
+              'سبتمبر',
+              'أكتوبر',
+              'نوفمبر',
+              'ديسمبر'
             ];
             final month = parsed != null ? months[parsed.month - 1] : '';
             return _buildAppointmentCard(

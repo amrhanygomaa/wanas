@@ -166,7 +166,8 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
 
   Widget _buildTabSelector() {
     final provider = ref.watch(appRiverpod);
-    final pendingCount = provider.volunteerReviews.where((r) => r.isPending).length;
+    final pendingCount =
+        provider.volunteerReviews.where((r) => r.isPending).length;
     final ratingsCount = provider.volunteerRatings.length;
     final tabs = [
       'أقيّم${pendingCount > 0 ? ' ($pendingCount)' : ''}',
@@ -211,7 +212,8 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   }
 
   List<Widget> _buildRateSection(AppRiverpod provider) {
-    final pending = provider.volunteerReviews.where((r) => r.isPending).toList();
+    final pending =
+        provider.volunteerReviews.where((r) => r.isPending).toList();
     final done = provider.volunteerReviews.where((r) => !r.isPending).toList();
     return [
       _buildSectionLabel('تقييمات بانتظار الإرسال', const Color(0xFF10b981), 0),
@@ -240,8 +242,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
       child: Center(
         child: Text(message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 13, color: Color(0xFF94a3b8))),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF94a3b8))),
       ),
     );
   }
@@ -565,8 +566,16 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
     } else {
       // Fallback labels if backend sends no criteria breakdown.
       criteria = [
-        {'label': 'التعامل والاحترام', 'score': provider.averageRating, 'color': const Color(0xFF10b981)},
-        {'label': 'الالتزام بالمواعيد', 'score': provider.averageRating, 'color': const Color(0xFF10b981)},
+        {
+          'label': 'التعامل والاحترام',
+          'score': provider.averageRating,
+          'color': const Color(0xFF10b981)
+        },
+        {
+          'label': 'الالتزام بالمواعيد',
+          'score': provider.averageRating,
+          'color': const Color(0xFF10b981)
+        },
       ];
     }
 
@@ -759,8 +768,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
                     provider.totalReviews > 0
                         ? '${provider.totalReviews} تقييم'
                         : '—'),
-                _buildStatTextRow(
-                    'أعلى نقطة',
+                _buildStatTextRow('أعلى نقطة',
                     provider.topSkill.isNotEmpty ? provider.topSkill : '—',
                     isShimmer: provider.topSkill.isNotEmpty),
                 _buildStatTextRow(
@@ -770,8 +778,9 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
                         : '—',
                     valColor: const Color(0xFF10b981)),
                 _buildStatTextRow('معلّقة للإرسال', pendingLabel,
-                    valColor:
-                        pendingCount > 0 ? Colors.red : const Color(0xFF94a3b8)),
+                    valColor: pendingCount > 0
+                        ? Colors.red
+                        : const Color(0xFF94a3b8)),
               ],
             ),
           ),
@@ -785,8 +794,7 @@ class _VolunteerRatingsViewState extends ConsumerState<VolunteerRatingsView> {
   Widget _buildPerformanceRing(AppRiverpod provider) {
     final hasRatings = provider.totalReviews > 0;
     final ratio = hasRatings ? provider.averageRating / 5.0 : 0.0;
-    final pctLabel =
-        hasRatings ? '${(ratio * 100).round()}٪' : '—';
+    final pctLabel = hasRatings ? '${(ratio * 100).round()}٪' : '—';
     return SizedBox(
       width: 65,
       height: 65,

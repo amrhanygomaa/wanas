@@ -15,7 +15,8 @@ class AdminVolunteerView extends StatelessWidget {
         final provider = ref.watch(appRiverpod);
         final opportunities = provider.volunteerOpportunities;
         final applications = provider.volunteerApplications;
-        final pending = applications.where((a) => a.status == 'pending').toList();
+        final pending =
+            applications.where((a) => a.status == 'pending').toList();
 
         return Stack(
           children: [
@@ -41,8 +42,7 @@ class AdminVolunteerView extends StatelessWidget {
                                 .length
                                 .toString(),
                             'فرص متاحة'),
-                        _summaryItem(
-                            pending.length.toString(), 'طلبات منتظرة'),
+                        _summaryItem(pending.length.toString(), 'طلبات منتظرة'),
                       ],
                     ),
                   ),
@@ -74,13 +74,14 @@ class AdminVolunteerView extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ...pending.map((app) =>
-                        _buildApplicationCard(context, provider, app)),
+                    ...pending.map(
+                        (app) => _buildApplicationCard(context, provider, app)),
                   ],
                   // All applications (approved/rejected) collapsible
                   if (applications.any((a) => a.status != 'pending')) ...[
                     const SizedBox(height: 16),
-                    _buildAllApplicationsSection(context, provider, applications),
+                    _buildAllApplicationsSection(
+                        context, provider, applications),
                   ],
                   const SizedBox(height: 24),
                   const Text('الفرص التطوعية المتاحة',
@@ -199,8 +200,8 @@ class AdminVolunteerView extends StatelessWidget {
                 ),
               ),
               Text(app.createdAt,
-                  style: const TextStyle(
-                      fontSize: 10, color: Color(0xFF94a3b8))),
+                  style:
+                      const TextStyle(fontSize: 10, color: Color(0xFF94a3b8))),
             ],
           ),
           const SizedBox(height: 12),
@@ -209,7 +210,8 @@ class AdminVolunteerView extends StatelessWidget {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final ok = await provider.approveVolunteerApplication(app.id);
+                    final ok =
+                        await provider.approveVolunteerApplication(app.id);
                     if (ok && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('تم قبول المتطوع'),
@@ -236,7 +238,8 @@ class AdminVolunteerView extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final ok = await provider.rejectVolunteerApplication(app.id);
+                    final ok =
+                        await provider.rejectVolunteerApplication(app.id);
                     if (ok && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('تم رفض الطلب'),
@@ -266,8 +269,8 @@ class AdminVolunteerView extends StatelessWidget {
     );
   }
 
-  Widget _buildAllApplicationsSection(BuildContext context, AppRiverpod provider,
-      List<VolunteerApplication> applications) {
+  Widget _buildAllApplicationsSection(BuildContext context,
+      AppRiverpod provider, List<VolunteerApplication> applications) {
     final decided = applications.where((a) => a.status != 'pending').toList();
     if (decided.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -281,8 +284,7 @@ class AdminVolunteerView extends StatelessWidget {
         const SizedBox(height: 8),
         ...decided.take(5).map((app) => Container(
               margin: const EdgeInsets.only(bottom: 6),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
@@ -300,7 +302,8 @@ class AdminVolunteerView extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text('${app.volunteerName} — ${app.opportunityTitle}',
+                    child: Text(
+                        '${app.volunteerName} — ${app.opportunityTitle}',
                         style: const TextStyle(
                             fontSize: 12, color: Color(0xFF475569))),
                   ),
@@ -336,8 +339,8 @@ class AdminVolunteerView extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75),
         decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -358,7 +361,8 @@ class AdminVolunteerView extends StatelessWidget {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1e293b))),
-            Text('${apps.length} متطوع', style: const TextStyle(color: Color(0xFF64748b))),
+            Text('${apps.length} متطوع',
+                style: const TextStyle(color: Color(0xFF64748b))),
             const SizedBox(height: 16),
             Expanded(
               child: ListView.builder(
@@ -370,7 +374,8 @@ class AdminVolunteerView extends StatelessWidget {
                   }
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(12)),
@@ -553,8 +558,7 @@ class AdminVolunteerView extends StatelessWidget {
                   ],
                   const Spacer(),
                   const Text('اضغط لعرض الطلبات',
-                      style: TextStyle(
-                          fontSize: 10, color: Color(0xFF94a3b8))),
+                      style: TextStyle(fontSize: 10, color: Color(0xFF94a3b8))),
                 ],
               ),
             ],

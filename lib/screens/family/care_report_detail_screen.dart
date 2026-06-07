@@ -397,7 +397,8 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
         children: List.generate(lines.length, (i) {
           final parts = lines[i].split(':');
           final label = parts.first.trim();
-          final value = parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
+          final value =
+              parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
           final isLast = i == lines.length - 1;
 
           final isHighValue = value.contains('%') &&
@@ -452,8 +453,11 @@ class _CareReportDetailScreenState extends State<CareReportDetailScreen>
               ),
               if (!isLast)
                 const Divider(
-                    height: 1, thickness: 1, color: Color(0xFFf8fafc),
-                    indent: 20, endIndent: 20),
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFf8fafc),
+                    indent: 20,
+                    endIndent: 20),
             ],
           );
         }),

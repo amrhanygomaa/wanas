@@ -43,8 +43,7 @@ class BottomNavBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _navItem(context, Icons.home_rounded, 'الرئيسية', 0, isDark),
-                _navItem(
-                    context, Icons.medication_rounded, 'دواء', 1, isDark),
+                _navItem(context, Icons.medication_rounded, 'دواء', 1, isDark),
                 _buildAiCenter(),
                 _navItem(context, Icons.people_rounded, 'أسرة', 2, isDark),
                 _navItem(context, Icons.photo_rounded, 'ذكريات', 3, isDark),
@@ -124,8 +123,7 @@ class BottomNavBar extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 color: color,
-                fontWeight:
-                    isActive ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],

@@ -393,8 +393,8 @@ class SpecialistFilesView extends ConsumerWidget {
                         const SizedBox(height: 32),
                         _buildDetailSectionTitle('آخر التحديثات'),
                         const SizedBox(height: 16),
-                        _buildTimelineItem(
-                            'تحديث من السيرفر', 'آخر مزامنة', 'فريق الرعاية', true),
+                        _buildTimelineItem('تحديث من السيرفر', 'آخر مزامنة',
+                            'فريق الرعاية', true),
                         const SizedBox(height: 40),
                         SizedBox(
                           width: double.infinity,

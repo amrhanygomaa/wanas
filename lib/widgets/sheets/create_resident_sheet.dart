@@ -267,7 +267,9 @@ class _CreateResidentSheetState extends State<CreateResidentSheet> {
                           )
                         : const Icon(Icons.cloud_upload_rounded),
                     label: Text(
-                      _isSubmitting ? 'جاري الحفظ في السيرفر...' : 'حفظ في السيرفر',
+                      _isSubmitting
+                          ? 'جاري الحفظ في السيرفر...'
+                          : 'حفظ في السيرفر',
                       style: const TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,

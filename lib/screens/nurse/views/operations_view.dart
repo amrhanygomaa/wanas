@@ -1941,7 +1941,8 @@ class _OperationsViewState extends ConsumerState<OperationsView>
   Widget _buildActivities(AppRiverpod provider) {
     if (provider.activitySessions.isEmpty) {
       return const Center(
-        child: Text('لا توجد أنشطة', style: TextStyle(color: Color(0xFF94A3B8))),
+        child:
+            Text('لا توجد أنشطة', style: TextStyle(color: Color(0xFF94A3B8))),
       );
     }
     return ListView.builder(
@@ -2101,23 +2102,20 @@ class _OperationsViewState extends ConsumerState<OperationsView>
                                         horizontal: 12, vertical: 7),
                                     decoration: BoxDecoration(
                                         color: const Color(0xFFF5F3FF),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                             color: const Color(0xFFDDD6FE))),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Icon(Icons.person_rounded,
-                                            size: 14,
-                                            color: Color(0xFF6366F1)),
+                                            size: 14, color: Color(0xFF6366F1)),
                                         const SizedBox(width: 6),
                                         Text(name,
                                             style: const TextStyle(
                                                 fontSize: 12,
                                                 color: Color(0xFF4338CA),
-                                                fontWeight:
-                                                    FontWeight.bold)),
+                                                fontWeight: FontWeight.bold)),
                                       ],
                                     ),
                                   ))
@@ -2148,10 +2146,9 @@ class _OperationsViewState extends ConsumerState<OperationsView>
       if (resident.id == clean ||
           resident.name == clean ||
           resident.nameEn == clean) {
-        final room =
-            resident.room.isNotEmpty && resident.room != '-'
-                ? ' · غرفة ${resident.room}'
-                : '';
+        final room = resident.room.isNotEmpty && resident.room != '-'
+            ? ' · غرفة ${resident.room}'
+            : '';
         return '${resident.name}$room';
       }
     }

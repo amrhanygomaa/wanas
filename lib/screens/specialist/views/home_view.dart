@@ -46,7 +46,8 @@ class SpecialistHomeView extends ConsumerWidget {
               _buildActionRow(context, ref,
                   provider), // أزرار الإجراءات (بث سعادة، تسجيل احتياج)
               _buildNursingHandoffsSection(provider), // ملخص ملاحظات التمريض
-              _buildPredictiveAlertsSection(provider, context), // تنبيهات الذكاء الاصطناعي الاستباقية
+              _buildPredictiveAlertsSection(
+                  provider, context), // تنبيهات الذكاء الاصطناعي الاستباقية
               _buildStatsStrip(provider), // شريط الإحصائيات السريع
               Expanded(
                   child: _buildNeedsList(provider)), // قائمة الاحتياجات المسجلة
@@ -606,13 +607,12 @@ class SpecialistHomeView extends ConsumerWidget {
                               final error =
                                   ref.read(appRiverpod).backendSyncError;
                               Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(error ??
-                                          'تمت مشاركة اللحظة مع الأهل عبر السيرفر'),
-                                      backgroundColor: error == null
-                                          ? const Color(0xFF0ea5e9)
-                                          : const Color(0xFFef4444)));
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text(error ??
+                                      'تمت مشاركة اللحظة مع الأهل عبر السيرفر'),
+                                  backgroundColor: error == null
+                                      ? const Color(0xFF0ea5e9)
+                                      : const Color(0xFFef4444)));
                             },
                       child: const Text('بث السعادة للأهل 🤝',
                           style: TextStyle(
@@ -749,8 +749,8 @@ class SpecialistHomeView extends ConsumerWidget {
                           final error = ref.read(appRiverpod).backendSyncError;
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content:
-                                  Text(error ?? 'تم تسجيل الاحتياج على السيرفر'),
+                              content: Text(
+                                  error ?? 'تم تسجيل الاحتياج على السيرفر'),
                               backgroundColor: error == null
                                   ? null
                                   : const Color(0xFFef4444)));
@@ -844,14 +844,16 @@ class SpecialistHomeView extends ConsumerWidget {
   }
 
   // بناء قسم التنبيهات الاستباقية بالذكاء الاصطناعي
-  Widget _buildPredictiveAlertsSection(AppRiverpod provider, BuildContext context) {
+  Widget _buildPredictiveAlertsSection(
+      AppRiverpod provider, BuildContext context) {
     if (provider.predictiveAlerts.isEmpty) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         width: double.infinity,
         child: ElevatedButton.icon(
           icon: const Icon(Icons.analytics_outlined, size: 18),
-          label: const Text('تشغيل التنبؤ الصحي بالـ AI', style: TextStyle(fontWeight: FontWeight.bold)),
+          label: const Text('تشغيل التنبؤ الصحي بالـ AI',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFDF4FF),
             foregroundColor: const Color(0xFFC026D3),
@@ -886,7 +888,8 @@ class SpecialistHomeView extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Color(0xFFDC2626), size: 18),
+              const Icon(Icons.auto_awesome,
+                  color: Color(0xFFDC2626), size: 18),
               const SizedBox(width: 8),
               const Text('تنبيهات صحية استباقية (AI) 🚨',
                   style: TextStyle(

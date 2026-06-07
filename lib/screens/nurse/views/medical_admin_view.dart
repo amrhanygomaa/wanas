@@ -808,10 +808,9 @@ class _MedicalAdminViewState extends ConsumerState<MedicalAdminView> {
       if (resident.id == clean ||
           resident.name == clean ||
           resident.nameEn == clean) {
-        final room =
-            resident.room.isNotEmpty && resident.room != '-'
-                ? ' · غرفة ${resident.room}'
-                : '';
+        final room = resident.room.isNotEmpty && resident.room != '-'
+            ? ' · غرفة ${resident.room}'
+            : '';
         return '${resident.name}$room';
       }
     }

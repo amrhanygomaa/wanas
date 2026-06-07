@@ -1398,8 +1398,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildChatFab(AppRiverpod provider, BuildContext context) {
-    final hasChatContacts =
-        provider.familyMembers.any((m) => m.userId != null);
+    final hasChatContacts = provider.familyMembers.any((m) => m.userId != null);
     return Positioned(
       bottom: 24,
       left: 20,
@@ -1428,8 +1427,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           } else {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const ElderlyContactsScreen()),
+              MaterialPageRoute(builder: (_) => const ElderlyContactsScreen()),
             );
           }
         },
@@ -1460,8 +1458,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.chat_bubble_rounded,
-                  color: Colors.white, size: 22),
+              Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
               SizedBox(width: 10),
               Text(
                 'راسل عائلتك',

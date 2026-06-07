@@ -2685,8 +2685,9 @@ class AppRiverpod extends ChangeNotifier {
 
   List<SocialSpecialistResidentScore> get filteredResidentScores {
     // Sort by most recent assessment first so dedup keeps the latest
-    final sorted = List<SocialSpecialistResidentScore>.from(socialResidentScores)
-      ..sort((a, b) => b.lastAssessment.compareTo(a.lastAssessment));
+    final sorted =
+        List<SocialSpecialistResidentScore>.from(socialResidentScores)
+          ..sort((a, b) => b.lastAssessment.compareTo(a.lastAssessment));
 
     // Deduplicate by resident name, filter invalid/test entries
     final seenNames = <String>{};
@@ -3980,7 +3981,8 @@ class AppRiverpod extends ChangeNotifier {
               'تحدث بالعربية المصرية بلهجة طبيعية ودافئة ومطمئنة. النبرة هادئة مناسبة لكبار السن، سرعة متوسطة.',
           timeout: const Duration(seconds: 10),
         );
-        if (speech.audioBase64.trim().isEmpty) throw const FormatException('Empty Gemini audio');
+        if (speech.audioBase64.trim().isEmpty)
+          throw const FormatException('Empty Gemini audio');
 
         final bytes = base64Decode(speech.audioBase64);
         final completer = Completer<void>();
@@ -3988,7 +3990,8 @@ class AppRiverpod extends ChangeNotifier {
             _companionPlayer.onPlayerComplete.listen((_) {
           if (!completer.isCompleted) completer.complete();
         });
-        await _companionPlayer.play(BytesSource(bytes, mimeType: speech.contentType));
+        await _companionPlayer
+            .play(BytesSource(bytes, mimeType: speech.contentType));
         await completer.future;
         usedCloudTts = true;
       } catch (cloudErr) {

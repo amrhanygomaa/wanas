@@ -214,7 +214,8 @@ class _WanasSplashScreenState extends State<WanasSplashScreen>
                                 _splashLogoAsset,
                                 width: size.width * 0.55,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => _buildLogoWidget(),
+                                errorBuilder: (_, __, ___) =>
+                                    _buildLogoWidget(),
                               ),
                             ),
                           );

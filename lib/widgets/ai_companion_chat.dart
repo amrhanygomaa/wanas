@@ -821,7 +821,6 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
   String _aiResponse = '';
   String _errorMessage = '';
 
-
   bool get _isMicPermissionError =>
       _errorMessage.contains('ميكروفون') ||
       _errorMessage.contains('صلاحية') ||
@@ -997,11 +996,11 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
           final words = result.recognizedWords.trim();
           if (words.isEmpty) return;
           _recognizedText = words;
-          
+
           if (_state == _VoiceState.speaking) {
-             _interruptAndRestart(words);
+            _interruptAndRestart(words);
           } else {
-             if (mounted) setState(() => _userSpoken = words);
+            if (mounted) setState(() => _userSpoken = words);
           }
           debugPrint(
             '[Voice] transcript partial=${!result.finalResult}: "$words"',
@@ -1149,7 +1148,8 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
 
   // ── الشكل المركزي (Glowing Orb) ─────────────────────────────────────────
   Widget _buildGlowingOrb() {
-    final active = _state == _VoiceState.listening || _state == _VoiceState.speaking;
+    final active =
+        _state == _VoiceState.listening || _state == _VoiceState.speaking;
     final thinking = _state == _VoiceState.thinking;
 
     return AnimatedBuilder(
@@ -1157,10 +1157,16 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
       builder: (_, __) {
         final t = _ringCtrl.value;
         final float = sin(t * 2 * pi) * 12;
-        final scale = active ? 1.0 + sin(t * 2 * pi) * 0.05 : (thinking ? 1.0 + sin(t * 4 * pi) * 0.03 : 1.0);
+        final scale = active
+            ? 1.0 + sin(t * 2 * pi) * 0.05
+            : (thinking ? 1.0 + sin(t * 4 * pi) * 0.03 : 1.0);
 
-        final color1 = active ? const Color(0xFF9D4EDD) : (thinking ? const Color(0xFFC77DFF) : const Color(0xFFB0B0B0));
-        final color2 = active ? const Color(0xFF48BFE3) : (thinking ? const Color(0xFF5E60CE) : const Color(0xFFD3D3D3));
+        final color1 = active
+            ? const Color(0xFF9D4EDD)
+            : (thinking ? const Color(0xFFC77DFF) : const Color(0xFFB0B0B0));
+        final color2 = active
+            ? const Color(0xFF48BFE3)
+            : (thinking ? const Color(0xFF5E60CE) : const Color(0xFFD3D3D3));
 
         return Stack(
           alignment: Alignment.center,
@@ -1172,16 +1178,15 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
                 width: 100,
                 height: 15,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color1.withValues(alpha: 0.2),
-                      blurRadius: 15,
-                      spreadRadius: 5,
-                    )
-                  ]
-                ),
+                    color: Colors.black.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(50),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color1.withValues(alpha: 0.2),
+                        blurRadius: 15,
+                        spreadRadius: 5,
+                      )
+                    ]),
               ),
             ),
             Transform.translate(
@@ -1303,9 +1308,14 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
   Widget _buildModernTranscript() {
     final provider = ref.read(appRiverpod);
     // Last 4 messages from history (2 pairs)
-    final history = provider.companionChatHistory.reversed.take(4).toList().reversed.toList();
+    final history = provider.companionChatHistory.reversed
+        .take(4)
+        .toList()
+        .reversed
+        .toList();
 
-    final hasContent = history.isNotEmpty || _userSpoken.isNotEmpty || _aiResponse.isNotEmpty;
+    final hasContent =
+        history.isNotEmpty || _userSpoken.isNotEmpty || _aiResponse.isNotEmpty;
 
     if (!hasContent) {
       return Padding(
@@ -1314,7 +1324,11 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
           _subLabel,
           textAlign: TextAlign.center,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(color: Color(0xFF8D99AE), fontFamily: 'Cairo', fontSize: 16, height: 1.5),
+          style: const TextStyle(
+              color: Color(0xFF8D99AE),
+              fontFamily: 'Cairo',
+              fontSize: 16,
+              height: 1.5),
         ),
       );
     }
@@ -1331,7 +1345,8 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
             _buildBubble(_userSpoken, false, isLive: true),
           // Live AI response
           if (_aiResponse.isNotEmpty && _userSpoken.isEmpty)
-            _buildBubble(_aiResponse, true, isLive: _state == _VoiceState.speaking),
+            _buildBubble(_aiResponse, true,
+                isLive: _state == _VoiceState.speaking),
         ],
       ),
     );
@@ -1355,7 +1370,10 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
             bottomRight: Radius.circular(isAI ? 16 : 4),
           ),
           border: isLive
-              ? Border.all(color: isAI ? const Color(0xFF8B5CF6) : const Color(0xFF10B981), width: 1.5)
+              ? Border.all(
+                  color:
+                      isAI ? const Color(0xFF8B5CF6) : const Color(0xFF10B981),
+                  width: 1.5)
               : null,
         ),
         child: Text(
@@ -1385,9 +1403,7 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
           crossAxisAlignment: CrossAxisAlignment.end,
           children: List.generate(7, (i) {
             final phase = (t + i * 0.14) % 1.0;
-            final h = isActive
-                ? 8.0 + sin(phase * 2 * pi) * 14
-                : 4.0;
+            final h = isActive ? 8.0 + sin(phase * 2 * pi) * 14 : 4.0;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 100),
               margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -1395,7 +1411,8 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
               height: h.clamp(4.0, 28.0),
               decoration: BoxDecoration(
                 color: isActive
-                    ? const Color(0xFF8B5CF6).withValues(alpha: 0.6 + 0.4 * sin(phase * 2 * pi))
+                    ? const Color(0xFF8B5CF6)
+                        .withValues(alpha: 0.6 + 0.4 * sin(phase * 2 * pi))
                     : const Color(0xFFCBD5E1),
                 borderRadius: BorderRadius.circular(3),
               ),
@@ -1417,22 +1434,21 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _isMuted ? Colors.white : const Color(0xFFEF4444),
-            border: Border.all(
-              color: _isMuted ? const Color(0xFFEF4444) : Colors.transparent,
-              width: 3,
-            ),
-            boxShadow: [
-              if (!_isMuted)
-                BoxShadow(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                  offset: const Offset(0, 5),
-                )
-            ]
-          ),
+              shape: BoxShape.circle,
+              color: _isMuted ? Colors.white : const Color(0xFFEF4444),
+              border: Border.all(
+                color: _isMuted ? const Color(0xFFEF4444) : Colors.transparent,
+                width: 3,
+              ),
+              boxShadow: [
+                if (!_isMuted)
+                  BoxShadow(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                    offset: const Offset(0, 5),
+                  )
+              ]),
           child: Icon(
             _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
             color: _isMuted ? const Color(0xFFEF4444) : Colors.white,
@@ -1467,8 +1483,8 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: _isMuted 
-                      ? [const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)] 
+                  colors: _isMuted
+                      ? [const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)]
                       : [const Color(0xFFF6F0FF), const Color(0xFFEAF5FF)],
                 ),
               ),
@@ -1479,7 +1495,8 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
               children: [
                 // Top Bar with Close Button
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -1491,22 +1508,23 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
                             color: Colors.white.withValues(alpha: 0.6),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.close_rounded, color: Color(0xFF475569)),
+                          child: const Icon(Icons.close_rounded,
+                              color: Color(0xFF475569)),
                         ),
                       ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 6),
                 Text(
-                   _stateLabel,
-                   style: const TextStyle(
-                     color: Color(0xFF8D99AE),
-                     fontFamily: 'Cairo',
-                     fontSize: 15,
-                     fontWeight: FontWeight.bold,
-                   ),
+                  _stateLabel,
+                  style: const TextStyle(
+                    color: Color(0xFF8D99AE),
+                    fontFamily: 'Cairo',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
                 const SizedBox(height: 16),
@@ -1515,7 +1533,8 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
                 Expanded(
                   child: SingleChildScrollView(
                     reverse: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     child: _buildModernTranscript(),
                   ),
                 ),
@@ -1539,5 +1558,3 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
     );
   }
 }
-
-

@@ -176,8 +176,8 @@ class ElderlyContactsScreen extends ConsumerWidget {
                 color: _accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child:
-                  const Icon(Icons.people_outline_rounded, size: 48, color: _accent),
+              child: const Icon(Icons.people_outline_rounded,
+                  size: 48, color: _accent),
             ),
             const SizedBox(height: 24),
             const Text(
