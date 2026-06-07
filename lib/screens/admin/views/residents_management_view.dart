@@ -1,9 +1,26 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../config/api_config.dart';
 import '../../../providers/app_riverpod.dart';
 import '../../../models/app_models.dart';
+import '../../../widgets/app_popup_notification.dart';
 import '../admin_resident_detail_screen.dart';
+
+ImageProvider<Object>? _residentImageProvider(String? imageUrl) {
+  final value = imageUrl?.trim() ?? '';
+  if (value.isEmpty) return null;
+  if (value.startsWith('/') && !value.startsWith('//')) {
+    return NetworkImage('${ApiConfig.baseUrl}$value');
+  }
+  final uri = Uri.tryParse(value);
+  if (uri != null &&
+      uri.hasScheme &&
+      (uri.scheme == 'http' || uri.scheme == 'https')) {
+    return NetworkImage(value);
+  }
+  return FileImage(File(value));
+}
 
 class ResidentsManagementView extends ConsumerStatefulWidget {
   final List<Animation<double>> fadeAnimations;
@@ -24,6 +41,14 @@ class _ResidentsManagementViewState
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showPopup(
+    BuildContext context,
+    String message, {
+    AppPopupNotificationType type = AppPopupNotificationType.info,
+  }) {
+    showAppPopupNotification(context, message: message, type: type);
   }
 
   @override
@@ -188,14 +213,29 @@ class _ResidentsManagementViewState
                     children: [
                       // 1. أيقونة التعريف الملونة (3D Effect)
                       GestureDetector(
-                        onTap: () {
-                          ref.read(appRiverpod).pickAndSetResidentImage(r.id);
+                        onTap: () async {
+                          final saved = await ref
+                              .read(appRiverpod)
+                              .pickAndSetResidentImage(r.id);
+                          if (!mounted || saved == null) return;
+                          final error = ref.read(appRiverpod).backendSyncError;
+                          _showPopup(
+                            context,
+                            saved
+                                ? 'تم حفظ صورة المقيم بنجاح'
+                                : 'تم اختيار الصورة محلياً، لكن فشل حفظها على السيرفر: ${error ?? 'حاول مرة أخرى'}',
+                            type: saved
+                                ? AppPopupNotificationType.success
+                                : AppPopupNotificationType.error,
+                          );
                         },
                         child: Stack(
                           children: [
                             Builder(
                               builder: (context) {
                                 final String? img = r.imageUrl;
+                                final imageProvider =
+                                    _residentImageProvider(img);
                                 return Container(
                                   width: 50,
                                   height: 50,
@@ -209,17 +249,18 @@ class _ResidentsManagementViewState
                                       ],
                                     ),
                                     shape: BoxShape.circle,
-                                    image: (img != null && img.isNotEmpty)
+                                    image: imageProvider != null
                                         ? DecorationImage(
-                                            image: FileImage(File(img)),
-                                            fit: BoxFit.cover)
+                                            image: imageProvider,
+                                            fit: BoxFit.cover,
+                                          )
                                         : null,
                                     border: Border.all(
                                       color: statusColor.withValues(alpha: 0.2),
                                       width: 1.5,
                                     ),
                                   ),
-                                  child: (img == null || img.isEmpty)
+                                  child: imageProvider == null
                                       ? Center(
                                           child: Text(
                                             r.name.isNotEmpty
@@ -324,6 +365,14 @@ class _ResidentsManagementViewState
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'تعديل بيانات المقيم',
+                        onPressed: () =>
+                            _showResidentForm(context, ref, resident: r),
+                        icon: const Icon(Icons.edit_note_rounded,
+                            color: Color(0xFF0369a1)),
+                      ),
                     ],
                   ),
                 ],
@@ -345,21 +394,59 @@ class _ResidentsManagementViewState
     final phoneController = TextEditingController(text: resident?.phone ?? '');
     final ageController =
         TextEditingController(text: resident?.age?.toString() ?? '');
+    final nationalIdController =
+        TextEditingController(text: resident?.nationalId ?? '');
+    String selectedGender = _genderForForm(resident?.gender);
+    final emergencyNameController =
+        TextEditingController(text: resident?.emergencyContactName ?? '');
+    final emergencyPhoneController = TextEditingController(
+        text: resident?.emergencyContactPhone ?? resident?.phone ?? '');
+    final emergencyRelationController =
+        TextEditingController(text: resident?.emergencyRelation ?? '');
     String selectedStatus = resident?.status ?? 'updated';
 
     // Medical State
-    final bloodTypeController = TextEditingController(text: 'A+');
-    final chronicDiseasesController = TextEditingController();
-    final allergiesController = TextEditingController();
+    final bloodTypeController =
+        TextEditingController(text: resident?.bloodType ?? 'A+');
+    final chronicDiseasesController = TextEditingController(
+        text: (resident?.chronicDiseases ?? []).join('، '));
+    final allergiesController =
+        TextEditingController(text: (resident?.allergies ?? []).join('، '));
+    final insuranceInfoController =
+        TextEditingController(text: resident?.insuranceInfo ?? '');
+    final primaryDoctorController =
+        TextEditingController(text: resident?.primaryDoctorName ?? '');
 
     // Functional/Dietary State
-    String mobilityStatus = 'مستقل';
-    final dietTypeController = TextEditingController(text: 'عادي');
-    final foodRestrictionsController = TextEditingController();
+    const mobilityOptions = [
+      'مستقل',
+      'مساعدة خفيفة',
+      'كرسي متحرك',
+      'طريح الفراش'
+    ];
+    String mobilityStatus = mobilityOptions.contains(resident?.mobilityStatus)
+        ? resident!.mobilityStatus!
+        : 'مستقل';
+    final assistiveDevicesController = TextEditingController(
+        text: (resident?.assistiveDevices ?? []).join('، '));
+    final cognitiveStatusController =
+        TextEditingController(text: resident?.cognitiveStatus ?? '');
+    final dietTypeController =
+        TextEditingController(text: resident?.dietType ?? 'عادي');
+    final foodRestrictionsController = TextEditingController(
+        text: (resident?.foodRestrictions ?? []).join('، '));
+    final foodPreferencesController =
+        TextEditingController(text: resident?.foodPreferences ?? '');
 
     // Social State
-    final professionController = TextEditingController();
-    final hobbiesController = TextEditingController();
+    final professionController =
+        TextEditingController(text: resident?.previousProfession ?? '');
+    final hobbiesController =
+        TextEditingController(text: (resident?.hobbies ?? []).join('، '));
+    final socialStatusController =
+        TextEditingController(text: resident?.socialStatus ?? '');
+    final familyEmailController =
+        TextEditingController(text: resident?.familyEmail ?? '');
 
     // Validation State
     final formKey = GlobalKey<FormState>();
@@ -404,8 +491,12 @@ class _ResidentsManagementViewState
                       children: [
                         _buildSectionHeader('البيانات الأساسية'),
                         _buildLabel('الاسم بالكامل (عربي) *'),
-                        _buildField(
-                            nameArController, 'اسم المقيم كما سيحفظ في AWS'),
+                        _buildField(nameArController,
+                            'اسم المقيم كما سيحفظ في السيرفر'),
+                        const SizedBox(height: 12),
+                        _buildLabel('الاسم بالإنجليزية'),
+                        _buildField(nameEnController, 'Resident Name',
+                            isEn: true),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -434,6 +525,32 @@ class _ResidentsManagementViewState
                         _buildLabel('رقم الهاتف / المعرف'),
                         _buildField(phoneController, '01xxxxxxxxx',
                             keyboardType: TextInputType.phone),
+                        const SizedBox(height: 12),
+                        _buildLabel('الرقم القومي'),
+                        _buildField(nationalIdController, 'الرقم القومي'),
+                        const SizedBox(height: 12),
+                        _buildLabel('النوع'),
+                        _buildGenderDropdown(
+                          selectedGender,
+                          (val) => setModalState(() => selectedGender = val),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildLabel('بريد العائلة المرتبط'),
+                        _buildField(familyEmailController, 'family@example.com',
+                            keyboardType: TextInputType.emailAddress,
+                            isEn: true),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('بيانات الطوارئ والوصي'),
+                        _buildLabel('اسم جهة الطوارئ'),
+                        _buildField(emergencyNameController, 'اسم المسؤول'),
+                        const SizedBox(height: 12),
+                        _buildLabel('هاتف الطوارئ'),
+                        _buildField(emergencyPhoneController, '01xxxxxxxxx',
+                            keyboardType: TextInputType.phone),
+                        const SizedBox(height: 12),
+                        _buildLabel('صلة القرابة'),
+                        _buildField(emergencyRelationController,
+                            'ابن، ابنة، زوج/زوجة، ...'),
                         const SizedBox(height: 24),
                         _buildSectionHeader('الملف الطبي'),
                         Row(
@@ -468,19 +585,29 @@ class _ResidentsManagementViewState
                         _buildLabel('الحساسية'),
                         _buildField(
                             allergiesController, 'البنسلين، أطعمة معينة، ...'),
+                        const SizedBox(height: 12),
+                        _buildLabel('بيانات التأمين الصحي'),
+                        _buildField(insuranceInfoController,
+                            'شركة التأمين أو رقم الملف الطبي'),
+                        const SizedBox(height: 12),
+                        _buildLabel('الطبيب المتابع'),
+                        _buildField(primaryDoctorController, 'اسم الطبيب'),
                         const SizedBox(height: 24),
                         _buildSectionHeader('الحالة الحركية والغذائية'),
                         _buildLabel('درجة الحركة'),
                         _buildDropdown(
-                            [
-                              'مستقل',
-                              'مساعدة خفيفة',
-                              'كرسي متحرك',
-                              'طريح الفراش'
-                            ],
+                            mobilityOptions,
                             mobilityStatus,
                             (val) =>
                                 setModalState(() => mobilityStatus = val!)),
+                        const SizedBox(height: 12),
+                        _buildLabel('الأجهزة المساعدة'),
+                        _buildField(assistiveDevicesController,
+                            'نظارة، سماعة، مشاية، ...'),
+                        const SizedBox(height: 12),
+                        _buildLabel('الحالة الذهنية'),
+                        _buildField(cognitiveStatusController,
+                            'وعي كامل، ضعف ذاكرة، ...'),
                         const SizedBox(height: 12),
                         _buildLabel('نوع النظام الغذائي'),
                         _buildField(
@@ -489,6 +616,10 @@ class _ResidentsManagementViewState
                         _buildLabel('الممنوعات من الطعام'),
                         _buildField(foodRestrictionsController,
                             'السكريات، الأملاح، ...'),
+                        const SizedBox(height: 12),
+                        _buildLabel('تفضيلات الطعام'),
+                        _buildField(foodPreferencesController,
+                            'يفضل الشوربة، لا يحب الأطعمة الحارة، ...'),
                         const SizedBox(height: 24),
                         _buildSectionHeader('الجانب الاجتماعي'),
                         _buildLabel('المهنة السابقة'),
@@ -496,6 +627,10 @@ class _ResidentsManagementViewState
                         const SizedBox(height: 12),
                         _buildLabel('الهوايات'),
                         _buildField(hobbiesController, 'القراءة، المشي، ...'),
+                        const SizedBox(height: 12),
+                        _buildLabel('الحالة الاجتماعية'),
+                        _buildField(
+                            socialStatusController, 'متزوج، أرمل، أعزب، ...'),
                         const SizedBox(height: 32),
                       ],
                     ),
@@ -511,23 +646,61 @@ class _ResidentsManagementViewState
                           id: isEdit
                               ? resident.id
                               : 'r${DateTime.now().millisecondsSinceEpoch}',
-                          name: nameArController.text,
-                          nameEn: nameEnController.text.isEmpty
-                              ? 'New Resident'
-                              : nameEnController.text,
-                          room: roomController.text,
+                          name: nameArController.text.trim(),
+                          nameEn: nameEnController.text.trim().isEmpty
+                              ? nameArController.text.trim()
+                              : nameEnController.text.trim(),
+                          room: roomController.text.trim(),
                           status: selectedStatus,
-                          lastUpdate: 'تم التسجيل الآن',
-                          initials: nameArController.text.isNotEmpty
-                              ? nameArController.text.substring(0, 1)
+                          lastUpdate:
+                              isEdit ? 'تم التحديث الآن' : 'تم التسجيل الآن',
+                          initials: nameArController.text.trim().isNotEmpty
+                              ? nameArController.text.trim().substring(0, 1)
                               : 'م',
                           categories:
                               isEdit ? resident.categories : ['resident'],
                           familyMembers: isEdit
                               ? resident.familyMembers
                               : <FamilyMember>[],
-                          age: int.tryParse(ageController.text) ?? 70,
-                          phone: phoneController.text,
+                          age: int.tryParse(ageController.text) ??
+                              resident?.age ??
+                              70,
+                          phone: phoneController.text.trim(),
+                          familyEmail: familyEmailController.text.trim().isEmpty
+                              ? resident?.familyEmail
+                              : familyEmailController.text.trim(),
+                          nationalId: nationalIdController.text.trim(),
+                          gender: selectedGender,
+                          emergencyContactName:
+                              emergencyNameController.text.trim(),
+                          emergencyContactPhone:
+                              emergencyPhoneController.text.trim(),
+                          emergencyRelation:
+                              emergencyRelationController.text.trim(),
+                          bloodType: bloodTypeController.text.trim(),
+                          chronicDiseases:
+                              _splitCommaValues(chronicDiseasesController.text),
+                          allergies:
+                              _splitCommaValues(allergiesController.text),
+                          insuranceInfo: insuranceInfoController.text.trim(),
+                          primaryDoctorName:
+                              primaryDoctorController.text.trim(),
+                          mobilityStatus: mobilityStatus,
+                          assistiveDevices: _splitCommaValues(
+                              assistiveDevicesController.text),
+                          cognitiveStatus:
+                              cognitiveStatusController.text.trim(),
+                          dietType: dietTypeController.text.trim(),
+                          foodRestrictions: _splitCommaValues(
+                              foodRestrictionsController.text),
+                          foodPreferences:
+                              foodPreferencesController.text.trim(),
+                          previousProfession: professionController.text.trim(),
+                          hobbies: _splitCommaValues(hobbiesController.text),
+                          socialStatus: socialStatusController.text.trim(),
+                          uploadedDocuments:
+                              isEdit ? resident.uploadedDocuments : const [],
+                          imageUrl: isEdit ? resident.imageUrl : null,
                         );
 
                         if (isEdit) {
@@ -557,6 +730,12 @@ class _ResidentsManagementViewState
       ),
     );
   }
+
+  List<String> _splitCommaValues(String raw) => raw
+      .split(RegExp(r'[،,]'))
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toList();
 
   Widget _buildSectionHeader(String title) => Padding(
         padding: const EdgeInsets.only(bottom: 16),
@@ -621,6 +800,43 @@ class _ResidentsManagementViewState
                   value: e,
                   child: Text(e, style: const TextStyle(fontSize: 13))))
               .toList(),
+        ),
+      ),
+    );
+  }
+
+  String _genderForForm(String? gender) {
+    final normalized = (gender ?? '').trim().toLowerCase();
+    if (normalized == 'female' || normalized == 'أنثى') return 'female';
+    if (normalized == 'other' || normalized == 'آخر') return 'other';
+    return 'male';
+  }
+
+  Widget _buildGenderDropdown(String current, ValueChanged<String> onChange) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+          color: const Color(0xFFf8fafc),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFe2e8f0))),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          isExpanded: true,
+          onChanged: (value) {
+            if (value != null) onChange(value);
+          },
+          items: const [
+            DropdownMenuItem(
+                value: 'male',
+                child: Text('ذكر', style: TextStyle(fontSize: 13))),
+            DropdownMenuItem(
+                value: 'female',
+                child: Text('أنثى', style: TextStyle(fontSize: 13))),
+            DropdownMenuItem(
+                value: 'other',
+                child: Text('آخر', style: TextStyle(fontSize: 13))),
+          ],
         ),
       ),
     );
@@ -739,15 +955,22 @@ class _ResidentsManagementViewState
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: () {
-                  ref
-                      .read(appRiverpod)
-                      .linkFamilyToResident(resident.id, emailController.text);
+                onPressed: () async {
+                  final provider = ref.read(appRiverpod);
+                  final linked = await provider.linkFamilyToResident(
+                    resident.id,
+                    emailController.text,
+                  );
+                  if (!context.mounted) return;
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('تم ربط فرد العائلة بنجاح! ✅'),
-                        backgroundColor: Color(0xFF10b981)),
+                  _showPopup(
+                    context,
+                    linked
+                        ? 'تم ربط فرد العائلة وإرسال الدعوة بنجاح'
+                        : 'تعذر إرسال دعوة الربط: ${provider.backendSyncError ?? 'حاول مرة أخرى'}',
+                    type: linked
+                        ? AppPopupNotificationType.success
+                        : AppPopupNotificationType.error,
                   );
                 },
                 style: ElevatedButton.styleFrom(

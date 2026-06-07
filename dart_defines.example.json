@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy to dart_defines.json and run: flutter run --dart-define-from-file=dart_defines.json. Do NOT commit your filled-in copy. These map to String.fromEnvironment in lib/config/api_config.dart.",
+  "API_BASE_URL": "http://10.0.2.2:3000",
+  "ADMIN_REG_SECRET": "",
+  "FACILITY_ID": ""
+}

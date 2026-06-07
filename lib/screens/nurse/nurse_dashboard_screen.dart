@@ -301,8 +301,8 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
   bool _hasSubmittedCurrentShift(AppRiverpod provider) {
     final now = DateTime.now();
     final shiftStart = _currentShiftStart(now);
-    return provider.handoffs
-        .any((h) => h.timestamp.isAfter(shiftStart) && !h.timestamp.isAfter(now));
+    return provider.handoffs.any(
+        (h) => h.timestamp.isAfter(shiftStart) && !h.timestamp.isAfter(now));
   }
 
   DateTime _currentShiftStart(DateTime now) {
@@ -357,8 +357,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                 padding: EdgeInsets.symmetric(vertical: 32),
                 child: Center(
                   child: Text('لا توجد سجلات تسليم سابقة',
-                      style: TextStyle(
-                          fontSize: 14, color: Color(0xFF94A3B8))),
+                      style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
                 ),
               )
             else
@@ -489,8 +488,8 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                           borderRadius: BorderRadius.circular(12)),
                     ),
                     child: const Text('السجلات السابقة',
-                        style: TextStyle(
-                            fontSize: 12, color: Color(0xFF64748B))),
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -593,7 +592,8 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.85),
+                          color:
+                              const Color(0xFFEF4444).withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -891,7 +891,7 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
         if (provider.residentFiles.isEmpty)
           const Padding(
             padding: EdgeInsets.all(16),
-            child: Text('لا توجد بيانات مقيمين من AWS الآن',
+            child: Text('لا توجد بيانات مقيمين من السيرفر الآن',
                 style: TextStyle(color: Color(0xFF64748B))),
           )
         else
@@ -910,8 +910,8 @@ class _NurseDashboardScreenState extends ConsumerState<NurseDashboardScreen>
             return _buildResCard(
               name: '${resident.name} — غرفة ${resident.room}',
               room: resident.age == null
-                  ? 'من AWS'
-                  : '${resident.age} سنة · من AWS',
+                  ? 'من السيرفر'
+                  : '${resident.age} سنة · من السيرفر',
               av: resident.initials,
               avBg: isCritical
                   ? const Color(0xFFFFE4E6)

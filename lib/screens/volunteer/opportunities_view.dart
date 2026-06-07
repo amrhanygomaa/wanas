@@ -871,14 +871,18 @@ class _VolunteerOpportunitiesViewState
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
+                        Expanded(
+                          child: _buildDetailChip(
+                            _localizeSchedule(opp.dateInfo),
+                            'assets/icons/calendar.png',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         _buildDetailChip(
-                            opp.dateInfo, 'assets/icons/calendar.png'),
-                        const SizedBox(width: 12),
-                        _buildDetailChip(
-                            'المقاعد: ${opp.filledSlots}/${opp.totalSlots}',
-                            Icons.people_outline),
+                          'المقاعد: ${opp.filledSlots}/${opp.totalSlots}',
+                          Icons.people_outline,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -979,6 +983,26 @@ class _VolunteerOpportunitiesViewState
     );
   }
 
+  String _localizeSchedule(String raw) {
+    return raw
+        .replaceAll('Mondays', 'الاثنين')
+        .replaceAll('Monday', 'الاثنين')
+        .replaceAll('Tuesdays', 'الثلاثاء')
+        .replaceAll('Tuesday', 'الثلاثاء')
+        .replaceAll('Wednesdays', 'الأربعاء')
+        .replaceAll('Wednesday', 'الأربعاء')
+        .replaceAll('Thursdays', 'الخميس')
+        .replaceAll('Thursday', 'الخميس')
+        .replaceAll('Fridays', 'الجمعة')
+        .replaceAll('Friday', 'الجمعة')
+        .replaceAll('Saturdays', 'السبت')
+        .replaceAll('Saturday', 'السبت')
+        .replaceAll('Sundays', 'الأحد')
+        .replaceAll('Sunday', 'الأحد')
+        .replaceAll(' & ', ' و ')
+        .replaceAll(', ', ' و ');
+  }
+
   Widget _buildDetailChip(String label, dynamic icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -989,11 +1013,15 @@ class _VolunteerOpportunitiesViewState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF475569))),
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF475569))),
+          ),
           const SizedBox(width: 8),
           if (icon is IconData)
             Icon(icon, size: 16, color: const Color(0xFF059669))

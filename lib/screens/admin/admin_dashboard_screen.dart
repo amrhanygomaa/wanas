@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart'; // مكتبة فلاتر الأساسية للواجهات
@@ -62,6 +63,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     });
 
     _fadeController.forward(); // بدء تشغيل أنيميشن الظهور
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(appRiverpod).currentAdminTabIndex == 2) {
+        unawaited(ref.read(appRiverpod).syncBackendData());
+      }
+    });
   }
 
   @override
@@ -77,6 +84,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   void _onTabChanged(int index) {
     // دالة معالجة تغيير التبويب
     ref.read(appRiverpod).setAdminTabIndex(index); // تحديث التبويب في ريفربود
+    if (index == 2) {
+      unawaited(ref.read(appRiverpod).syncBackendData());
+    }
     _fadeController.reset(); // إعادة تعيين أنيميشن التلاشي
     _fadeController.forward(); // إعادة تشغيل الأنيميشن للتبويب الجديد
   }
@@ -107,7 +117,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
           SingleChildScrollView(
             child: Column(
               children: [
-                _buildDirectorHero(provider),
+                if (provider.currentAdminTabIndex == 0)
+                  _buildDirectorHero(provider),
                 _getCurrentView(provider),
               ],
             ),
@@ -206,6 +217,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
 
   Widget _buildDirectorHero(AppRiverpod provider) {
     // بناء منطقة الـ Hero الخاصة بالمدير مع تأثير زجاجي وأنيمشن قوي
+    final adminName = provider.currentAccount?.name.trim().isNotEmpty == true
+        ? provider.currentAccount!.name.trim()
+        : 'المدير';
+    final facilityName =
+        provider.currentAccount?.facilityName?.trim().isNotEmpty == true
+            ? provider.currentAccount!.facilityName!.trim()
+            : provider.facilityName.trim().isEmpty
+                ? 'المنشأة'
+                : provider.facilityName.trim();
+
     return ClipRect(
       child: BackdropFilter(
         filter:
@@ -268,89 +289,82 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                 },
               ),
               // 3. نبض ضوئي خفيف في المنتصف
-              AnimatedBuilder(
-                animation: _floatController,
-                builder: (context, child) {
-                  return Center(
-                    child: Opacity(
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, child) {
+                    return Opacity(
                       opacity: 0.05 + (0.05 * sin(_floatController.value * pi)),
                       child: Container(
-                        width: MediaQuery.of(context).size.width,
-                        height: 200,
                         decoration: const BoxDecoration(
                           gradient: RadialGradient(
                             colors: [Colors.white, Colors.transparent],
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
               // المحتوى الأساسي للـ Hero
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    const ProfileScreen(overrideRole: 'إدارة')),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(15),
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const ProfileScreen(overrideRole: 'إدارة')),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.admin_panel_settings_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: MarqueeText(
-                                      text: provider
-                                              .currentAccount?.facilityName ??
-                                          (provider.facilityName.isEmpty
-                                              ? 'المنشأة'
-                                              : provider.facilityName),
-                                      style: const TextStyle(
-                                          color: Color(0xFF94a3b8),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                      provider.currentAccount?.name ?? 'المدير',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text('مدير الدار',
+                            Text('أهلاً يا $adminName',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.2)),
+                            const SizedBox(height: 6),
+                            Text('مدير الدار · $facilityName',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.55),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500)),
+                                    color: Colors.white.withValues(alpha: 0.72),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

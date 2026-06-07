@@ -51,13 +51,27 @@ class VolunteerProfileView extends ConsumerWidget {
                           fontWeight: FontWeight.bold)),
                 )),
             const SizedBox(height: 12),
-            ...provider.volunteerOpportunities
-                .map((o) => _buildOpportunityCard(context, o)),
+            if (provider.volunteerOpportunities.isEmpty)
+              _buildEmptyStateCard(
+                icon: Icons.lightbulb_outline_rounded,
+                title: 'لا توجد فرص تطوعية متاحة',
+                subtitle: 'تحقق مرة أخرى لاحقاً للفرص الجديدة',
+              )
+            else
+              ...provider.volunteerOpportunities
+                  .map((o) => _buildOpportunityCard(context, o)),
             const SizedBox(height: 24),
             _buildSectionLabel('حجوزاتي القادمة', const Color(0xFF059669), 2),
             const SizedBox(height: 12),
-            ...provider.volunteerBookings
-                .map((b) => _buildBookingCard(context, b)),
+            if (provider.volunteerBookings.isEmpty)
+              _buildEmptyStateCard(
+                icon: Icons.calendar_month_outlined,
+                title: 'لا توجد حجوزاتي القادمة',
+                subtitle: 'ابدأ بحجز فرص تطوعية جديدة لعرضها هنا',
+              )
+            else
+              ...provider.volunteerBookings
+                  .map((b) => _buildBookingCard(context, b)),
             const SizedBox(height: 24),
             _buildSectionLabel('سجل الساعات', const Color(0xFF059669), 3),
             const SizedBox(height: 12),
@@ -65,7 +79,14 @@ class VolunteerProfileView extends ConsumerWidget {
             const SizedBox(height: 24),
             _buildSectionLabel('شهاداتي وإنجازاتي', const Color(0xFFf59e0b), 4),
             const SizedBox(height: 12),
-            _buildCertificatesCarousel(provider),
+            if (provider.volunteerCertificates.isEmpty)
+              _buildEmptyStateCard(
+                icon: Icons.emoji_events_outlined,
+                title: 'لا توجد شهاداتي وإنجازاتي',
+                subtitle: 'أكمل ساعات تطوعية للحصول على شهادات وإنجازات',
+              )
+            else
+              _buildCertificatesCarousel(provider),
             const SizedBox(height: 24),
             _buildSectionLabel('التقييم والآراء', const Color(0xFF6366f1), 5),
             const SizedBox(height: 12),
@@ -685,6 +706,64 @@ class VolunteerProfileView extends ConsumerWidget {
       child: Text(label,
           style: const TextStyle(
               color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildEmptyStateCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFa7f3d0), width: 1.5),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFFf0fdf4),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                size: 28,
+                color: const Color(0xFF059669),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+              fontFamily: 'Cairo',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              fontFamily: 'Cairo',
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -89,6 +89,46 @@ mcolors
 decs
 mdecs
 
+# Local agent/workspace files
+.claude/
+.codex-logs/
+.trash/
+CLAUDE_CODE_PLAN.md
+IMPLEMENTATION_PROMPT.md
+external/
+
+# Temporary root-level analysis outputs
+after_move.txt
+analysis_errors.txt
+colors.txt
+decs.txt
+files.txt
+final_lint.txt
+flutter_01.png
+mcolors.txt
+mdecs.txt
+mem_test.txt
+
 # Large media & assets (optional - uncomment if assets are large)
 # assets/videos/
 # assets/images/*.png
+
+# Sensitive credentials — never commit these
+google-service-account.json
+*.pem
+*.p12
+# Filled-in build config (keep dart_defines.example.json, ignore the real one)
+dart_defines.json
+
+# Documentation / export files (generated externally)
+*.pdf
+*.docx
+Wanas-*.png
+Wanas_*.md
+*_Export_Guide.md
+
+# Helper scripts not part of the app
+replace_aws.py
+
+# Windows temp paths accidentally created in project root
+C\*/

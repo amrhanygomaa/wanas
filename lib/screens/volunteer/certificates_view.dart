@@ -110,7 +110,8 @@ class _VolunteerCertificatesViewState
             const Text(
               'أكمل جلسات التطوع لتحصل على شهادات تقدير رقمية',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748b), height: 1.5),
+              style: TextStyle(
+                  fontSize: 13, color: Color(0xFF64748b), height: 1.5),
             ),
           ],
         ),
@@ -376,8 +377,7 @@ class _VolunteerCertificatesViewState
                   'جلسة مكتملة')),
           Expanded(
               child: _buildStatColumn(
-                  provider.averageRating.toStringAsFixed(1),
-                  'متوسط التقييم')),
+                  provider.averageRating.toStringAsFixed(1), 'متوسط التقييم')),
         ],
       ),
     );

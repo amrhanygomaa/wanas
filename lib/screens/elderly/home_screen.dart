@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_riverpod.dart';
 import '../chat/family_resident_chat_screen.dart';
 import 'cognitive_games_screen.dart';
+import 'elderly_chat_contacts_screen.dart';
 import '../../models/app_models.dart'; // نماذج البيانات (Medication, User, etc.)
 import 'package:lottie/lottie.dart';
 // ويدجت رفيق الذكاء الاصطناعي
@@ -64,6 +65,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2500),
     )..repeat(reverse: true);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appRiverpod).loadFamilyCardPreferences();
+    });
   }
 
   @override
@@ -84,7 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       children: [
         _buildAnimatedBackground(),
         SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 100), // مساحة إضافية في الأسفل
+          padding: const EdgeInsets.only(bottom: 120),
           child: Column(
             children: [
               // قسم الترحيب العلوي (Hero)
@@ -102,8 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     const SizedBox(height: 12),
                     _buildCognitiveGamesCard(provider, context),
                     const SizedBox(height: 12),
-                    _buildPointsCard(
-                        provider), // نقاط تظهر أولاً فوق جهات الاتصال
+                    _buildPointsCard(provider),
                     const SizedBox(height: 12),
                     _buildFamilyCard(provider, context),
                     const SizedBox(height: 12),
@@ -115,6 +119,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
         if (_showSuccessAnimation) _buildCentralSuccessAnimation(),
+        // ── Chat FAB ──────────────────────────────────────────────────────
+        _buildChatFab(provider, context),
       ],
     );
   }
@@ -516,8 +522,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
@@ -607,8 +612,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildTakeMedButton(
       AppRiverpod provider, Medication nextMed, BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        provider.elderlyConfirmMedication(nextMed.id);
+      onTap: () async {
+        await provider.elderlyConfirmMedication(nextMed.id);
+        if (!context.mounted || provider.backendSyncError != null) {
+          return;
+        }
         setState(() {
           _successMessage = 'تم تسجيل أخذ الدواء';
           _showSuccessAnimation = true;
@@ -755,7 +763,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildFamilyCard(AppRiverpod provider, BuildContext context) {
     final bool hc = provider.isHighContrast;
-    final members = provider.familyMembers;
+    final allMembers = provider.familyMembersForCurrentResident();
+    final members = provider.favoriteFamilyMembersForCurrentResident();
+    final displayLimit = provider.familyCardDisplayLimitForCurrentResident();
     const gradients = [
       [Color(0xFFf472b6), Color(0xFFdb2777)],
       [Color(0xFF34d399), Color(0xFF059669)],
@@ -773,7 +783,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
+              color:
+                  const Color(0xFF6C63FF).withValues(alpha: hc ? 0.25 : 0.15),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -789,33 +800,345 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 const Icon(Icons.phone_enabled_rounded,
                     color: Color(0xFF6C63FF), size: 26),
                 const SizedBox(width: 8),
-                Text('تواصل مع أحبائك 💜',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: hc ? Colors.white : const Color(0xFF6C63FF))),
+                Expanded(
+                  child: Text('تواصل مع أحبائك 💜',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: hc ? Colors.white : const Color(0xFF6C63FF))),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C63FF).withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$displayLimit',
+                    style: const TextStyle(
+                      color: Color(0xFF6C63FF),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  onPressed: () => _showFamilyCardSettingsSheet(provider),
+                  icon: const Icon(Icons.tune_rounded,
+                      color: Color(0xFF6C63FF), size: 22),
+                  tooltip: 'تعديل المفضلة',
+                  style: IconButton.styleFrom(
+                    backgroundColor:
+                        const Color(0xFF6C63FF).withValues(alpha: 0.08),
+                    minimumSize: const Size(36, 36),
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
-            // Members list — عمود واحد بدون GridView
-            ...List.generate(members.length, (i) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _buildPerson(
-                  members[i],
-                  gradients[i % gradients.length]
-                      .map((c) => c)
-                      .toList(),
-                  provider,
-                ),
-              );
-            }),
+            if (allMembers.isEmpty)
+              _buildFamilyCardEmptyState(
+                hc,
+                'لم يتم ربط أفراد عائلة لهذا المقيم حالياً',
+                'سيظهر هنا الأشخاص الذين يضيفهم الأدمن لحساب المقيم.',
+              )
+            else if (members.isEmpty)
+              _buildFamilyCardEmptyState(
+                hc,
+                'لا توجد أسماء مفضلة في الكارت',
+                'اضغط زر الإعدادات واختر الأشخاص الذين تريد ظهورهم.',
+              )
+            else
+              ...List.generate(members.length, (i) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildPerson(
+                    members[i],
+                    gradients[i % gradients.length].map((c) => c).toList(),
+                    provider,
+                  ),
+                );
+              }),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildFamilyCardEmptyState(
+    bool hc,
+    String title,
+    String subtitle,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      decoration: BoxDecoration(
+        color: hc ? const Color(0xFF252525) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: hc ? Colors.white10 : const Color(0xFFEDE9FE),
+        ),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.favorite_border_rounded,
+              color: Color(0xFF6C63FF), size: 34),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: hc ? Colors.white : const Color(0xFF1E293B),
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: hc ? Colors.white60 : const Color(0xFF64748B),
+              fontSize: 12,
+              height: 1.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFamilyCardSettingsSheet(AppRiverpod provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final allMembers = provider.familyMembersForCurrentResident();
+          final selectedMembers =
+              provider.favoriteFamilyMembersForCurrentResident(
+            ignoreLimit: true,
+          );
+          final selectedCount = selectedMembers.length;
+          final maxLimit = max(1, min(6, allMembers.length));
+          final displayLimit = min(
+            provider.familyCardDisplayLimitForCurrentResident(),
+            maxLimit,
+          );
+
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 12,
+                bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.78,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'مفضلة التواصل',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'اختر من يظهر في كارت تواصل مع أحبائك وحدد عدد الأشخاص المعروضين.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'عدد الأشخاص في الكارت',
+                      style: TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(maxLimit, (index) {
+                        final value = index + 1;
+                        final selected = value == displayLimit;
+                        return ChoiceChip(
+                          label: Text('$value'),
+                          selected: selected,
+                          onSelected: (_) async {
+                            await provider.setFamilyCardDisplayLimit(value);
+                            setModalState(() {});
+                          },
+                          selectedColor: const Color(0xFF6C63FF),
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          labelStyle: TextStyle(
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF475569),
+                            fontWeight: FontWeight.w900,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: selected
+                                  ? const Color(0xFF6C63FF)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Text(
+                          'الأشخاص المفضلون',
+                          style: TextStyle(
+                            color: Color(0xFF334155),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '$selectedCount محدد',
+                          style: const TextStyle(
+                            color: Color(0xFF6C63FF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: allMembers.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'لا يوجد أفراد عائلة مرتبطون بهذا المقيم حالياً',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: allMembers.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final member = allMembers[index];
+                                final isFavorite =
+                                    provider.isFamilyCardFavorite(
+                                  member.id,
+                                );
+                                return CheckboxListTile(
+                                  value: isFavorite,
+                                  activeColor: const Color(0xFF6C63FF),
+                                  onChanged: (checked) async {
+                                    await provider.setFamilyCardFavorite(
+                                      member.id,
+                                      checked == true,
+                                    );
+                                    setModalState(() {});
+                                  },
+                                  title: Text(
+                                    member.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    member.relation,
+                                    style: const TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  secondary: CircleAvatar(
+                                    backgroundColor: const Color(0xFF6C63FF)
+                                        .withValues(alpha: 0.10),
+                                    child: Text(
+                                      member.initials,
+                                      style: const TextStyle(
+                                        color: Color(0xFF6C63FF),
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6C63FF),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'تم',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildPerson(
       FamilyMember member, List<Color> gradient, AppRiverpod provider) {
@@ -871,10 +1194,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (isOnline
-                                  ? gradient[0]
-                                  : const Color(0xFF9CA3AF))
-                              .withValues(alpha: 0.35),
+                          color:
+                              (isOnline ? gradient[0] : const Color(0xFF9CA3AF))
+                                  .withValues(alpha: 0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         )
@@ -959,9 +1281,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Divider(
               height: 1,
               thickness: 1,
-              color: hc
-                  ? Colors.white12
-                  : const Color(0xFFF3F4F6)),
+              color: hc ? Colors.white12 : const Color(0xFFF3F4F6)),
           const SizedBox(height: 10),
 
           // ── Bottom: three action buttons ─────────────────────────
@@ -1073,6 +1393,85 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatFab(AppRiverpod provider, BuildContext context) {
+    final hasChatContacts = provider.familyMembers.any((m) => m.userId != null);
+    return Positioned(
+      bottom: 24,
+      left: 20,
+      child: GestureDetector(
+        onTap: () {
+          if (provider.familyMembers.isEmpty) {
+            _showFeedbackSnack('لا يوجد أفراد عائلة مضافون بعد');
+            return;
+          }
+          // إذا في فرد عائلة واحد فقط بالتطبيق، روح مباشرة للشات
+          final chatMembers =
+              provider.familyMembers.where((m) => m.userId != null).toList();
+          if (chatMembers.length == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FamilyResidentChatScreen(
+                  otherUserId: chatMembers.first.userId!,
+                  otherUserName: chatMembers.first.name,
+                  otherUserRole: chatMembers.first.relation,
+                  residentId: provider.backendResidentId,
+                  accentColor: const Color(0xFF6C63FF),
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ElderlyContactsScreen()),
+            );
+          }
+        },
+        child: Container(
+          height: 58,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: hasChatContacts
+                ? const LinearGradient(
+                    colors: [Color(0xFFEA580C), Color(0xFFDC2626)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: hasChatContacts ? null : const Color(0xFF9CA3AF),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: (hasChatContacts
+                        ? const Color(0xFFEA580C)
+                        : const Color(0xFF9CA3AF))
+                    .withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'راسل عائلتك',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

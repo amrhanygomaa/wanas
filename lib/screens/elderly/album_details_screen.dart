@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../config/api_config.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/ai_media_service.dart';
+import '../../widgets/authenticated_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'full_screen_image_screen.dart';
 
@@ -72,24 +73,24 @@ class AlbumDetailsScreen extends ConsumerWidget {
                 final mem = items[index];
                 String type = 'image';
                 String? url;
-                String? label;
                 String? assetPath;
+                String? fallbackPath;
 
                 if (mem is MemoryItem) {
                   type = mem.type;
-                  label = mem.title;
                   assetPath = mem.assetPath;
+                  fallbackPath = mem.content;
                 } else if (mem is MemoryMoment) {
                   type = 'image';
                   url = mem.imageUrl;
-                  label = mem.activityTitle;
+                  fallbackPath = mem.fallbackPath;
                 } else if (mem is String) {
                   type = 'image';
                   url = mem;
                 }
 
-                return _buildPhotoCell(
-                    context, index, type, url, label, assetPath, hc, mem, ref);
+                return _buildPhotoCell(context, index, type, url, assetPath,
+                    fallbackPath, hc, mem, ref);
               },
             ),
       floatingActionButton: FloatingActionButton.extended(
@@ -100,27 +101,8 @@ class AlbumDetailsScreen extends ConsumerWidget {
           if (image == null) return;
 
           final provider = ref.read(appRiverpod);
-          final residentId = provider.backendResidentId ??
-              (provider.residentFiles.isNotEmpty
-                  ? provider.residentFiles.first.id
-                  : null);
-          try {
-            final uploaded = await AiMediaService.instance.uploadFile(
-              filePath: image.path,
-              residentId: residentId,
-            );
-            final s3Url = uploaded.mediaUrl ?? image.path;
-            provider.addPhotoToAlbum(albumName, s3Url);
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('فشل رفع الصورة: $e'),
-                  backgroundColor: Colors.red.shade700,
-                ),
-              );
-            }
-          }
+          final localPath = await provider.persistAlbumImage(image.path);
+          provider.addPhotoToAlbum(albumName, localPath);
         },
         backgroundColor: const Color(0xFF6C63FF),
         icon: const Icon(Icons.add_a_photo_rounded, color: Colors.white),
@@ -138,108 +120,71 @@ class AlbumDetailsScreen extends ConsumerWidget {
       int index,
       String type,
       String? url,
-      String? label,
       String? assetPath,
+      String? fallbackPath,
       bool hc,
       dynamic mem,
       WidgetRef ref) {
-    final gradients = [
-      const [Color(0xFF8B5CF6), Color(0xFFC4B5FD)],
-      const [Color(0xFFEC4899), Color(0xFFF9A8D4)],
-      const [Color(0xFF3B82F6), Color(0xFF93C5FD)],
-      const [Color(0xFF10B981), Color(0xFF6EE7B7)],
-    ];
-    final gradient = gradients[index % gradients.length];
-    bool hasImage = url != null || (assetPath != null && assetPath.isNotEmpty);
-    String heroTag = 'album_photo_${albumName}_$index';
+    final imagePaths = _imageCandidates(url, assetPath, fallbackPath);
+    final hasImage = imagePaths.isNotEmpty;
+    final heroTag = 'album_photo_${albumName}_$index';
 
     Widget cellContent = Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         color: hc ? const Color(0xFF1E1E1E) : Colors.white,
-        gradient: !hasImage
-            ? LinearGradient(
-                colors: gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)
-            : null,
-        image: url != null
-            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
-            : (assetPath != null && assetPath.isNotEmpty)
-                ? (assetPath.startsWith('assets/')
-                    ? DecorationImage(
-                        image: AssetImage(assetPath), fit: BoxFit.cover)
-                    : DecorationImage(
-                        image: FileImage(File(assetPath)), fit: BoxFit.cover))
-                : null,
         boxShadow: [
           BoxShadow(
-            color:
-                (hasImage ? Colors.black : gradient[0]).withValues(alpha: 0.15),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (hasImage)
-              Container(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (hasImage)
+            _buildImageFromCandidates(imagePaths, highContrast: hc)
+          else
+            _buildImageFallback(hc),
+          if (type == 'video')
+            Center(
+              child: Container(
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.1),
-                      Colors.black.withValues(alpha: 0.7),
-                    ],
-                    stops: const [0.5, 0.8, 1.0],
+                  color: Colors.black.withValues(alpha: 0.34),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    width: 1.5,
                   ),
                 ),
+                child: const Icon(Icons.play_arrow_rounded,
+                    color: Colors.white, size: 30),
               ),
-            if (type == 'video')
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+            ),
+          if (hasImage && type != 'video')
+            Positioned(
+              left: 10,
+              bottom: 10,
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.24),
                   ),
-                  child: const Icon(Icons.play_arrow_rounded,
-                      color: Colors.white, size: 28),
                 ),
-              )
-            else if (!hasImage)
-              Center(
-                child: Icon(Icons.image_outlined,
-                    color: Colors.white.withValues(alpha: 0.5), size: 40),
+                child: const Icon(Icons.open_in_full_rounded,
+                    color: Colors.white, size: 16),
               ),
-            if (label != null && label.isNotEmpty)
-              Positioned(
-                bottom: 12,
-                right: 12,
-                left: 12,
-                child: Text(
-                  label,
-                  textAlign: TextAlign.right,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3),
-                ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
 
@@ -272,7 +217,7 @@ class AlbumDetailsScreen extends ConsumerWidget {
                           fontWeight: FontWeight.bold,
                           color: hc ? Colors.white : Colors.black)),
                   onTap: () {
-                    String coverImg = url ?? assetPath ?? '';
+                    String coverImg = url ?? assetPath ?? fallbackPath ?? '';
                     if (coverImg.isNotEmpty) {
                       ref.read(appRiverpod).setAlbumCover(albumName, coverImg);
                     }
@@ -307,7 +252,7 @@ class AlbumDetailsScreen extends ConsumerWidget {
                 heroTag: heroTag,
                 url: url,
                 assetPath: assetPath,
-                label: label,
+                fallbackPath: fallbackPath,
               ),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
@@ -320,6 +265,100 @@ class AlbumDetailsScreen extends ConsumerWidget {
       child: Hero(
         tag: heroTag,
         child: Material(color: Colors.transparent, child: cellContent),
+      ),
+    );
+  }
+
+  List<String> _imageCandidates(
+    String? url,
+    String? assetPath,
+    String? fallbackPath,
+  ) {
+    final seen = <String>{};
+    return [url, assetPath, fallbackPath]
+        .map((value) => value?.trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .where((value) => seen.add(value))
+        .toList();
+  }
+
+  Widget _buildImageFromCandidates(
+    List<String> paths, {
+    int index = 0,
+    required bool highContrast,
+  }) {
+    if (index >= paths.length) return _buildImageFallback(highContrast);
+    final path = paths[index];
+    final fallback = _buildImageFromCandidates(
+      paths,
+      index: index + 1,
+      highContrast: highContrast,
+    );
+
+    if (path.startsWith('assets/')) {
+      return Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    final resolvedUrl = _resolveImageUrl(path);
+    if (resolvedUrl.startsWith('http')) {
+      return AuthenticatedNetworkImage(
+        url: resolvedUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (_) => _buildImageLoading(),
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    final file = File(path);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    return fallback;
+  }
+
+  String _resolveImageUrl(String raw) {
+    if (raw.startsWith('/') && !raw.startsWith('//')) {
+      return '${ApiConfig.baseUrl}$raw';
+    }
+    return raw;
+  }
+
+  Widget _buildImageLoading() {
+    return Container(
+      color: const Color(0xFFEFF6FF),
+      child: const Center(
+        child: SizedBox(
+          width: 26,
+          height: 26,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageFallback(bool highContrast) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: highContrast
+              ? const [Color(0xFF1E1E1E), Color(0xFF2A2A2A)]
+              : const [Color(0xFFEFF6FF), Color(0xFFF8FAFC)],
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.image_not_supported_outlined,
+            color: Color(0xFF94A3B8), size: 34),
       ),
     );
   }

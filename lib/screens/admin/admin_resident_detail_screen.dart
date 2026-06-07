@@ -2,11 +2,29 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../config/api_config.dart';
 import '../../providers/app_riverpod.dart';
 import '../../models/app_models.dart';
-import '../../services/ai_media_service.dart';
+import '../../services/resident_document_service.dart';
 import '../../services/backend_mutation_service.dart';
+import '../../widgets/app_popup_notification.dart';
 import '../../widgets/taptaba_scaffold.dart';
+
+ImageProvider<Object>? _residentImageProvider(String? imageUrl) {
+  final value = imageUrl?.trim() ?? '';
+  if (value.isEmpty) return null;
+  if (value.startsWith('/') && !value.startsWith('//')) {
+    return NetworkImage('${ApiConfig.baseUrl}$value');
+  }
+  final uri = Uri.tryParse(value);
+  if (uri != null &&
+      uri.hasScheme &&
+      (uri.scheme == 'http' || uri.scheme == 'https')) {
+    return NetworkImage(value);
+  }
+  return FileImage(File(value));
+}
 
 class AdminResidentDetailScreen extends ConsumerStatefulWidget {
   final String residentId;
@@ -28,12 +46,38 @@ class _AdminResidentDetailScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 8, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDocuments());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDocuments() async {
+    try {
+      final docs = await ResidentDocumentService.instance
+          .fetchDocuments(widget.residentId);
+      if (!mounted) return;
+      ref.read(appRiverpod).setDocumentsForResident(
+            widget.residentId,
+            docs
+                .map((d) => d.url)
+                .where((url) => url.trim().isNotEmpty)
+                .toList(),
+          );
+    } catch (_) {
+      // silently ignore — documents show empty if backend unreachable
+    }
+  }
+
+  void _showPopup(
+    BuildContext context,
+    String message, {
+    AppPopupNotificationType type = AppPopupNotificationType.info,
+  }) {
+    showAppPopupNotification(context, message: message, type: type);
   }
 
   @override
@@ -62,19 +106,21 @@ class _AdminResidentDetailScreenState
       id: resident.id,
       name: resident.name,
       roomNumber: resident.room,
-      gender: 'غير محدد',
+      gender: resident.gender ?? 'غير محدد',
       birthDate:
           DateTime.now().subtract(Duration(days: 365 * (resident.age ?? 0))),
       entryDate: DateTime.now(),
-      nationalId: 'غير متوفر',
+      nationalId: resident.nationalId ?? 'غير متوفر',
       imageUrl: resident.imageUrl,
-      emergencyContactName: 'غير محدد',
-      emergencyContactPhone: resident.phone ?? '',
-      emergencyRelation: 'غير محدد',
+      emergencyContactName: resident.emergencyContactName ?? 'غير محدد',
+      emergencyContactPhone:
+          resident.emergencyContactPhone ?? resident.phone ?? '',
+      emergencyRelation: resident.emergencyRelation ?? 'غير محدد',
       bloodType: resident.bloodType ?? 'A+',
       chronicDiseases: resident.chronicDiseases ?? [],
       allergies: resident.allergies ?? [],
       insuranceInfo: resident.insuranceInfo ?? 'لا يوجد',
+      primaryDoctorName: resident.primaryDoctorName,
       mobilityStatus: resident.mobilityStatus ?? 'مستقل',
       assistiveDevices: resident.assistiveDevices ?? [],
       cognitiveStatus: resident.cognitiveStatus ?? 'وعي كامل',
@@ -178,8 +224,11 @@ class _AdminResidentDetailScreenState
                 onPressed: () {
                   setState(() => _isEditMode = !_isEditMode);
                   if (!_isEditMode) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('تم حفظ التعديلات بنجاح')));
+                    _showPopup(
+                      context,
+                      'تم حفظ التعديلات بنجاح',
+                      type: AppPopupNotificationType.success,
+                    );
                   }
                 },
               ),
@@ -200,14 +249,12 @@ class _AdminResidentDetailScreenState
                   child: Builder(
                     builder: (context) {
                       final String? imageUrl = r.imageUrl;
+                      final imageProvider = _residentImageProvider(imageUrl);
                       return CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.white12,
-                        backgroundImage:
-                            (imageUrl != null && imageUrl.isNotEmpty)
-                                ? FileImage(File(imageUrl))
-                                : null,
-                        child: (imageUrl == null || imageUrl.isEmpty)
+                        backgroundImage: imageProvider,
+                        child: imageProvider == null
                             ? const Icon(Icons.person,
                                 color: Colors.white, size: 45)
                             : null,
@@ -219,10 +266,21 @@ class _AdminResidentDetailScreenState
                   bottom: 0,
                   right: 0,
                   child: GestureDetector(
-                    onTap: () {
-                      ref
+                    onTap: () async {
+                      final saved = await ref
                           .read(appRiverpod)
                           .pickAndSetResidentImage(widget.residentId);
+                      if (!context.mounted || saved == null) return;
+                      final error = ref.read(appRiverpod).backendSyncError;
+                      _showPopup(
+                        context,
+                        saved
+                            ? 'تم حفظ صورة المقيم بنجاح'
+                            : 'تم اختيار الصورة محلياً، لكن فشل حفظها على السيرفر: ${error ?? 'حاول مرة أخرى'}',
+                        type: saved
+                            ? AppPopupNotificationType.success
+                            : AppPopupNotificationType.error,
+                      );
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -273,6 +331,7 @@ class _AdminResidentDetailScreenState
       children: [
         _buildInfoCard('البيانات الشخصية الأساسية', [
           _infoRow('الاسم بالكامل', r.name, Icons.person_outline),
+          _infoRow('النوع', _genderLabel(r.gender), Icons.wc_rounded),
           _infoRow('الرقم القومي', r.nationalId, Icons.badge_outlined),
           _infoRow(
               'تاريخ الميلاد',
@@ -319,9 +378,10 @@ class _AdminResidentDetailScreenState
   }
 
   void _showDeleteConfirmation(BuildContext context, Resident r) {
+    final navigator = Navigator.of(context);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('تأكيد الحذف النهائي ⚠️',
             textAlign: TextAlign.center,
@@ -331,14 +391,26 @@ class _AdminResidentDetailScreenState
             textAlign: TextAlign.center),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('إلغاء')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // إغلاق الحوار
-              Navigator.pop(context); // العودة للقائمة
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم حذف ملف المقيم بنجاح')));
+            onPressed: () async {
+              final notificationContext =
+                  Navigator.of(context, rootNavigator: true).context;
+              final provider = ref.read(appRiverpod);
+              Navigator.pop(dialogContext);
+              navigator.pop();
+              final deleted = await provider.deleteResident(r.id);
+              if (!notificationContext.mounted) return;
+              _showPopup(
+                notificationContext,
+                deleted
+                    ? 'تم حذف ملف ${r.name} بنجاح'
+                    : 'تعذر حذف ملف ${r.name}: ${provider.backendSyncError ?? 'حاول مرة أخرى'}',
+                type: deleted
+                    ? AppPopupNotificationType.success
+                    : AppPopupNotificationType.error,
+              );
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
@@ -422,17 +494,19 @@ class _AdminResidentDetailScreenState
       children: [
         _buildDirectEditCard(
           title: 'التاريخ الاجتماعي والنشاطات',
-          onEdit: resident != null
-              ? () => _showSocialHistoryForm(resident)
-              : null,
+          onEdit:
+              resident != null ? () => _showSocialHistoryForm(resident) : null,
           children: [
-            _infoRow('المهنة السابقة',
+            _infoRow(
+                'المهنة السابقة',
                 resident?.previousProfession ?? r.previousProfession,
                 Icons.work_outline_rounded),
-            _infoRow('الهوايات والنشاطات',
+            _infoRow(
+                'الهوايات والنشاطات',
                 (resident?.hobbies ?? r.hobbies).join('، '),
                 Icons.interests_outlined),
-            _infoRow('الحالة الاجتماعية',
+            _infoRow(
+                'الحالة الاجتماعية',
                 resident?.socialStatus ?? r.socialStatus,
                 Icons.family_restroom_rounded),
           ],
@@ -487,8 +561,7 @@ class _AdminResidentDetailScreenState
                   ),
               ],
             ),
-            const Divider(
-                height: 25, color: Color(0xFFf1f5f9), thickness: 1.5),
+            const Divider(height: 25, color: Color(0xFFf1f5f9), thickness: 1.5),
             ...children,
           ],
         ),
@@ -622,8 +695,7 @@ class _AdminResidentDetailScreenState
                 style: TextStyle(fontSize: 12, color: Color(0xFF94a3b8))),
             const SizedBox(height: 16),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF0ea5e9),
                 borderRadius: BorderRadius.circular(12),
@@ -631,8 +703,7 @@ class _AdminResidentDetailScreenState
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.person_add_rounded,
-                      color: Colors.white, size: 16),
+                  Icon(Icons.person_add_rounded, color: Colors.white, size: 16),
                   SizedBox(width: 6),
                   Text('إضافة فرد من العائلة',
                       style: TextStyle(
@@ -649,10 +720,10 @@ class _AdminResidentDetailScreenState
   }
 
   Widget _buildFamilyMemberCard(FamilyMember member, String residentId) {
-    final hasEmail = member.userId != null && member.userId!.isNotEmpty;
-    final email = member.userId;
-    // status: verified if userId (cognito sub) is populated
-    final isLinked = hasEmail;
+    final email = member.email?.trim() ?? '';
+    final hasEmail = email.isNotEmpty;
+    final isLinked = member.userId != null && member.userId!.isNotEmpty;
+    final isPendingConfirmation = hasEmail && !isLinked;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -702,7 +773,18 @@ class _AdminResidentDetailScreenState
                 Text(member.relation,
                     style: const TextStyle(
                         fontSize: 12, color: Color(0xFF64748b))),
-                if (email != null && email.isNotEmpty) ...[
+                if (hasEmail) ...[
+                  const SizedBox(height: 3),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF64748b)),
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -734,7 +816,7 @@ class _AdminResidentDetailScreenState
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              isLinked ? 'مرتبط' : 'قيد التحقق',
+                              isLinked ? 'تم التأكيد' : 'قيد انتظار التأكيد',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -756,20 +838,21 @@ class _AdminResidentDetailScreenState
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (email == null || email.isEmpty)
+              if (!hasEmail || isPendingConfirmation)
                 IconButton(
-                  onPressed: () =>
-                      _showSendInviteSheet(residentId, member),
+                  onPressed: () => _showSendInviteSheet(residentId, member),
                   icon: const Icon(Icons.send_rounded,
                       size: 18, color: Color(0xFF0ea5e9)),
-                  tooltip: 'إرسال دعوة',
+                  tooltip: isPendingConfirmation
+                      ? 'إعادة إرسال الدعوة'
+                      : 'إرسال دعوة',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               const SizedBox(width: 4),
               IconButton(
                 onPressed: () =>
-                    _showDeleteFamilyMemberDialog(member),
+                    _showDeleteFamilyMemberDialog(residentId, member),
                 icon: const Icon(Icons.delete_outline_rounded,
                     size: 18, color: Color(0xFFEF4444)),
                 tooltip: 'حذف',
@@ -827,14 +910,12 @@ class _AdminResidentDetailScreenState
                 const SizedBox(height: 6),
                 const Text(
                     'أدخل بيانات فرد العائلة. سيصله بريد دعوة للتحقق والربط بحساب المقيم.',
-                    style:
-                        TextStyle(fontSize: 12, color: Color(0xFF64748b))),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748b))),
                 const SizedBox(height: 20),
                 _sheetField('الاسم الكامل', nameCtrl,
                     icon: Icons.person_outline_rounded),
                 const SizedBox(height: 12),
-                _sheetField('صلة القرابة (مثال: ابن، أخت)',
-                    relationCtrl,
+                _sheetField('صلة القرابة (مثال: ابن، أخت)', relationCtrl,
                     icon: Icons.people_outline_rounded),
                 const SizedBox(height: 12),
                 _sheetField('البريد الإلكتروني (للدعوة)', emailCtrl,
@@ -856,21 +937,21 @@ class _AdminResidentDetailScreenState
                         : () async {
                             final name = nameCtrl.text.trim();
                             final email = emailCtrl.text.trim();
-                            final relation =
-                                relationCtrl.text.trim();
+                            final relation = relationCtrl.text.trim();
                             if (name.isEmpty) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('أدخل الاسم الكامل')));
+                              _showPopup(
+                                ctx,
+                                'أدخل الاسم الكامل',
+                                type: AppPopupNotificationType.warning,
+                              );
                               return;
                             }
-                            if (email.isNotEmpty &&
-                                !email.contains('@')) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'أدخل بريداً إلكترونياً صحيحاً أو اتركه فارغاً')));
+                            if (email.isNotEmpty && !email.contains('@')) {
+                              _showPopup(
+                                ctx,
+                                'أدخل بريداً إلكترونياً صحيحاً أو اتركه فارغاً',
+                                type: AppPopupNotificationType.warning,
+                              );
                               return;
                             }
                             setSheetState(() => saving = true);
@@ -880,30 +961,41 @@ class _AdminResidentDetailScreenState
                                 residentId: residentId,
                                 email: email.isNotEmpty ? email : null,
                                 fullName: name,
-                                relationship: relation.isNotEmpty
-                                    ? relation
-                                    : 'عائلة',
+                                relationship:
+                                    relation.isNotEmpty ? relation : 'عائلة',
                               );
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (mounted) {
                                 ref.read(appRiverpod).syncBackendData();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(email.isNotEmpty
-                                        ? 'تمت الإضافة وتم إرسال بريد الدعوة إلى $email'
-                                        : 'تمت إضافة $name بنجاح'),
-                                    backgroundColor:
-                                        const Color(0xFF0ea5e9),
-                                  ),
+                                _showPopup(
+                                  context,
+                                  email.isNotEmpty
+                                      ? 'تمت الإضافة وتم إرسال بريد الدعوة إلى $email'
+                                      : 'تمت إضافة $name بنجاح',
+                                  type: AppPopupNotificationType.success,
                                 );
                               }
                             } catch (e) {
                               setSheetState(() => saving = false);
+                              final errorText = _friendlyErrorText(e);
+                              if (errorText.contains('تم حفظ فرد العائلة')) {
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ref.read(appRiverpod).syncBackendData();
+                                  _showPopup(
+                                    context,
+                                    errorText,
+                                    type: AppPopupNotificationType.warning,
+                                  );
+                                }
+                                return;
+                              }
                               if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red));
+                                _showPopup(
+                                  ctx,
+                                  'خطأ: $errorText',
+                                  type: AppPopupNotificationType.error,
+                                );
                               }
                             }
                           },
@@ -914,9 +1006,8 @@ class _AdminResidentDetailScreenState
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
                         : const Icon(Icons.send_rounded, size: 18),
-                    label: Text(saving
-                        ? 'جاري الإضافة...'
-                        : 'إضافة وإرسال الدعوة'),
+                    label: Text(
+                        saving ? 'جاري الإضافة...' : 'إضافة وإرسال الدعوة'),
                   ),
                 ),
               ],
@@ -928,7 +1019,8 @@ class _AdminResidentDetailScreenState
   }
 
   void _showSendInviteSheet(String residentId, FamilyMember member) {
-    final emailCtrl = TextEditingController();
+    final existingEmail = member.email?.trim() ?? '';
+    final emailCtrl = TextEditingController(text: existingEmail);
     bool saving = false;
 
     showModalBottomSheet(
@@ -967,12 +1059,10 @@ class _AdminResidentDetailScreenState
                         children: [
                           const Text('إرسال دعوة',
                               style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold)),
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                           Text('إلى: ${member.name}',
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748b))),
+                                  fontSize: 12, color: Color(0xFF64748b))),
                         ],
                       ),
                     ),
@@ -998,10 +1088,11 @@ class _AdminResidentDetailScreenState
                         : () async {
                             final email = emailCtrl.text.trim();
                             if (email.isEmpty || !email.contains('@')) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'أدخل بريداً إلكترونياً صحيحاً')));
+                              _showPopup(
+                                ctx,
+                                'أدخل بريداً إلكترونياً صحيحاً',
+                                type: AppPopupNotificationType.warning,
+                              );
                               return;
                             }
                             setSheetState(() => saving = true);
@@ -1010,26 +1101,27 @@ class _AdminResidentDetailScreenState
                                   .updateFamilyMemberEmail(
                                 memberId: member.id,
                                 email: email,
+                                residentId: residentId,
+                                fullName: member.name,
                               );
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (mounted) {
                                 ref.read(appRiverpod).syncBackendData();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'تم إرسال الدعوة إلى $email'),
-                                    backgroundColor:
-                                        const Color(0xFFF97316),
-                                  ),
+                                _showPopup(
+                                  context,
+                                  'تم إرسال الدعوة إلى $email',
+                                  type: AppPopupNotificationType.success,
                                 );
                               }
                             } catch (e) {
                               setSheetState(() => saving = false);
                               if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red));
+                                final errorText = _friendlyErrorText(e);
+                                _showPopup(
+                                  ctx,
+                                  'خطأ: $errorText',
+                                  type: AppPopupNotificationType.error,
+                                );
                               }
                             }
                           },
@@ -1040,7 +1132,11 @@ class _AdminResidentDetailScreenState
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
                         : const Icon(Icons.send_rounded, size: 18),
-                    label: Text(saving ? 'جاري الإرسال...' : 'إرسال الدعوة'),
+                    label: Text(saving
+                        ? 'جاري الإرسال...'
+                        : existingEmail.isEmpty
+                            ? 'إرسال الدعوة'
+                            : 'إعادة إرسال الدعوة'),
                   ),
                 ),
               ],
@@ -1051,20 +1147,18 @@ class _AdminResidentDetailScreenState
     );
   }
 
-  void _showDeleteFamilyMemberDialog(FamilyMember member) {
+  void _showDeleteFamilyMemberDialog(String residentId, FamilyMember member) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('حذف فرد العائلة',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         content: Text(
             'هل تريد حذف "${member.name}" من قائمة أفراد العائلة المرتبطين؟'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء')),
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
@@ -1072,26 +1166,22 @@ class _AdminResidentDetailScreenState
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10))),
             onPressed: () async {
+              final provider = ref.read(appRiverpod);
               Navigator.pop(ctx);
-              try {
-                await BackendMutationService.instance
-                    .deleteFamilyMember(member.id);
-                if (mounted) {
-                  ref.read(appRiverpod).syncBackendData();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content:
-                            Text('تم حذف ${member.name} بنجاح'),
-                        backgroundColor: const Color(0xFFEF4444)),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('خطأ أثناء الحذف: $e'),
-                      backgroundColor: Colors.red));
-                }
-              }
+              final deleted = await provider.deleteFamilyMemberFromResident(
+                residentId: residentId,
+                member: member,
+              );
+              if (!mounted) return;
+              _showPopup(
+                context,
+                deleted
+                    ? 'تم حذف ${member.name} بنجاح'
+                    : 'تعذر حذف ${member.name}: ${provider.backendSyncError ?? 'حاول مرة أخرى'}',
+                type: deleted
+                    ? AppPopupNotificationType.success
+                    : AppPopupNotificationType.error,
+              );
             },
             child: const Text('حذف'),
           ),
@@ -1126,8 +1216,7 @@ class _AdminResidentDetailScreenState
             borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Color(0xFF0ea5e9), width: 1.5)),
+            borderSide: const BorderSide(color: Color(0xFF0ea5e9), width: 1.5)),
       ),
     );
   }
@@ -1249,7 +1338,9 @@ class _AdminResidentDetailScreenState
 
   void _editSection(String title) {
     final appData = ref.read(appRiverpod);
-    final resident = appData.residentFiles.where((r) => r.id == widget.residentId).firstOrNull;
+    final resident = appData.residentFiles
+        .where((r) => r.id == widget.residentId)
+        .firstOrNull;
     if (resident == null) return;
 
     switch (title) {
@@ -1288,13 +1379,16 @@ class _AdminResidentDetailScreenState
         text: nameParts.isNotEmpty ? nameParts.first : '');
     final lastCtrl = TextEditingController(
         text: nameParts.length > 1 ? nameParts.skip(1).join(' ') : '');
+    final nameEnCtrl = TextEditingController(text: resident.nameEn);
     final roomCtrl = TextEditingController(text: resident.room);
+    final phoneCtrl = TextEditingController(text: resident.phone ?? '');
+    final nationalIdCtrl =
+        TextEditingController(text: resident.nationalId ?? '');
+    String selectedGender = _genderForForm(resident.gender);
     // Birth year derived from age (approximate)
     final currentYear = DateTime.now().year;
     final birthYearCtrl = TextEditingController(
-        text: resident.age != null
-            ? '${currentYear - resident.age!}'
-            : '');
+        text: resident.age != null ? '${currentYear - resident.age!}' : '');
 
     showModalBottomSheet(
       context: context,
@@ -1304,28 +1398,41 @@ class _AdminResidentDetailScreenState
         bool saving = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) => Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('تعديل البيانات الشخصية',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   _field('الاسم الأول', firstCtrl),
                   const SizedBox(height: 12),
                   _field('اسم العائلة', lastCtrl),
                   const SizedBox(height: 12),
+                  _field('الاسم بالإنجليزية', nameEnCtrl, ltr: true),
+                  const SizedBox(height: 12),
                   _field('رقم الغرفة', roomCtrl,
                       keyboardType: TextInputType.number),
+                  const SizedBox(height: 12),
+                  _field('رقم الهاتف / المعرف', phoneCtrl,
+                      keyboardType: TextInputType.phone),
+                  const SizedBox(height: 12),
+                  _field('الرقم القومي', nationalIdCtrl),
+                  const SizedBox(height: 12),
+                  _genderField(
+                    current: selectedGender,
+                    onChanged: (value) =>
+                        setSheetState(() => selectedGender = value),
+                  ),
                   const SizedBox(height: 12),
                   _field('سنة الميلاد (مثال: 1950)', birthYearCtrl,
                       keyboardType: TextInputType.number),
@@ -1349,12 +1456,19 @@ class _AdminResidentDetailScreenState
                                   name:
                                       '${firstCtrl.text.trim()} ${lastCtrl.text.trim()}'
                                           .trim(),
+                                  nameEn: nameEnCtrl.text.trim().isEmpty
+                                      ? resident.nameEn
+                                      : nameEnCtrl.text.trim(),
                                   room: roomCtrl.text.trim(),
+                                  phone: phoneCtrl.text.trim(),
+                                  nationalId: nationalIdCtrl.text.trim(),
+                                  gender: selectedGender,
                                   age: birthYear != null
                                       ? DateTime.now().year - birthYear
                                       : resident.age,
                                 );
-                                await BackendMutationService.instance
+                                await ref
+                                    .read(appRiverpod)
                                     .updateResident(updatedResident);
                                 if (birthYear != null) {
                                   await BackendMutationService.instance
@@ -1365,22 +1479,21 @@ class _AdminResidentDetailScreenState
                                 }
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
-                                  ref
-                                      .read(appRiverpod)
-                                      .syncBackendData();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'تم تحديث البيانات بنجاح')),
+                                  ref.read(appRiverpod).syncBackendData();
+                                  _showPopup(
+                                    context,
+                                    'تم تحديث البيانات بنجاح',
+                                    type: AppPopupNotificationType.success,
                                   );
                                 }
                               } catch (e) {
                                 setSheetState(() => saving = false);
                                 if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red),
+                                  final errorText = _friendlyErrorText(e);
+                                  _showPopup(
+                                    ctx,
+                                    'خطأ: $errorText',
+                                    type: AppPopupNotificationType.error,
                                   );
                                 }
                               }
@@ -1405,8 +1518,9 @@ class _AdminResidentDetailScreenState
   }
 
   void _showMedicalInfoForm(SpecialistResidentFile resident) {
-    final allergiesCtrl = TextEditingController(
-        text: (resident.allergies ?? []).join('، '));
+    final bloodCtrl = TextEditingController(text: resident.bloodType ?? '');
+    final allergiesCtrl =
+        TextEditingController(text: (resident.allergies ?? []).join('، '));
     final diseasesCtrl = TextEditingController(
         text: (resident.chronicDiseases ?? []).join('، '));
 
@@ -1414,6 +1528,8 @@ class _AdminResidentDetailScreenState
       title: 'تعديل الملف الطبي',
       color: const Color(0xFFEF4444),
       fields: [
+        _field('فصيلة الدم', bloodCtrl),
+        const SizedBox(height: 12),
         _field('الأمراض المزمنة (مفصولة بفاصلة)', diseasesCtrl),
         const SizedBox(height: 12),
         _field('الحساسية (مفصولة بفاصلة)', allergiesCtrl),
@@ -1421,6 +1537,11 @@ class _AdminResidentDetailScreenState
       onSave: () async {
         final diseases = _splitCSV(diseasesCtrl.text);
         final allergies = _splitCSV(allergiesCtrl.text);
+        final updatedResident = resident.copyWith(
+          bloodType: bloodCtrl.text.trim(),
+          chronicDiseases: diseases,
+          allergies: allergies,
+        );
         await BackendMutationService.instance.upsertMedicalInfo(
           residentId: resident.id,
           info: ResidentMedicalInfo(
@@ -1429,32 +1550,45 @@ class _AdminResidentDetailScreenState
             allergies: allergies,
           ),
         );
+        await ref.read(appRiverpod).updateResident(updatedResident);
       },
     );
   }
 
   void _showMobilityForm(SpecialistResidentFile resident) {
-    final mobilityCtrl = TextEditingController(
-        text: resident.mobilityStatus ?? '');
+    final mobilityCtrl =
+        TextEditingController(text: resident.mobilityStatus ?? '');
+    final assistiveDevicesCtrl = TextEditingController(
+        text: (resident.assistiveDevices ?? []).join('، '));
+    final cognitiveCtrl =
+        TextEditingController(text: resident.cognitiveStatus ?? '');
 
     _showSimpleEditSheet(
       title: 'تعديل الحالة الحركية',
       color: const Color(0xFF6366F1),
       fields: [
         _field('حالة الحركة (مثال: مستقل، كرسي متحرك)', mobilityCtrl),
+        const SizedBox(height: 12),
+        _field('الأجهزة المساعدة (مفصولة بفاصلة)', assistiveDevicesCtrl),
+        const SizedBox(height: 12),
+        _field('الحالة الذهنية', cognitiveCtrl),
       ],
-      onSave: () => BackendMutationService.instance.updateMobilityAndCognitive(
-        residentId: resident.id,
-        mobilityStatus: mobilityCtrl.text.trim(),
-        cognitiveStatus: '',
-      ),
+      onSave: () => ref.read(appRiverpod).updateResident(
+            resident.copyWith(
+              mobilityStatus: mobilityCtrl.text.trim(),
+              assistiveDevices: _splitCSV(assistiveDevicesCtrl.text),
+              cognitiveStatus: cognitiveCtrl.text.trim(),
+            ),
+          ),
     );
   }
 
   void _showDietForm(SpecialistResidentFile resident) {
-    final dietCtrl = TextEditingController(
-        text: resident.dietType ?? '');
-    final restrictionsCtrl = TextEditingController(text: '');
+    final dietCtrl = TextEditingController(text: resident.dietType ?? '');
+    final restrictionsCtrl = TextEditingController(
+        text: (resident.foodRestrictions ?? []).join('، '));
+    final preferencesCtrl =
+        TextEditingController(text: resident.foodPreferences ?? '');
 
     _showSimpleEditSheet(
       title: 'تعديل النظام الغذائي',
@@ -1463,13 +1597,16 @@ class _AdminResidentDetailScreenState
         _field('نوع النظام الغذائي (مثال: عادي، مهروس، سوائل)', dietCtrl),
         const SizedBox(height: 12),
         _field('الممنوعات الغذائية (مفصولة بفاصلة)', restrictionsCtrl),
+        const SizedBox(height: 12),
+        _field('تفضيلات الطعام', preferencesCtrl),
       ],
-      onSave: () => BackendMutationService.instance.updateDiet(
-        residentId: resident.id,
-        dietType: dietCtrl.text.trim(),
-        foodPreferences: '',
-        foodRestrictions: _splitCSV(restrictionsCtrl.text),
-      ),
+      onSave: () => ref.read(appRiverpod).updateResident(
+            resident.copyWith(
+              dietType: dietCtrl.text.trim(),
+              foodPreferences: preferencesCtrl.text.trim(),
+              foodRestrictions: _splitCSV(restrictionsCtrl.text),
+            ),
+          ),
     );
   }
 
@@ -1479,10 +1616,25 @@ class _AdminResidentDetailScreenState
       .where((s) => s.isNotEmpty)
       .toList();
 
+  String _friendlyErrorText(Object error) {
+    final text = error.toString();
+    final match = RegExp(r'ApiException\(\d+\):\s*(.*)$').firstMatch(text);
+    return match?.group(1) ?? text;
+  }
+
+  String _genderLabel(String gender) {
+    final normalized = gender.trim().toLowerCase();
+    if (normalized == 'female' || normalized == 'أنثى') return 'أنثى';
+    if (normalized == 'male' || normalized == 'ذكر') return 'ذكر';
+    if (normalized == 'other' || normalized == 'آخر') return 'آخر';
+    return gender.isEmpty ? 'غير محدد' : gender;
+  }
+
   void _showInsuranceForm(SpecialistResidentFile resident) {
-    final insuranceCtrl = TextEditingController(
-        text: resident.insuranceInfo ?? '');
-    final doctorCtrl = TextEditingController(text: '');
+    final insuranceCtrl =
+        TextEditingController(text: resident.insuranceInfo ?? '');
+    final doctorCtrl =
+        TextEditingController(text: resident.primaryDoctorName ?? '');
 
     _showSimpleEditSheet(
       title: 'تعديل التأمين والجهة المعالجة',
@@ -1492,11 +1644,12 @@ class _AdminResidentDetailScreenState
         const SizedBox(height: 12),
         _field('اسم الطبيب المتابع', doctorCtrl),
       ],
-      onSave: () => BackendMutationService.instance.updateInsurance(
-        residentId: resident.id,
-        insuranceInfo: insuranceCtrl.text.trim(),
-        primaryDoctorName: doctorCtrl.text.trim(),
-      ),
+      onSave: () => ref.read(appRiverpod).updateResident(
+            resident.copyWith(
+              insuranceInfo: insuranceCtrl.text.trim(),
+              primaryDoctorName: doctorCtrl.text.trim(),
+            ),
+          ),
     );
   }
 
@@ -1505,8 +1658,7 @@ class _AdminResidentDetailScreenState
         TextEditingController(text: resident.previousProfession ?? '');
     final hobbiesCtrl =
         TextEditingController(text: (resident.hobbies ?? []).join('، '));
-    final statusCtrl =
-        TextEditingController(text: resident.socialStatus ?? '');
+    final statusCtrl = TextEditingController(text: resident.socialStatus ?? '');
 
     _showSimpleEditSheet(
       title: 'تعديل التاريخ الاجتماعي والنشاطات',
@@ -1519,20 +1671,13 @@ class _AdminResidentDetailScreenState
         _field('الحالة الاجتماعية (مثال: متزوج، أرمل)', statusCtrl),
       ],
       onSave: () async {
-        await BackendMutationService.instance.updateSocialHistory(
-          residentId: resident.id,
-          previousProfession: professionCtrl.text.trim(),
-          socialStatus: statusCtrl.text.trim(),
-          hobbies: _splitCSV(hobbiesCtrl.text),
-        );
-        if (mounted) {
-          ref.read(appRiverpod).updateResidentSocialHistory(
-            residentId: resident.id,
-            previousProfession: professionCtrl.text.trim(),
-            socialStatus: statusCtrl.text.trim(),
-            hobbies: _splitCSV(hobbiesCtrl.text),
-          );
-        }
+        await ref.read(appRiverpod).updateResident(
+              resident.copyWith(
+                previousProfession: professionCtrl.text.trim(),
+                socialStatus: statusCtrl.text.trim(),
+                hobbies: _splitCSV(hobbiesCtrl.text),
+              ),
+            );
       },
     );
   }
@@ -1556,9 +1701,9 @@ class _AdminResidentDetailScreenState
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1586,19 +1731,20 @@ class _AdminResidentDetailScreenState
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
                                   ref.read(appRiverpod).syncBackendData();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content:
-                                            Text('تم تحديث البيانات بنجاح')),
+                                  _showPopup(
+                                    context,
+                                    'تم تحديث البيانات بنجاح',
+                                    type: AppPopupNotificationType.success,
                                   );
                                 }
                               } catch (e) {
                                 setSheetState(() => saving = false);
                                 if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red),
+                                  final errorText = _friendlyErrorText(e);
+                                  _showPopup(
+                                    ctx,
+                                    'خطأ: $errorText',
+                                    type: AppPopupNotificationType.error,
                                   );
                                 }
                               }
@@ -1623,9 +1769,12 @@ class _AdminResidentDetailScreenState
   }
 
   void _showEmergencyContactForm(SpecialistResidentFile resident) {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final relationCtrl = TextEditingController();
+    final nameCtrl =
+        TextEditingController(text: resident.emergencyContactName ?? '');
+    final phoneCtrl = TextEditingController(
+        text: resident.emergencyContactPhone ?? resident.phone ?? '');
+    final relationCtrl =
+        TextEditingController(text: resident.emergencyRelation ?? '');
 
     showModalBottomSheet(
       context: context,
@@ -1640,16 +1789,16 @@ class _AdminResidentDetailScreenState
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('تعديل بيانات الطوارئ والوصي',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   _field('اسم جهة الطوارئ', nameCtrl),
                   const SizedBox(height: 12),
@@ -1673,37 +1822,40 @@ class _AdminResidentDetailScreenState
                               final phone = phoneCtrl.text.trim();
                               final relation = relationCtrl.text.trim();
                               if (name.isEmpty || phone.isEmpty) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'أدخل الاسم ورقم الهاتف على الأقل')));
+                                _showPopup(
+                                  ctx,
+                                  'أدخل الاسم ورقم الهاتف على الأقل',
+                                  type: AppPopupNotificationType.warning,
+                                );
                                 return;
                               }
                               setSheetState(() => saving = true);
                               try {
-                                await BackendMutationService.instance
-                                    .updateEmergencyContact(
-                                  residentId: resident.id,
-                                  name: name,
-                                  phone: phone,
-                                  relation: relation,
-                                );
+                                await ref.read(appRiverpod).updateResident(
+                                      resident.copyWith(
+                                        emergencyContactName: name,
+                                        emergencyContactPhone: phone,
+                                        emergencyRelation: relation,
+                                        phone: resident.phone ?? phone,
+                                      ),
+                                    );
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
                                   ref.read(appRiverpod).syncBackendData();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'تم تحديث بيانات الطوارئ بنجاح')),
+                                  _showPopup(
+                                    context,
+                                    'تم تحديث بيانات الطوارئ بنجاح',
+                                    type: AppPopupNotificationType.success,
                                   );
                                 }
                               } catch (e) {
                                 setSheetState(() => saving = false);
                                 if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(
-                                          content: Text('خطأ: $e'),
-                                          backgroundColor: Colors.red));
+                                  _showPopup(
+                                    ctx,
+                                    'خطأ: ${_friendlyErrorText(e)}',
+                                    type: AppPopupNotificationType.error,
+                                  );
                                 }
                               }
                             },
@@ -1727,7 +1879,7 @@ class _AdminResidentDetailScreenState
   }
 
   void _showFamilyLinkForm(SpecialistResidentFile resident) {
-    final emailCtrl = TextEditingController();
+    final emailCtrl = TextEditingController(text: resident.familyEmail ?? '');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1736,26 +1888,25 @@ class _AdminResidentDetailScreenState
         bool saving = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) => Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            padding:
+                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(32))),
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(32))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('إضافة ربط عائلة',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   const Text(
                       'أدخل البريد الإلكتروني لأحد أفراد العائلة لمنحه صلاحية متابعة المقيم.',
-                      style: TextStyle(
-                          fontSize: 13, color: Color(0xFF64748b))),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748b))),
                   const SizedBox(height: 20),
                   _field('البريد الإلكتروني', emailCtrl,
                       keyboardType: TextInputType.emailAddress),
@@ -1773,10 +1924,10 @@ class _AdminResidentDetailScreenState
                           : () async {
                               final email = emailCtrl.text.trim();
                               if (email.isEmpty || !email.contains('@')) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('أدخل بريداً إلكترونياً صحيحاً')),
+                                _showPopup(
+                                  ctx,
+                                  'أدخل بريداً إلكترونياً صحيحاً',
+                                  type: AppPopupNotificationType.warning,
                                 );
                                 return;
                               }
@@ -1789,22 +1940,21 @@ class _AdminResidentDetailScreenState
                                 );
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
-                                  ref
-                                      .read(appRiverpod)
-                                      .syncBackendData();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'تم إرسال دعوة الربط بنجاح')),
+                                  ref.read(appRiverpod).syncBackendData();
+                                  _showPopup(
+                                    context,
+                                    'تم إرسال دعوة الربط بنجاح',
+                                    type: AppPopupNotificationType.success,
                                   );
                                 }
                               } catch (e) {
                                 setSheetState(() => saving = false);
                                 if (ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                        content: Text('خطأ: $e'),
-                                        backgroundColor: Colors.red),
+                                  final errorText = _friendlyErrorText(e);
+                                  _showPopup(
+                                    ctx,
+                                    'خطأ: $errorText',
+                                    type: AppPopupNotificationType.error,
                                   );
                                 }
                               }
@@ -1844,8 +1994,8 @@ class _AdminResidentDetailScreenState
                 size: 48, color: Color(0xFF94a3b8)),
             const SizedBox(height: 16),
             Text('تعديل: $title',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text(
               'سيتوفر هذا النموذج في التحديث القادم.',
@@ -1868,7 +2018,7 @@ class _AdminResidentDetailScreenState
   }
 
   Widget _field(String label, TextEditingController ctrl,
-      {TextInputType keyboardType = TextInputType.text}) {
+      {TextInputType keyboardType = TextInputType.text, bool ltr = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1881,7 +2031,7 @@ class _AdminResidentDetailScreenState
         TextField(
           controller: ctrl,
           keyboardType: keyboardType,
-          textAlign: TextAlign.right,
+          textAlign: ltr ? TextAlign.left : TextAlign.right,
           decoration: InputDecoration(
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1897,33 +2047,143 @@ class _AdminResidentDetailScreenState
     );
   }
 
+  String _genderForForm(String? gender) {
+    final normalized = (gender ?? '').trim().toLowerCase();
+    if (normalized == 'female' || normalized == 'أنثى') return 'female';
+    if (normalized == 'other' || normalized == 'آخر') return 'other';
+    return 'male';
+  }
+
+  Widget _genderField({
+    required String current,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('النوع',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF475569))),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFe2e8f0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: current,
+              isExpanded: true,
+              onChanged: (value) {
+                if (value != null) onChanged(value);
+              },
+              items: const [
+                DropdownMenuItem(value: 'male', child: Text('ذكر')),
+                DropdownMenuItem(value: 'female', child: Text('أنثى')),
+                DropdownMenuItem(value: 'other', child: Text('آخر')),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDocCard(String path) {
-    return GestureDetector(
+    final fileName = _fileNameFromPath(path);
+    return InkWell(
+      onTap: () => _downloadDocument(path),
       onLongPress: () => _confirmDeleteDoc(path),
-      child: Container(
+      borderRadius: BorderRadius.circular(20),
+      child: Ink(
         decoration: BoxDecoration(
           color: const Color(0xFFf8fafc),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFe2e8f0)),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.insert_drive_file_rounded,
-                color: Color(0xFF0369a1), size: 45),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(path,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.insert_drive_file_rounded,
+                  color: Color(0xFF0369a1), size: 42),
+              const SizedBox(height: 10),
+              Text(
+                fileName,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 34,
+                child: OutlinedButton.icon(
+                  onPressed: () => _downloadDocument(path),
+                  icon: const Icon(Icons.download_rounded, size: 16),
+                  label: const Text('تحميل', style: TextStyle(fontSize: 11)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0369a1),
+                    side: const BorderSide(color: Color(0xFFbae6fd)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  String _fileNameFromPath(String path) {
+    final value = path.trim();
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.pathSegments.isNotEmpty) {
+      return Uri.decodeComponent(uri.pathSegments.last);
+    }
+    final name = value.split(RegExp(r'[\\/]')).last;
+    return name.isEmpty ? 'مستند' : name;
+  }
+
+  Future<void> _downloadDocument(String path) async {
+    final value = path.trim();
+    if (value.isEmpty) {
+      _showPopup(
+        context,
+        'لا يوجد رابط صالح لتحميل المستند',
+        type: AppPopupNotificationType.error,
+      );
+      return;
+    }
+
+    final parsed = Uri.tryParse(value);
+    final uri = parsed != null &&
+            (parsed.scheme == 'http' ||
+                parsed.scheme == 'https' ||
+                parsed.scheme == 'file')
+        ? parsed
+        : Uri.file(value);
+    bool opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!mounted) return;
+    _showPopup(
+      context,
+      opened ? 'تم فتح رابط تحميل المستند' : 'تعذر فتح رابط المستند',
+      type: opened
+          ? AppPopupNotificationType.info
+          : AppPopupNotificationType.error,
     );
   }
 
@@ -1981,7 +2241,7 @@ class _AdminResidentDetailScreenState
   Future<void> _pickAndUploadDocument() async {
     final result = await fp.FilePicker.platform.pickFiles(
       type: fp.FileType.custom,
-      allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      allowedExtensions: ResidentDocumentService.allowedExtensions,
       allowMultiple: false,
     );
     if (result == null || result.files.isEmpty) return;
@@ -1992,25 +2252,25 @@ class _AdminResidentDetailScreenState
 
     setState(() => _isUploading = true);
     try {
-      final uploaded = await AiMediaService.instance.uploadFile(
-        filePath: filePath,
+      final doc = await ResidentDocumentService.instance.uploadDocument(
         residentId: widget.residentId,
+        filePath: filePath,
       );
-      final url = uploaded.mediaUrl ?? filePath;
-      final provider = ref.read(appRiverpod);
-      provider.addDocumentToResident(widget.residentId, url);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('تم رفع "${file.name}" بنجاح'),
-          backgroundColor: const Color(0xFF059669),
-        ));
+        ref.read(appRiverpod).addDocumentToResident(widget.residentId, doc.url);
+        _showPopup(
+          context,
+          'تم رفع "${file.name}" بنجاح',
+          type: AppPopupNotificationType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('فشل رفع المستند: $e'),
-          backgroundColor: Colors.red,
-        ));
+        _showPopup(
+          context,
+          'فشل رفع المستند: ${_friendlyErrorText(e)}',
+          type: AppPopupNotificationType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -2085,9 +2345,8 @@ class _AdminResidentDetailScreenState
             _buildAIEmptyState()
           else ...[
             if (aiNotes.summary?.isNotEmpty == true)
-              _buildAISection(
-                  'الملخص', stripUuids(aiNotes.summary!), Icons.summarize_rounded,
-                  const Color(0xFF6366F1)),
+              _buildAISection('الملخص', stripUuids(aiNotes.summary!),
+                  Icons.summarize_rounded, const Color(0xFF6366F1)),
             if (aiNotes.recommendations?.isNotEmpty == true)
               _buildAISection('التوصيات', stripUuids(aiNotes.recommendations!),
                   Icons.recommend_rounded, const Color(0xFF059669)),
@@ -2095,15 +2354,16 @@ class _AdminResidentDetailScreenState
               _buildAISection('التحذيرات', stripUuids(aiNotes.warnings!),
                   Icons.warning_amber_rounded, const Color(0xFFDC2626)),
             if (aiNotes.moodInsights?.isNotEmpty == true)
-              _buildAISection('تحليل المزاج والحالة النفسية',
-                  stripUuids(aiNotes.moodInsights!), Icons.psychology_rounded,
+              _buildAISection(
+                  'تحليل المزاج والحالة النفسية',
+                  stripUuids(aiNotes.moodInsights!),
+                  Icons.psychology_rounded,
                   const Color(0xFF0EA5E9)),
             const SizedBox(height: 8),
             if (aiNotes.lastUpdated != null)
               Text(
                 'آخر تحديث: ${aiNotes.lastUpdated}',
-                style: const TextStyle(
-                    fontSize: 11, color: Color(0xFF94a3b8)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94a3b8)),
                 textAlign: TextAlign.end,
               ),
           ],
@@ -2176,17 +2436,13 @@ class _AdminResidentDetailScreenState
               const SizedBox(width: 8),
               Text(title,
                   style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: color)),
+                      fontSize: 13, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
           const SizedBox(height: 10),
           Text(content,
               style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF374151),
-                  height: 1.6)),
+                  fontSize: 14, color: Color(0xFF374151), height: 1.6)),
         ],
       ),
     );

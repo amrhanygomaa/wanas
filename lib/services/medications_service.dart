@@ -62,6 +62,7 @@ class BackendMedicationSchedule {
 class MedicationsService {
   MedicationsService._();
   static final MedicationsService instance = MedicationsService._();
+  static const elderlyConfirmationNote = 'resident_confirmed_pending_nurse';
 
   Future<List<BackendMedicationSchedule>> getSchedules({
     String? residentId,
@@ -87,14 +88,14 @@ class MedicationsService {
     return [];
   }
 
-  Future<void> logDose({
+  Future<Map<String, dynamic>?> logDose({
     required String scheduleId,
     required String residentId,
     required DateTime scheduledTime,
     required String status,
     String? notes,
   }) async {
-    await ApiClient.instance.post('/medications/doses', body: {
+    final res = await ApiClient.instance.post('/medications/doses', body: {
       'scheduleId': scheduleId,
       'residentId': residentId,
       'scheduledTime': scheduledTime.toIso8601String(),
@@ -102,17 +103,20 @@ class MedicationsService {
       if (status == 'given') 'administeredAt': DateTime.now().toIso8601String(),
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
+    return res is Map ? Map<String, dynamic>.from(res) : null;
   }
 
-  Future<void> updateDose({
+  Future<Map<String, dynamic>?> updateDose({
     required String doseId,
     required String status,
     String? notes,
   }) async {
-    await ApiClient.instance.patch('/medications/doses/$doseId', body: {
+    final res =
+        await ApiClient.instance.patch('/medications/doses/$doseId', body: {
       'status': status,
       if (status == 'given') 'administeredAt': DateTime.now().toIso8601String(),
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
+    return res is Map ? Map<String, dynamic>.from(res) : null;
   }
 }

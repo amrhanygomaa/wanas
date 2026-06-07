@@ -21,15 +21,59 @@ class BackendMutationService {
     });
   }
 
-  Future<void> disableManagedUser(String id) {
-    return ApiClient.instance.patch('/admin/users/$id/disable');
+  Future<void> disableManagedUser(
+    String id, {
+    Iterable<String> fallbackIds = const [],
+  }) async {
+    final ids = <String>[
+      id,
+      ...fallbackIds,
+    ].map((value) => value.trim()).where((value) => value.isNotEmpty).toList();
+
+    final uniqueIds = <String>[];
+    for (final value in ids) {
+      if (!uniqueIds.contains(value)) uniqueIds.add(value);
+    }
+
+    ApiException? lastMissingError;
+    for (final value in uniqueIds) {
+      try {
+        await ApiClient.instance.patch('/admin/users/$value/disable');
+        return;
+      } on ApiException catch (e) {
+        if (_isManagedUserMissing(e)) {
+          lastMissingError = e;
+          continue;
+        }
+        rethrow;
+      }
+    }
+
+    if (lastMissingError != null) {
+      return;
+    }
   }
 
   Future<void> updateManagedUser(StaffPerformance staff) {
-    return ApiClient.instance.patch('/admin/users/${staff.id}', body: {
+    final userId = _managedUserRouteId(staff);
+    return ApiClient.instance.patch('/admin/users/$userId', body: {
       'fullName': staff.name,
       'role': _backendRole(staff.role),
     });
+  }
+
+  String _managedUserRouteId(StaffPerformance staff) {
+    final managedUserId = staff.managedUserId?.trim() ?? '';
+    if (managedUserId.isNotEmpty) return managedUserId;
+    return staff.id;
+  }
+
+  bool _isManagedUserMissing(ApiException error) {
+    final message = error.message.toLowerCase();
+    final body = error.body?.toString().toLowerCase() ?? '';
+    return error.statusCode == 404 ||
+        message.contains('managed user') && message.contains('not found') ||
+        body.contains('managed user') && body.contains('not found');
   }
 
   Future<void> createFamilyMemberForEmail({
@@ -37,30 +81,123 @@ class BackendMutationService {
     String? email,
     String? fullName,
     String relationship = 'عائلة',
-  }) {
+  }) async {
     final derivedName = fullName?.trim().isNotEmpty == true
         ? fullName!
         : (email != null ? email.split('@').first.trim() : 'فرد العائلة');
-    return ApiClient.instance.post('/family-members', body: {
+    final response = await ApiClient.instance.post('/family-members', body: {
       'residentId': residentId,
       'fullName': derivedName,
       'relationship': relationship,
       if (email != null && email.isNotEmpty) 'email': email,
       'isPrimary': false,
     });
+    final memberId = response is Map
+        ? (response['id'] ?? response['memberId'])?.toString()
+        : null;
+    if (email != null && email.trim().isNotEmpty) {
+      await sendFamilyInviteEmail(
+        residentId: residentId,
+        memberId: memberId,
+        email: email,
+        fullName: derivedName,
+      );
+    }
   }
 
   Future<void> updateFamilyMemberEmail({
     required String memberId,
     required String email,
-  }) {
-    return ApiClient.instance.patch('/family-members/$memberId', body: {
+    String? residentId,
+    String? fullName,
+  }) async {
+    final response =
+        await ApiClient.instance.patch('/family-members/$memberId', body: {
       'email': email,
     });
+    final resolvedResidentId = residentId ??
+        (response is Map
+            ? (response['residentId'] ?? response['resident_id'])?.toString()
+            : null);
+    await sendFamilyInviteEmail(
+      residentId: resolvedResidentId,
+      memberId: memberId,
+      email: email,
+      fullName: fullName ?? 'فرد العائلة',
+    );
   }
 
   Future<void> deleteFamilyMember(String memberId) {
     return ApiClient.instance.delete('/family-members/$memberId');
+  }
+
+  Future<void> sendFamilyInviteEmail({
+    String? residentId,
+    String? memberId,
+    required String email,
+    required String fullName,
+  }) async {
+    final cleanEmail = email.trim();
+    if (cleanEmail.isEmpty) return;
+
+    try {
+      await createManagedUser(
+        email: cleanEmail,
+        fullName: fullName.trim().isEmpty
+            ? cleanEmail.split('@').first
+            : fullName.trim(),
+        role: 'Family',
+        temporaryPassword: _temporaryFamilyPassword(),
+      );
+      return;
+    } on ApiException catch (e) {
+      if (e.statusCode != 409) rethrow;
+    }
+
+    if (memberId != null && memberId.isNotEmpty) {
+      try {
+        await ApiClient.instance
+            .post('/family-members/$memberId/invite', body: {
+          'email': cleanEmail,
+          if (residentId != null && residentId.isNotEmpty)
+            'residentId': residentId,
+        });
+        return;
+      } on ApiException catch (_) {
+        // Fallback below nudges existing users by email when resend is unavailable.
+      }
+    }
+
+    try {
+      await ApiClient.instance.post(
+        '/auth/resend-confirmation-code',
+        auth: false,
+        body: {'email': cleanEmail},
+      );
+      return;
+    } on ApiException catch (_) {
+      // Older backend builds do not expose resend-confirmation yet.
+    }
+
+    try {
+      await ApiClient.instance.post(
+        '/auth/forgot-password',
+        auth: false,
+        body: {'email': cleanEmail},
+      );
+    } on ApiException catch (e) {
+      throw ApiException(
+        e.statusCode,
+        'تم حفظ فرد العائلة، لكن تعذر إرسال بريد الدعوة لهذا البريد',
+        e.body,
+      );
+    }
+  }
+
+  Future<void> deleteResident(String residentId) {
+    return ApiClient.instance.patch('/residents/$residentId', body: {
+      'status': 'discharged',
+    });
   }
 
   // إنشاء قريب من جهة اتصال الهاتف — يُرجع id الباك اند أو null عند الفشل
@@ -89,11 +226,47 @@ class BackendMutationService {
       'firstName': nameParts.isEmpty ? resident.name : nameParts.first,
       'lastName': nameParts.length > 1 ? nameParts.skip(1).join(' ') : '-',
       'dateOfBirth': _birthDateFromAge(resident.age),
-      'gender': 'male',
+      'gender': _genderForApi(resident.gender),
       'roomNumber': resident.room,
       'admissionDate': _dateOnly(DateTime.now()),
       'status': 'active',
       'notes': resident.categories.join(', '),
+      if (resident.phone?.trim().isNotEmpty == true)
+        'phone': resident.phone!.trim(),
+      if (resident.nationalId?.trim().isNotEmpty == true)
+        'nationalId': resident.nationalId!.trim(),
+      if (resident.emergencyContactName?.trim().isNotEmpty == true)
+        'emergencyContactName': resident.emergencyContactName!.trim(),
+      if (resident.emergencyContactPhone?.trim().isNotEmpty == true)
+        'emergencyContactPhone': resident.emergencyContactPhone!.trim(),
+      if (resident.emergencyRelation?.trim().isNotEmpty == true)
+        'emergencyRelation': resident.emergencyRelation!.trim(),
+      if (resident.bloodType?.trim().isNotEmpty == true)
+        'bloodType': resident.bloodType!.trim(),
+      if (resident.chronicDiseases != null)
+        'chronicDiseases': resident.chronicDiseases,
+      if (resident.allergies != null) 'allergies': resident.allergies,
+      if (resident.insuranceInfo?.trim().isNotEmpty == true)
+        'insuranceInfo': resident.insuranceInfo!.trim(),
+      if (resident.primaryDoctorName?.trim().isNotEmpty == true)
+        'primaryDoctorName': resident.primaryDoctorName!.trim(),
+      if (resident.mobilityStatus?.trim().isNotEmpty == true)
+        'mobilityStatus': resident.mobilityStatus!.trim(),
+      if (resident.assistiveDevices != null)
+        'assistiveDevices': resident.assistiveDevices,
+      if (resident.cognitiveStatus?.trim().isNotEmpty == true)
+        'cognitiveStatus': resident.cognitiveStatus!.trim(),
+      if (resident.dietType?.trim().isNotEmpty == true)
+        'dietType': resident.dietType!.trim(),
+      if (resident.foodRestrictions != null)
+        'foodRestrictions': resident.foodRestrictions,
+      if (resident.foodPreferences?.trim().isNotEmpty == true)
+        'foodPreferences': resident.foodPreferences!.trim(),
+      if (resident.previousProfession?.trim().isNotEmpty == true)
+        'previousProfession': resident.previousProfession!.trim(),
+      if (resident.hobbies != null) 'hobbies': resident.hobbies,
+      if (resident.socialStatus?.trim().isNotEmpty == true)
+        'socialStatus': resident.socialStatus!.trim(),
     });
   }
 
@@ -105,6 +278,44 @@ class BackendMutationService {
       if (resident.age != null) 'dateOfBirth': _birthDateFromAge(resident.age),
       'roomNumber': resident.room,
       'status': resident.status == 'archived' ? 'discharged' : 'active',
+      if (resident.phone?.trim().isNotEmpty == true)
+        'phone': resident.phone!.trim(),
+      if (resident.nationalId?.trim().isNotEmpty == true)
+        'nationalId': resident.nationalId!.trim(),
+      if (resident.gender?.trim().isNotEmpty == true)
+        'gender': _genderForApi(resident.gender),
+      if (resident.emergencyContactName?.trim().isNotEmpty == true)
+        'emergencyContactName': resident.emergencyContactName!.trim(),
+      if (resident.emergencyContactPhone?.trim().isNotEmpty == true)
+        'emergencyContactPhone': resident.emergencyContactPhone!.trim(),
+      if (resident.emergencyRelation?.trim().isNotEmpty == true)
+        'emergencyRelation': resident.emergencyRelation!.trim(),
+      if (resident.bloodType?.trim().isNotEmpty == true)
+        'bloodType': resident.bloodType!.trim(),
+      if (resident.chronicDiseases != null)
+        'chronicDiseases': resident.chronicDiseases,
+      if (resident.allergies != null) 'allergies': resident.allergies,
+      if (resident.insuranceInfo?.trim().isNotEmpty == true)
+        'insuranceInfo': resident.insuranceInfo!.trim(),
+      if (resident.primaryDoctorName?.trim().isNotEmpty == true)
+        'primaryDoctorName': resident.primaryDoctorName!.trim(),
+      if (resident.mobilityStatus?.trim().isNotEmpty == true)
+        'mobilityStatus': resident.mobilityStatus!.trim(),
+      if (resident.assistiveDevices != null)
+        'assistiveDevices': resident.assistiveDevices,
+      if (resident.cognitiveStatus?.trim().isNotEmpty == true)
+        'cognitiveStatus': resident.cognitiveStatus!.trim(),
+      if (resident.dietType?.trim().isNotEmpty == true)
+        'dietType': resident.dietType!.trim(),
+      if (resident.foodRestrictions != null)
+        'foodRestrictions': resident.foodRestrictions,
+      if (resident.foodPreferences?.trim().isNotEmpty == true)
+        'foodPreferences': resident.foodPreferences!.trim(),
+      if (resident.previousProfession?.trim().isNotEmpty == true)
+        'previousProfession': resident.previousProfession!.trim(),
+      if (resident.hobbies != null) 'hobbies': resident.hobbies,
+      if (resident.socialStatus?.trim().isNotEmpty == true)
+        'socialStatus': resident.socialStatus!.trim(),
     });
   }
 
@@ -294,12 +505,31 @@ class BackendMutationService {
     });
   }
 
-  Future<void> approveVisit(String id) {
-    return ApiClient.instance.patch('/family-bridge/visits/$id/approve');
+  Future<void> approveVisit(String id) async {
+    try {
+      await ApiClient.instance.patch('/family-bridge/visits/$id/approve');
+    } on ApiException {
+      await updateVisitStatus(id, 'approved');
+    }
   }
 
-  Future<void> rejectVisit(String id) {
-    return ApiClient.instance.patch('/family-bridge/visits/$id/reject');
+  Future<void> rejectVisit(String id) async {
+    try {
+      await ApiClient.instance.patch('/family-bridge/visits/$id/reject');
+    } on ApiException {
+      await updateVisitStatus(id, 'rejected');
+    }
+  }
+
+  Future<void> cancelVisit(String id) {
+    return updateVisitStatus(id, 'cancelled');
+  }
+
+  Future<void> updateVisitStatus(String id, String status) {
+    return ApiClient.instance.patch(
+      '/family-bridge/visits/$id/status',
+      body: {'status': status},
+    );
   }
 
   Future<void> payBill(String id) {
@@ -523,6 +753,14 @@ class BackendMutationService {
     return ApiClient.instance.patch('/volunteers/bookings/$id/cancel');
   }
 
+  Future<void> approveVolunteerApplication(String id) {
+    return ApiClient.instance.patch('/volunteers/admin/bookings/$id/approve');
+  }
+
+  Future<void> rejectVolunteerApplication(String id) {
+    return ApiClient.instance.patch('/volunteers/admin/bookings/$id/reject');
+  }
+
   Future<void> confirmVolunteerAttendance(String id) {
     return ApiClient.instance
         .patch('/volunteers/bookings/$id/confirm-attendance');
@@ -578,6 +816,18 @@ class BackendMutationService {
     final now = DateTime.now();
     final year = now.year - (age ?? 75);
     return '$year-01-01';
+  }
+
+  static String _genderForApi(String? gender) {
+    final normalized = (gender ?? '').trim().toLowerCase();
+    if (normalized == 'female' || normalized == 'أنثى') return 'female';
+    if (normalized == 'other' || normalized == 'آخر') return 'other';
+    return 'male';
+  }
+
+  static String _temporaryFamilyPassword() {
+    final stamp = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    return 'Wanas#${stamp}Aa1';
   }
 
   static String _dateOnly(DateTime date) {
@@ -663,6 +913,9 @@ class BackendMutationService {
       'points': opportunity.points,
       'description': opportunity.description,
       'totalSlots': opportunity.totalSlots,
+      'targetAudience': opportunity.targetAudience,
+      'targetResident': opportunity.targetResident,
+      'requiredSkills': opportunity.requiredSkills,
     };
   }
 }

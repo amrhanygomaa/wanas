@@ -22,7 +22,6 @@ class NavWrapper extends ConsumerStatefulWidget {
 }
 
 class _NavWrapperState extends ConsumerState<NavWrapper> {
-
   @override
   Widget build(BuildContext context) {
     // دالة بناء الواجهة
@@ -40,6 +39,7 @@ class _NavWrapperState extends ConsumerState<NavWrapper> {
     return TaptabaScaffold(
       title: 'ونس',
       overrideRole: 'مسن',
+      extendBody: false,
       bottomNavigationBar: BottomNavBar(
         currentIndex: provider.currentElderlyTabIndex,
         onTap: (index) => provider.setElderlyTabIndex(index),

@@ -15,7 +15,7 @@ class SpecialistChatsListScreen extends ConsumerWidget {
           {
             'name': family.name,
             'resident': 'غرفة ${resident.room}',
-            'lastMsg': 'لا توجد رسائل حديثة من AWS',
+            'lastMsg': 'لا توجد رسائل حديثة من السيرفر',
             'time': '',
             'unread': '٠',
             'av': family.initials,
@@ -39,7 +39,7 @@ class SpecialistChatsListScreen extends ConsumerWidget {
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: chats.isEmpty
-            ? const Center(child: Text('لا توجد محادثات عائلية من AWS'))
+            ? const Center(child: Text('لا توجد محادثات عائلية من السيرفر'))
             : ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 itemCount: chats.length,

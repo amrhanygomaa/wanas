@@ -244,8 +244,7 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
                   _isGeneratingSummary = true;
                 });
                 try {
-                  final summary =
-                      await provider.generateShiftSummary('الكل');
+                  final summary = await provider.generateShiftSummary('الكل');
                   setState(() {
                     _aiSummary = summary;
                     _isGeneratingSummary = false;
@@ -258,8 +257,7 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
                 }
               },
               child: const Text('إعادة المحاولة',
-                  style:
-                      TextStyle(fontSize: 11, color: Color(0xFFF97316))),
+                  style: TextStyle(fontSize: 11, color: Color(0xFFF97316))),
             ),
           ],
         ),
@@ -295,8 +293,7 @@ class _ShiftHandoffScreenState extends ConsumerState<ShiftHandoffScreen> {
                   _aiSummaryFailed = false;
                 });
                 try {
-                  final summary =
-                      await provider.generateShiftSummary('الكل');
+                  final summary = await provider.generateShiftSummary('الكل');
                   setState(() {
                     _aiSummary = summary;
                     _isGeneratingSummary = false;

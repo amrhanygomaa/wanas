@@ -315,7 +315,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
       return const Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          'لا توجد بيانات مقيمين من AWS حتى الآن',
+          'لا توجد بيانات مقيمين من السيرفر حتى الآن',
           textAlign: TextAlign.center,
           style:
               TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold),
@@ -424,7 +424,7 @@ class _NurseResidentsScreenState extends ConsumerState<NurseResidentsScreen>
       ...?resident.chronicDiseases,
       ...resident.categories,
     ].where((item) => item.trim().isNotEmpty).toList();
-    return items.isEmpty ? 'من AWS' : items.join(' + ');
+    return items.isEmpty ? 'من السيرفر' : items.join(' + ');
   }
 
   Widget _buildResidentCard({

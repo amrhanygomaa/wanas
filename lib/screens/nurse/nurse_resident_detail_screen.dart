@@ -676,8 +676,7 @@ class _NurseResidentDetailScreenState
               .where((r) => r.name.contains(widget.residentName))
               .map((r) => r.id)
               .firstOrNull;
-          return provider.refreshAiInsightFromBackend(
-              residentId: residentId);
+          return provider.refreshAiInsightFromBackend(residentId: residentId);
         },
         child: provider.isLoadingAiInsight
             ? const Center(child: CircularProgressIndicator())
@@ -717,8 +716,7 @@ class _NurseResidentDetailScreenState
                     itemCount: insights.length,
                     itemBuilder: (_, i) {
                       final insight = insights[i];
-                      final isCritical =
-                          insight.type == 'predictive_alert';
+                      final isCritical = insight.type == 'predictive_alert';
                       final color = isCritical
                           ? const Color(0xFFDC2626)
                           : const Color(0xFF6366F1);
@@ -729,8 +727,7 @@ class _NurseResidentDetailScreenState
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                              color: color.withValues(alpha: 0.25),
-                              width: 1.5),
+                              color: color.withValues(alpha: 0.25), width: 1.5),
                           boxShadow: [
                             BoxShadow(
                                 color: color.withValues(alpha: 0.06),
@@ -748,8 +745,7 @@ class _NurseResidentDetailScreenState
                                       horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
                                       color: color.withValues(alpha: 0.1),
-                                      borderRadius:
-                                          BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8)),
                                   child: Text(
                                     isCritical ? 'تنبيه حرج' : 'توصية',
                                     style: TextStyle(
@@ -762,8 +758,7 @@ class _NurseResidentDetailScreenState
                                 Text(
                                   '${insight.generationDate.day}/${insight.generationDate.month}',
                                   style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xFF94a3b8)),
+                                      fontSize: 11, color: Color(0xFF94a3b8)),
                                 ),
                               ],
                             ),

@@ -8,6 +8,8 @@ import '../screens/nurse/nurse_profile_screen.dart'; // شاشة الملف ال
 import 'accessibility_dialog.dart'; // حوار إعدادات سهولة الوصول
 import '../screens/admin/views/ai_warnings_view.dart'; // صفحة توصيات الذكاء الاصطناعي
 import '../screens/common/about_wanas_screen.dart';
+import '../screens/common/help_support_screen.dart';
+import '../screens/common/account_settings_screen.dart';
 
 class TaptabaDrawer extends ConsumerWidget {
   // فئة القائمة الجانبية الموحدة
@@ -158,6 +160,22 @@ class TaptabaDrawer extends ConsumerWidget {
                         ),
                       ],
                       _buildPremiumMenuItem(
+                        // إعدادات التطبيق
+                        context,
+                        Icons.settings_outlined,
+                        'إعدادات التطبيق',
+                        () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const AccountSettingsScreen()),
+                          );
+                        },
+                        themeColor,
+                        hc,
+                      ),
+                      _buildPremiumMenuItem(
                         // إعدادات الوصول
                         context,
                         Icons.text_fields_rounded,
@@ -179,7 +197,14 @@ class TaptabaDrawer extends ConsumerWidget {
                         context,
                         Icons.support_agent_rounded,
                         'مركز المساعدة',
-                        () {},
+                        () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const HelpSupportScreen()),
+                          );
+                        },
                         themeColor,
                         hc,
                       ),

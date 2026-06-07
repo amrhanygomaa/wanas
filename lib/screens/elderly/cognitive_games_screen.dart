@@ -24,7 +24,9 @@ class _CognitiveGamesScreenState extends ConsumerState<CognitiveGamesScreen> {
         backgroundColor: const Color(0xFF3B82F6),
         foregroundColor: Colors.white,
         title: Text(
-          _selectedGame == -1 ? 'ألعاب وتدريبات ذهنية 🧠' : _gameTitle(_selectedGame),
+          _selectedGame == -1
+              ? 'ألعاب وتدريبات ذهنية 🧠'
+              : _gameTitle(_selectedGame),
           style: const TextStyle(
               fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 17),
         ),
@@ -43,9 +45,7 @@ class _CognitiveGamesScreenState extends ConsumerState<CognitiveGamesScreen> {
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(20))),
       ),
-      body: _selectedGame == -1
-          ? _buildGamesList()
-          : _buildGame(_selectedGame),
+      body: _selectedGame == -1 ? _buildGamesList() : _buildGame(_selectedGame),
     );
   }
 
@@ -245,9 +245,7 @@ class _CognitiveGamesScreenState extends ConsumerState<CognitiveGamesScreen> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: i < 3
-                            ? medalColors[i]
-                            : const Color(0xFFE2E8F0),
+                        color: i < 3 ? medalColors[i] : const Color(0xFFE2E8F0),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -266,9 +264,8 @@ class _CognitiveGamesScreenState extends ConsumerState<CognitiveGamesScreen> {
                         e.name + (e.isMe ? ' (أنت)' : ''),
                         style: TextStyle(
                             fontSize: 14,
-                            fontWeight: e.isMe
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            fontWeight:
+                                e.isMe ? FontWeight.bold : FontWeight.normal,
                             color: const Color(0xFF1e293b)),
                       ),
                     ),
@@ -348,13 +345,20 @@ class _CognitiveGamesScreenState extends ConsumerState<CognitiveGamesScreen> {
 
   Widget _buildGame(int index) {
     switch (index) {
-      case 0: return _NumberMemoryGame(onComplete: _onGameComplete);
-      case 1: return _FocusQuestionGame(onComplete: _onGameComplete);
-      case 2: return _WordRecallGame(onComplete: _onGameComplete);
-      case 3: return _MemoryMatchGame(onComplete: _onGameComplete);
-      case 4: return _WordCompleteGame(onComplete: _onGameComplete);
-      case 5: return _CrosswordGame(onComplete: _onGameComplete);
-      default: return const SizedBox.shrink();
+      case 0:
+        return _NumberMemoryGame(onComplete: _onGameComplete);
+      case 1:
+        return _FocusQuestionGame(onComplete: _onGameComplete);
+      case 2:
+        return _WordRecallGame(onComplete: _onGameComplete);
+      case 3:
+        return _MemoryMatchGame(onComplete: _onGameComplete);
+      case 4:
+        return _WordCompleteGame(onComplete: _onGameComplete);
+      case 5:
+        return _CrosswordGame(onComplete: _onGameComplete);
+      default:
+        return const SizedBox.shrink();
     }
   }
 
@@ -384,7 +388,8 @@ class _LeaderboardEntry {
   final String name;
   final int score;
   final bool isMe;
-  _LeaderboardEntry({required this.name, required this.score, required this.isMe});
+  _LeaderboardEntry(
+      {required this.name, required this.score, required this.isMe});
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -431,13 +436,15 @@ class _NumberMemoryGameState extends State<_NumberMemoryGame> {
       if (correct) {
         _score += 2;
         if (_round >= 5) {
-          widget.onComplete(_score.clamp(0, 10), 'ذاكرة ممتازة! تذكرت جميع الأرقام بدقة.');
+          widget.onComplete(
+              _score.clamp(0, 10), 'ذاكرة ممتازة! تذكرت جميع الأرقام بدقة.');
         } else {
           setState(() => _round++);
           Future.delayed(const Duration(milliseconds: 500), _newRound);
         }
       } else {
-        widget.onComplete(_score.clamp(0, 10), 'جيد! استمر في تمرين ذاكرتك يومياً.');
+        widget.onComplete(
+            _score.clamp(0, 10), 'جيد! استمر في تمرين ذاكرتك يومياً.');
       }
     }
     setState(() {});
@@ -450,8 +457,7 @@ class _NumberMemoryGameState extends State<_NumberMemoryGame> {
       child: Column(
         children: [
           Text('الجولة $_round من 5',
-              style: const TextStyle(
-                  fontSize: 14, color: Color(0xFF64748B))),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF64748B))),
           const SizedBox(height: 24),
           if (_showing) ...[
             const Text('احفظ هذه الأرقام',
@@ -495,17 +501,17 @@ class _NumberMemoryGameState extends State<_NumberMemoryGame> {
             Text('${_userInput.length} / ${_sequence.length}',
                 style: const TextStyle(color: Color(0xFF64748B))),
             const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
               children: List.generate(9, (i) {
                 final n = i + 1;
                 return GestureDetector(
                   onTap: () => _tap(n),
                   child: Container(
-                    width: 70,
-                    height: 70,
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(14),
@@ -584,11 +590,13 @@ class _FocusQuestionGameState extends State<_FocusQuestionGame> {
     });
     Future.delayed(const Duration(milliseconds: 900), () {
       if (_current + 1 >= _questions.length) {
-        widget.onComplete(_score.clamp(0, 10), _score >= 8
-            ? 'تركيز رائع! ذهنك نشيط.'
-            : _score >= 4
-                ? 'جيد! تمرين منتظم سيحسّن تركيزك.'
-                : 'لا بأس، استمر في التمرين اليومي.');
+        widget.onComplete(
+            _score.clamp(0, 10),
+            _score >= 8
+                ? 'تركيز رائع! ذهنك نشيط.'
+                : _score >= 4
+                    ? 'جيد! تمرين منتظم سيحسّن تركيزك.'
+                    : 'لا بأس، استمر في التمرين اليومي.');
       } else {
         setState(() {
           _current++;
@@ -697,18 +705,19 @@ class _WordRecallGameState extends State<_WordRecallGame> {
   @override
   void initState() {
     super.initState();
-    _words = List.from(_wordLists[_rng.nextInt(_wordLists.length)])..shuffle(_rng);
+    _words = List.from(_wordLists[_rng.nextInt(_wordLists.length)])
+      ..shuffle(_rng);
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) setState(() => _showingWords = false);
     });
   }
 
   void _submit() {
-    final correct = _answers
-        .where((a) => _words.any((w) => w.trim() == a.trim()))
-        .length;
+    final correct =
+        _answers.where((a) => _words.any((w) => w.trim() == a.trim())).length;
     final score = (correct * 2).clamp(0, 10);
-    widget.onComplete(score,
+    widget.onComplete(
+        score,
         correct >= 4
             ? 'ذاكرة قوية! تذكرت $correct كلمات من أصل ${_words.length}.'
             : 'تذكرت $correct كلمات. الممارسة المنتظمة تقوي الذاكرة.');
@@ -739,7 +748,8 @@ class _WordRecallGameState extends State<_WordRecallGame> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFECFDF5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: const Color(0xFF059669).withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -769,8 +779,7 @@ class _WordRecallGameState extends State<_WordRecallGame> {
             const SizedBox(height: 20),
             _WordInputField(
               onAdd: (word) {
-                if (word.trim().isNotEmpty &&
-                    !_answers.contains(word.trim())) {
+                if (word.trim().isNotEmpty && !_answers.contains(word.trim())) {
                   setState(() => _answers.add(word.trim()));
                 }
               },
@@ -788,8 +797,7 @@ class _WordRecallGameState extends State<_WordRecallGame> {
                                 fontWeight: FontWeight.bold)),
                         backgroundColor: const Color(0xFFECFDF5),
                         deleteIconColor: const Color(0xFF059669),
-                        onDeleted: () =>
-                            setState(() => _answers.remove(w)),
+                        onDeleted: () => setState(() => _answers.remove(w)),
                       ))
                   .toList(),
             ),
@@ -844,16 +852,14 @@ class _WordInputFieldState extends State<_WordInputField> {
               fillColor: Colors.white,
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: Color(0xFFE2E8F0))),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: Color(0xFFE2E8F0))),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                      color: Color(0xFF059669), width: 2)),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF059669), width: 2)),
             ),
           ),
         ),
@@ -865,13 +871,13 @@ class _WordInputFieldState extends State<_WordInputField> {
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF059669),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           ),
           child: const Text('إضافة',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -979,11 +985,11 @@ class _MemoryMatchGameState extends State<_MemoryMatchGame> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('أزواج مكتملة: $matched / 8',
-                  style: const TextStyle(
-                      fontSize: 14, color: Color(0xFF64748B))),
+                  style:
+                      const TextStyle(fontSize: 14, color: Color(0xFF64748B))),
               Text('محاولات: $_attempts',
-                  style: const TextStyle(
-                      fontSize: 14, color: Color(0xFF64748B))),
+                  style:
+                      const TextStyle(fontSize: 14, color: Color(0xFF64748B))),
             ],
           ),
           const SizedBox(height: 20),
@@ -1138,8 +1144,7 @@ class _WordCompleteGameState extends State<_WordCompleteGame> {
           ),
           const SizedBox(height: 6),
           Text('السؤال ${_current + 1} من ${_questions.length}',
-              style:
-                  const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 28),
           Container(
             padding: const EdgeInsets.all(20),
@@ -1230,9 +1235,8 @@ class _CrosswordGameState extends State<_CrosswordGame> {
     setState(() {
       _answered = true;
       _score += correct ? 2 : 0;
-      _feedback = correct
-          ? 'صحيح! '
-          : 'الإجابة الصحيحة: ${_puzzles[_current].answer}';
+      _feedback =
+          correct ? 'صحيح! ' : 'الإجابة الصحيحة: ${_puzzles[_current].answer}';
     });
   }
 
@@ -1346,8 +1350,8 @@ class _CrosswordGameState extends State<_CrosswordGame> {
                     borderSide: const BorderSide(color: Color(0xFF0EA5E9))),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                        color: Color(0xFF0EA5E9), width: 2)),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF0EA5E9), width: 2)),
               ),
               onSubmitted: (_) => _check(),
             ),
@@ -1391,8 +1395,8 @@ class _CrosswordGameState extends State<_CrosswordGame> {
                         ? 'عرض النتيجة'
                         : 'السؤال التالي')
                     : 'تحقق من الإجابة',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),

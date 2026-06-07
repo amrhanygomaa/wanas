@@ -218,7 +218,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         break;
       case 'عائلة':
         dynamicSubtitle =
-            'حساب العائلة — قريب المقيم: ${provider.residentFiles.isNotEmpty ? provider.residentFiles.first.name : "بانتظار بيانات AWS"}';
+            'حساب العائلة — قريب المقيم: ${provider.residentFiles.isNotEmpty ? provider.residentFiles.first.name : "بانتظار بيانات السيرفر"}';
         break;
       case 'متطوع':
       default:
@@ -703,7 +703,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               'القريب المتابع',
               ref.read(appRiverpod).residentFiles.isNotEmpty
                   ? ref.read(appRiverpod).residentFiles.first.name
-                  : 'بانتظار بيانات AWS',
+                  : 'بانتظار بيانات السيرفر',
               themeColor),
           _buildInfoTile(Icons.contact_phone_outlined, 'طوارئ المنشأة',
               account?.facilityName ?? 'ونس', themeColor),
@@ -815,7 +815,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       children: [
         _buildActionTile(
           Icons.settings_outlined,
-          'إعدادات الحساب',
+          'إعدادات التطبيق',
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
         ),

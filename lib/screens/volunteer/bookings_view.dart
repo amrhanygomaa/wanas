@@ -58,7 +58,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
         .toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
     if (upcoming.isEmpty) {
-      setState(() => _countdownText = 'لا توجد جلسات قادمة من AWS');
+      setState(() => _countdownText = 'لا توجد جلسات قادمة من السيرفر');
       return;
     }
     final target = upcoming.first.startTime;
@@ -110,8 +110,9 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
                         'حجوزاتي القادمة', const Color(0xFF6366f1), 1),
                     const SizedBox(height: 12),
                     if (provider.volunteerBookings
-                        .where((b) => b.status == 'confirmed')
-                        .length <= 1)
+                            .where((b) => b.status == 'confirmed')
+                            .length <=
+                        1)
                       _buildNoBookingsCard('لا توجد جلسات محجوزة')
                     else
                       ...provider.volunteerBookings
@@ -189,9 +190,12 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
 
   Widget _buildTabFilter() {
     final provider = ref.watch(appRiverpod);
-    final upcoming = provider.volunteerBookings.where((b) => b.status == 'confirmed').length;
-    final done = provider.volunteerBookings.where((b) => b.status == 'done').length;
-    final cancelled = provider.volunteerBookings.where((b) => b.status == 'cancelled').length;
+    final upcoming =
+        provider.volunteerBookings.where((b) => b.status == 'confirmed').length;
+    final done =
+        provider.volunteerBookings.where((b) => b.status == 'done').length;
+    final cancelled =
+        provider.volunteerBookings.where((b) => b.status == 'cancelled').length;
     final tabs = [
       'القادمة${upcoming > 0 ? ' ($upcoming)' : ''}',
       'المكتملة${done > 0 ? ' ($done)' : ''}',
@@ -921,9 +925,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
               '${provider.volunteerBookings.where((b) => b.status == 'done').length} جلسة'),
           _buildStatMiniRow('⭐', 'متوسط تقييمك',
               '${provider.averageRating.toStringAsFixed(1)} / ٥'),
-          _buildStatMiniRow(
-              '🏆',
-              'باقي للشهادة الذهبية',
+          _buildStatMiniRow('🏆', 'باقي للشهادة الذهبية',
               '${(provider.volunteerGoal - provider.volunteerHours).clamp(0, provider.volunteerGoal)} ساعة',
               isShimmer: true),
         ],
@@ -1141,14 +1143,15 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
       iconWidget = Icon(icon, size: 18, color: const Color(0xFF059669));
     } else if (icon is String) {
       iconWidget = Image.asset(icon,
-          width: 18, height: 18,
+          width: 18,
+          height: 18,
           errorBuilder: (_, __, ___) => const Icon(
               Icons.calendar_today_outlined,
               size: 18,
               color: Color(0xFF059669)));
     } else {
-      iconWidget = const Icon(Icons.info_outline, size: 18,
-          color: Color(0xFF059669));
+      iconWidget =
+          const Icon(Icons.info_outline, size: 18, color: Color(0xFF059669));
     }
 
     return Padding(
@@ -1161,8 +1164,7 @@ class _VolunteerBookingsViewState extends ConsumerState<VolunteerBookingsView> {
           Flexible(
             flex: 2,
             child: Text(label,
-                style: const TextStyle(
-                    fontSize: 12, color: Color(0xFF64748b))),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748b))),
           ),
           const SizedBox(width: 8),
           Flexible(

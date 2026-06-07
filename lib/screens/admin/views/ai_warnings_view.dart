@@ -45,7 +45,8 @@ class _AIWarningsViewState extends ConsumerState<AIWarningsView> {
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: insights.length,
-                    itemBuilder: (_, i) => _buildInsightCard(insights[i], provider),
+                    itemBuilder: (_, i) =>
+                        _buildInsightCard(insights[i], provider),
                   ),
           ),
         ],
@@ -70,8 +71,7 @@ class _AIWarningsViewState extends ConsumerState<AIWarningsView> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(left: 8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFF1e293b)
@@ -82,8 +82,7 @@ class _AIWarningsViewState extends ConsumerState<AIWarningsView> {
                 f,
                 style: TextStyle(
                   color: isSelected ? Colors.white : const Color(0xFF64748b),
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 13,
                 ),
               ),
@@ -157,24 +156,20 @@ class _AIWarningsViewState extends ConsumerState<AIWarningsView> {
                 ),
                 Text(
                   _formatDate(insight.generationDate),
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF94a3b8)),
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF94a3b8)),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Text(safeSummary,
                 style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF374151),
-                    height: 1.5)),
+                    fontSize: 14, color: Color(0xFF374151), height: 1.5)),
             if (safeRationale.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(safeRationale,
                   style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748b),
-                      height: 1.4)),
+                      fontSize: 12, color: Color(0xFF64748b), height: 1.4)),
             ],
             const SizedBox(height: 12),
             // زر تحديد كـ "تم الحل"
@@ -183,8 +178,7 @@ class _AIWarningsViewState extends ConsumerState<AIWarningsView> {
                 width: double.infinity,
                 height: 38,
                 child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _markResolved(insight, provider),
+                  onPressed: () => _markResolved(insight, provider),
                   icon: Icon(Icons.check_circle_outline_rounded,
                       size: 16, color: color),
                   label: Text('تحديد كـ: تم الحل',
@@ -275,8 +269,7 @@ class _AIWarningsViewState extends ConsumerState<AIWarningsView> {
     provider.refreshState();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('تم تحديده كـ: تم الحل',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontFamily: 'Cairo')),
+          textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Cairo')),
       backgroundColor: Color(0xFF059669),
       behavior: SnackBarBehavior.floating,
     ));

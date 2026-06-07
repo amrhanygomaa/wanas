@@ -5,6 +5,7 @@ import '../../services/api_client.dart';
 // شاشة استعادة كلمة السر — مرحلتان:
 // 1) إدخال البريد → POST /auth/forgot-password
 // 2) إدخال الكود + كلمة سر جديدة → POST /auth/confirm-forgot-password
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -71,12 +72,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _toast(String msg, {bool isError = false}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
-        backgroundColor:
-            isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
+        content: Text(msg),
+        backgroundColor: isError ? Colors.redAccent : const Color(0xFF10b981),
       ),
     );
   }

@@ -60,7 +60,7 @@ class _CloudHealthScreenState extends State<CloudHealthScreen> {
         },
       ),
       _ServiceCheck(
-        name: 'AWS Cognito',
+        name: 'السيرفر',
         description: 'JWT validation · ${ApiConfig.cognitoUserPoolId}',
         icon: Icons.verified_user_rounded,
         color: const Color(0xFF7B1FA2),
@@ -70,7 +70,7 @@ class _CloudHealthScreenState extends State<CloudHealthScreen> {
         },
       ),
       _ServiceCheck(
-        name: 'AWS RDS (PostgreSQL)',
+        name: 'السيرفر (PostgreSQL)',
         description: 'Residents table · facility-scoped',
         icon: Icons.storage_rounded,
         color: const Color(0xFF3B82F6),
@@ -113,7 +113,7 @@ class _CloudHealthScreenState extends State<CloudHealthScreen> {
         },
       ),
       _ServiceCheck(
-        name: 'AWS Bedrock (AI)',
+        name: 'السيرفر Bedrock (AI)',
         description: 'POST /ai/chat · Claude Haiku',
         icon: Icons.smart_toy_rounded,
         color: const Color(0xFF6366F1),
@@ -134,7 +134,7 @@ class _CloudHealthScreenState extends State<CloudHealthScreen> {
         check: () async {
           final residents = await ResidentsService.instance.getAll();
           if (residents.isEmpty) {
-            throw StateError('No resident found in AWS RDS');
+            throw StateError('No resident found in السيرفر');
           }
           final r =
               await AiService.instance.getRecommendations(residents.first.id);
@@ -271,7 +271,7 @@ class _CloudHealthScreenState extends State<CloudHealthScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
-                  'AWS',
+                  'السيرفر',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,

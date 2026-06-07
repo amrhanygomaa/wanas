@@ -41,7 +41,7 @@ class _SpecialistActivitiesViewState
               'icon': activity.emoji,
               'color': const Color(0xFF3b82f6),
               'bg': const Color(0xFFdbeafe),
-              'target': 'من AWS',
+              'target': 'من السيرفر',
               'location': activity.location,
               'supervisor': provider.currentAccount?.name ?? 'فريق الرعاية',
             })
@@ -852,39 +852,108 @@ class _SpecialistActivitiesViewState
                       const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () async {
-                          final staff = ref
-                              .read(appRiverpod)
-                              .staffPerformanceList;
+                          final staff =
+                              ref.read(appRiverpod).staffPerformanceList;
                           if (staff.isEmpty) {
-                            // No staff loaded — fall back to free text
+                            await showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (ctx) => Padding(
+                                padding: EdgeInsets.only(
+                                    bottom:
+                                        MediaQuery.of(ctx).viewInsets.bottom),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(24)),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                          width: 40,
+                                          height: 4,
+                                          margin:
+                                              const EdgeInsets.only(bottom: 16),
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                              color: const Color(0xFFE2E8F0),
+                                              borderRadius:
+                                                  BorderRadius.circular(4))),
+                                      const Text('اسم المشرف المسؤول',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0f172a))),
+                                      const SizedBox(height: 12),
+                                      TextField(
+                                        controller: supervisorController,
+                                        autofocus: true,
+                                        textAlign: TextAlign.right,
+                                        textDirection: TextDirection.rtl,
+                                        decoration: InputDecoration(
+                                          hintText: 'اكتب اسم المشرف...',
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: const BorderSide(
+                                                color: Color(0xFFea580c)),
+                                          ),
+                                        ),
+                                        onSubmitted: (_) => Navigator.pop(ctx),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFFea580c),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12)),
+                                          ),
+                                          child: const Text('تأكيد',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                            setStateModal(() {});
                             return;
                           }
                           final query = ValueNotifier('');
-                          final picked =
-                              await showModalBottomSheet<String>(
+                          final picked = await showModalBottomSheet<String>(
                             context: context,
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
                             builder: (_) => StatefulBuilder(
                               builder: (ctx, setSS) {
                                 final filtered = staff
-                                    .where((s) => s.name
-                                        .contains(query.value))
+                                    .where((s) => s.name.contains(query.value))
                                     .toList();
                                 return Container(
-                                  height: MediaQuery.of(ctx)
-                                          .size
-                                          .height *
-                                      0.6,
+                                  height: MediaQuery.of(ctx).size.height * 0.6,
                                   padding:
-                                      const EdgeInsets.fromLTRB(
-                                          20, 16, 20, 20),
+                                      const EdgeInsets.fromLTRB(20, 16, 20, 20),
                                   decoration: const BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius:
-                                        BorderRadius.vertical(
-                                            top:
-                                                Radius.circular(24)),
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(24)),
                                   ),
                                   child: Column(
                                     children: [
@@ -892,29 +961,22 @@ class _SpecialistActivitiesViewState
                                           width: 40,
                                           height: 4,
                                           decoration: BoxDecoration(
-                                              color: const Color(
-                                                  0xFFE2E8F0),
+                                              color: const Color(0xFFE2E8F0),
                                               borderRadius:
-                                                  BorderRadius
-                                                      .circular(4))),
+                                                  BorderRadius.circular(4))),
                                       const SizedBox(height: 12),
                                       TextField(
                                         autofocus: true,
                                         textAlign: TextAlign.right,
-                                        decoration:
-                                            InputDecoration(
+                                        decoration: InputDecoration(
                                           hintText: 'ابحث بالاسم...',
-                                          prefixIcon: const Icon(
-                                              Icons.search),
-                                          border:
-                                              OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius
-                                                          .circular(
-                                                              12)),
+                                          prefixIcon: const Icon(Icons.search),
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
                                         ),
-                                        onChanged: (v) => setSS(
-                                            () => query.value = v),
+                                        onChanged: (v) =>
+                                            setSS(() => query.value = v),
                                       ),
                                       const SizedBox(height: 8),
                                       Expanded(
@@ -925,23 +987,19 @@ class _SpecialistActivitiesViewState
                                             return ListTile(
                                               leading: CircleAvatar(
                                                 backgroundColor:
-                                                    const Color(
-                                                        0xFFEDE9FE),
+                                                    const Color(0xFFEDE9FE),
                                                 child: Text(
                                                   s.name.isNotEmpty
                                                       ? s.name[0]
                                                       : '؟',
                                                   style: const TextStyle(
-                                                      color: Color(
-                                                          0xFF7C3AED)),
+                                                      color: Color(0xFF7C3AED)),
                                                 ),
                                               ),
                                               title: Text(s.name),
-                                              subtitle:
-                                                  Text(s.role),
+                                              subtitle: Text(s.role),
                                               onTap: () =>
-                                                  Navigator.pop(
-                                                      ctx, s.name),
+                                                  Navigator.pop(ctx, s.name),
                                             );
                                           },
                                         ),
@@ -962,8 +1020,7 @@ class _SpecialistActivitiesViewState
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: const Color(0xFFe2e8f0)),
+                            border: Border.all(color: const Color(0xFFe2e8f0)),
                           ),
                           child: Row(
                             children: [
@@ -977,8 +1034,7 @@ class _SpecialistActivitiesViewState
                                       : 'اختر المشرف المسؤول',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: supervisorController
-                                            .text.isNotEmpty
+                                    color: supervisorController.text.isNotEmpty
                                         ? const Color(0xFF1e293b)
                                         : const Color(0xFF94a3b8),
                                   ),
@@ -1145,11 +1201,10 @@ class _SpecialistActivitiesViewState
                               badges: selectedType,
                               pointsReward: 30,
                               dayTag: 'اليوم',
-                              supervisor: supervisorController.text
-                                      .trim()
-                                      .isNotEmpty
-                                  ? supervisorController.text.trim()
-                                  : null,
+                              supervisor:
+                                  supervisorController.text.trim().isNotEmpty
+                                      ? supervisorController.text.trim()
+                                      : null,
                             );
                             if (editActivity != null) {
                               await ref

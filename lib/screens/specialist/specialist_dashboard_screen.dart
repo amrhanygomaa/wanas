@@ -158,11 +158,28 @@ class _SocialSpecialistDashboardScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text('ونس',
-            style: TextStyle(
-                color: Color(0xFFea580c),
-                fontWeight: FontWeight.w900,
-                fontSize: 24)),
+        title: Transform.scale(
+          scale: 1.45,
+          child: Image.asset(
+            'assets/icons/wanas_logo_nav.png',
+            height: 42,
+            fit: BoxFit.contain,
+            color: const Color(0xFFea580c),
+            colorBlendMode: BlendMode.srcIn,
+            errorBuilder: (context, error, stackTrace) {
+              return const Text(
+                'ونس',
+                style: TextStyle(
+                  color: Color(0xFFea580c),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                  fontFamily: 'Cairo',
+                  letterSpacing: 1.2,
+                ),
+              );
+            },
+          ),
+        ),
         iconTheme: const IconThemeData(color: Color(0xFFea580c)),
         leading: Builder(
           builder: (context) => IconButton(

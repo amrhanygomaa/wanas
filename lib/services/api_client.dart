@@ -6,14 +6,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import '../utils/user_feedback_message.dart';
 
 class ApiException implements Exception {
   final int statusCode;
   final String message;
   final dynamic body;
-  ApiException(this.statusCode, this.message, [this.body]);
+  ApiException(this.statusCode, String message, [this.body])
+      : message = friendlyFeedbackMessage(message);
   @override
-  String toString() => 'ApiException($statusCode): $message';
+  String toString() => message;
 }
 
 // عميل HTTP موحّد لكل الـ services
@@ -85,13 +87,18 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> post(String path, {Object? body, bool auth = true}) async {
+  Future<dynamic> post(
+    String path, {
+    Object? body,
+    bool auth = true,
+    Duration? timeout,
+  }) async {
     try {
       final res = await http
           .post(_uri(path),
               headers: await _buildHeaders(auth: auth),
               body: body == null ? null : jsonEncode(body))
-          .timeout(ApiConfig.requestTimeout);
+          .timeout(timeout ?? ApiConfig.requestTimeout);
       return _handle(res);
     } on SocketException {
       throw ApiException(0, 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة');
@@ -157,9 +164,14 @@ class ApiClient {
 
     if (res.statusCode >= 200 && res.statusCode < 300) return parsed;
 
-    final message = (parsed is Map && parsed['message'] != null)
+    final rawMessage = (parsed is Map && parsed['message'] != null)
         ? parsed['message'].toString()
         : 'HTTP ${res.statusCode}';
+    final message = friendlyApiErrorMessage(
+      res.statusCode,
+      rawMessage,
+      body: parsed,
+    );
     throw ApiException(res.statusCode, message, parsed);
   }
 }

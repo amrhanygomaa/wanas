@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // للوصول إلى الملفات (مثل الخطوط)
@@ -40,6 +41,21 @@ import '../services/user_preferences_service.dart';
 import '../services/complaints_service.dart';
 import '../services/ai_media_service.dart';
 import '../services/messages_service.dart';
+import '../services/profile_image_service.dart';
+import 'package:path_provider/path_provider.dart';
+
+// أجزاء AppRiverpod المقسّمة حسب الدومين (extensions داخل ملفات part).
+part 'app_riverpod_memories.dart';
+part 'app_riverpod_facility.dart';
+part 'app_riverpod_residents_family.dart';
+part 'app_riverpod_staff_reports.dart';
+part 'app_riverpod_nursing_ops.dart';
+part 'app_riverpod_family_reminders.dart';
+part 'app_riverpod_assessments.dart';
+part 'app_riverpod_memory_wall.dart';
+part 'app_riverpod_elderly_media.dart';
+part 'app_riverpod_auth_accounts.dart';
+part 'app_riverpod_activities_ai_emergency.dart';
 
 final appRiverpod = ChangeNotifierProvider((ref) => AppRiverpod());
 
@@ -56,11 +72,12 @@ class AppRiverpod extends ChangeNotifier {
     notifyListeners();
   }
 
-  String facilityName = ''; // اسم المنشأة من AWS
-  String managerName = ''; // اسم المدير من AWS
+  String facilityName = ''; // اسم المنشأة من السيرفر
+  String managerName = ''; // اسم المدير من السيرفر
   String splashStatus = ''; // حالة التحميل للعرض في شاشة البداية
   Set<String> earnedBadgeIds = {}; // معرّفات الأوسمة التي فتحها المسن
-  BadgeDefinition? newlyUnlockedBadge; // آخر وسام انفتح — يُمسح بعد عرض الاحتفال
+  BadgeDefinition?
+      newlyUnlockedBadge; // آخر وسام انفتح — يُمسح بعد عرض الاحتفال
 
   void scheduleMedicationReminders(NotificationService service) {
     for (var med in medications) {
@@ -78,7 +95,7 @@ class AppRiverpod extends ChangeNotifier {
     }
   }
 
-  String currentRole = ''; // الدور الحالي للمستخدم بعد تسجيل الدخول من AWS
+  String currentRole = ''; // الدور الحالي للمستخدم بعد تسجيل الدخول من السيرفر
   bool hasSeenOnboarding = false; // هل شاهد المستخدم شاشات الترحيب؟
   bool isAuthenticated = false; // هل المستخدم مسجل دخوله؟
   bool isInitialized = false; // هل تم تحميل البيانات من الذاكرة؟
@@ -97,410 +114,11 @@ class AppRiverpod extends ChangeNotifier {
   // --- إدارة الحسابات (Account Management) ---
   List<AppAccount> accounts = [];
 
-  // دالة لتحديث بيانات الحساب الحالي
-  void updateCurrentAccount(AppAccount updatedAccount) {
-    currentAccount = updatedAccount;
-    // تحديث في القائمة العامة أيضاً
-    final idx = accounts.indexWhere((a) => a.email == updatedAccount.email);
-    if (idx != -1) {
-      accounts[idx] = updatedAccount;
-    }
-    notifyListeners();
-  }
-
-  // دالة لاختيار صورة البروفايل
-  Future<void> pickProfileImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null && currentAccount != null) {
-      final updatedAccount = currentAccount!.copyWith(imageUrl: image.path);
-      updateCurrentAccount(updatedAccount);
-    }
-  }
-
-  // دالة للمدير لإنشاء حسابات جديدة عبر AWS.
-  Future<bool> createAccount({
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-  }) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createManagedUser(
-        email: email,
-        fullName: name,
-        role: role,
-        temporaryPassword: password,
-      );
-    });
-    if (synced) {
-      unawaited(syncBackendData());
-    }
-    return synced;
-  }
-
-  // دالة للتسجيل الذاتي (للمتطوعين والأهالي) عبر AWS Cognito.
-  Future<void> selfRegister({
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-  }) async {
-    final facilityId = _registrationFacilityId();
-    if (facilityId.isEmpty) {
-      throw ApiException(
-        400,
-        'لا يوجد FACILITY_ID مضبوط للتسجيل الذاتي على AWS',
-      );
-    }
-
-    await AuthService.instance.register(
-      email: email,
-      password: password,
-      name: name,
-      role: _selfRegistrationRole(role),
-      facilityId: facilityId,
-    );
-    backendSyncError = null;
-    notifyListeners();
-  }
-
-  // دالة تسجيل المدير مع بيانات المنشأة عبر AWS.
-  Future<void> registerAdmin({
-    required String name,
-    required String email,
-    required String password,
-    required String facilityName,
-    required String facilityAddress,
-    required List<String> amenities,
-    String? facilityYearOfEst,
-    String? facilityCapacity,
-    String? facilityLicenseNumber,
-    String? facilityLocationUrl,
-  }) async {
-    final setupSecret = ApiConfig.adminRegistrationSecret.trim();
-    if (setupSecret.isEmpty) {
-      throw ApiException(
-        400,
-        'ADMIN_REG_SECRET غير مضبوط، لا يمكن تسجيل مدير منشأة على AWS',
-      );
-    }
-
-    await AuthService.instance.registerAdmin(
-      name: name,
-      email: email,
-      password: password,
-      facilityId: _facilityIdForAdminRegistration(
-        email: email,
-        licenseNumber: facilityLicenseNumber,
-      ),
-      setupSecret: setupSecret,
-      facilityName: facilityName,
-      facilityAddress: facilityAddress,
-      licenseNumber: facilityLicenseNumber,
-      facilityYearOfEst: facilityYearOfEst,
-      facilityCapacity: facilityCapacity,
-      facilityLocationUrl: facilityLocationUrl,
-    );
-
-    this.facilityName = facilityName;
-    managerName = name;
-    backendSyncError = null;
-
-    notifyListeners();
-  }
-
-  // ربط عائلة بمسن
-  Future<void> linkFamilyToResident(
-      String residentId, String familyEmail) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createFamilyMemberForEmail(
-        residentId: residentId,
-        email: familyEmail,
-      );
-    });
-    if (!synced) return;
-    final idx = residentFiles.indexWhere((r) => r.id == residentId);
-    if (idx != -1) {
-      final r = residentFiles[idx];
-      residentFiles[idx] = SpecialistResidentFile(
-        id: r.id,
-        name: r.name,
-        nameEn: r.nameEn,
-        room: r.room,
-        status: r.status,
-        lastUpdate: r.lastUpdate,
-        categories: r.categories,
-        initials: r.initials,
-        phone: r.phone,
-        age: r.age,
-        familyMembers: r.familyMembers,
-        familyEmail: familyEmail, // الحقل الجديد للربط
-        bloodType: r.bloodType,
-        chronicDiseases: r.chronicDiseases,
-        allergies: r.allergies,
-        insuranceInfo: r.insuranceInfo,
-        mobilityStatus: r.mobilityStatus,
-        assistiveDevices: r.assistiveDevices,
-        cognitiveStatus: r.cognitiveStatus,
-        dietType: r.dietType,
-        foodRestrictions: r.foodRestrictions,
-        foodPreferences: r.foodPreferences,
-        previousProfession: r.previousProfession,
-        hobbies: r.hobbies,
-        socialStatus: r.socialStatus,
-        uploadedDocuments: r.uploadedDocuments,
-      );
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  void updateResidentSocialHistory({
-    required String residentId,
-    required String previousProfession,
-    required String socialStatus,
-    required List<String> hobbies,
-  }) {
-    final idx = residentFiles.indexWhere((r) => r.id == residentId);
-    if (idx == -1) return;
-    final r = residentFiles[idx];
-    residentFiles[idx] = SpecialistResidentFile(
-      id: r.id,
-      name: r.name,
-      nameEn: r.nameEn,
-      room: r.room,
-      status: r.status,
-      lastUpdate: r.lastUpdate,
-      categories: r.categories,
-      initials: r.initials,
-      phone: r.phone,
-      age: r.age,
-      familyMembers: r.familyMembers,
-      familyEmail: r.familyEmail,
-      bloodType: r.bloodType,
-      chronicDiseases: r.chronicDiseases,
-      allergies: r.allergies,
-      insuranceInfo: r.insuranceInfo,
-      mobilityStatus: r.mobilityStatus,
-      assistiveDevices: r.assistiveDevices,
-      cognitiveStatus: r.cognitiveStatus,
-      dietType: r.dietType,
-      foodRestrictions: r.foodRestrictions,
-      foodPreferences: r.foodPreferences,
-      previousProfession: previousProfession,
-      hobbies: hobbies,
-      socialStatus: socialStatus,
-      uploadedDocuments: r.uploadedDocuments,
-    );
-    notifyListeners();
-  }
-
-  void addDocumentToResident(String residentId, String documentUrl) {
-    final idx = residentFiles.indexWhere((r) => r.id == residentId);
-    if (idx == -1) return;
-    final r = residentFiles[idx];
-    final updated = List<String>.from(r.uploadedDocuments ?? [])..add(documentUrl);
-    residentFiles[idx] = SpecialistResidentFile(
-      id: r.id,
-      name: r.name,
-      nameEn: r.nameEn,
-      room: r.room,
-      status: r.status,
-      lastUpdate: r.lastUpdate,
-      categories: r.categories,
-      initials: r.initials,
-      phone: r.phone,
-      age: r.age,
-      familyMembers: r.familyMembers,
-      familyEmail: r.familyEmail,
-      bloodType: r.bloodType,
-      chronicDiseases: r.chronicDiseases,
-      allergies: r.allergies,
-      insuranceInfo: r.insuranceInfo,
-      mobilityStatus: r.mobilityStatus,
-      assistiveDevices: r.assistiveDevices,
-      cognitiveStatus: r.cognitiveStatus,
-      dietType: r.dietType,
-      foodRestrictions: r.foodRestrictions,
-      foodPreferences: r.foodPreferences,
-      previousProfession: r.previousProfession,
-      hobbies: r.hobbies,
-      socialStatus: r.socialStatus,
-      uploadedDocuments: updated,
-    );
-    notifyListeners();
-  }
-
   AppRiverpod() {
+    socialAssessmentTools = _fallbackAssessmentTools();
+    _seedFallbackQuestionBank();
     _loadAuthState(); // تحميل حالة الدخول عند بدء تشغيل المزود
   }
-
-  // تحميل بيانات الدخول والجلسة من التخزين الآمن
-  Future<void> _loadAuthState() async {
-    splashStatus = 'جاري التحقق من هويتك...';
-    notifyListeners();
-
-    final auth = await _storage.read(key: 'isAuthenticated');
-    final role = await _storage.read(key: 'currentRole');
-    final onboarding = await _storage.read(key: 'hasSeenOnboarding');
-    final expiryStr = await _storage.read(key: 'sessionExpiry');
-
-    if (auth == 'true') {
-      try {
-        final user = await AuthService.instance.restoreSession();
-        if (user == null) {
-          await _storage.delete(key: 'isAuthenticated');
-          await _storage.delete(key: 'currentRole');
-          await _storage.delete(key: 'userEmail');
-          await _storage.delete(key: 'sessionExpiry');
-        } else {
-          if (expiryStr != null) {
-            _sessionExpiry = DateTime.tryParse(expiryStr);
-          }
-          _applyBackendUser(
-            email: user.email,
-            role: role ?? user.arabicRole,
-            userId: user.userId,
-            facilityId: user.facilityId,
-            name: user.name,
-            linkedResidentId: user.linkedResidentId,
-            facilityName: user.facilityName,
-          );
-
-          splashStatus = 'جاري تحميل بياناتك...';
-          notifyListeners();
-
-          // حمّل الأوسمة أولاً قبل sync البيانات لتجنب إعادة إطلاقها
-          await _loadEarnedBadges();
-
-          // انتظر sync البيانات (حد أقصى 8 ثوانٍ) + تهيئة الإشعارات بالتوازي
-          await Future.wait<void>([
-            syncBackendData().timeout(
-              const Duration(seconds: 8),
-              onTimeout: () {},
-            ),
-            PushNotificationService.instance.init(),
-          ]).catchError((_) => <void>[]);
-        }
-      } catch (e) {
-        isAuthenticated = false;
-        currentRole = '';
-        currentAccount = null;
-        backendSyncError = e.toString();
-        await AuthService.instance.logout();
-        await _storage.delete(key: 'isAuthenticated');
-        await _storage.delete(key: 'currentRole');
-        await _storage.delete(key: 'userEmail');
-        await _storage.delete(key: 'sessionExpiry');
-      }
-    }
-
-    if (onboarding == 'true') hasSeenOnboarding = true;
-
-    final biometric = await _storage.read(key: 'isBiometricEnabled');
-    if (biometric == 'true') isBiometricEnabled = true;
-
-    splashStatus = 'جاهز!';
-    isInitialized = true;
-    notifyListeners();
-  }
-
-  /// يُعيد تفعيل آخر جلسة محفوظة (يُستدعى بعد نجاح التحقق البيومتري)
-  Future<bool> restoreLastSession() async {
-    try {
-      final user = await AuthService.instance.restoreSession();
-      if (user == null) return false;
-      _applyBackendUser(
-        email: user.email,
-        role: user.arabicRole,
-        userId: user.userId,
-        facilityId: user.facilityId,
-        name: user.name,
-        linkedResidentId: user.linkedResidentId,
-        facilityName: user.facilityName,
-      );
-      unawaited(syncBackendData());
-      notifyListeners();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // حفظ الدور في الذاكرة لتجنب الخروج عند الريلود
-  Future<void> setAndSaveRole(String role) async {
-    currentRole = role;
-    await _storage.write(key: 'currentRole', value: role);
-    notifyListeners();
-  }
-
-  // أداة اختبار داخلية لإنهاء الجلسة محلياً والتحقق من مسار التجديد الحقيقي.
-  void simulateSessionExpiry() {
-    _sessionExpiry = DateTime.now().subtract(const Duration(minutes: 1));
-    notifyListeners();
-  }
-
-  // التحقق من صحة الجلسة وتجديدها إذا لزم الأمر
-  Future<bool> checkAndRefreshSession() async {
-    if (!isAuthenticated || _sessionExpiry == null) return true;
-
-    // إذا كانت الجلسة منتهية أو ستنتهي خلال دقيقة
-    if (_sessionExpiry!.isBefore(DateTime.now())) {
-      if (isRefreshingSession) return false;
-
-      isRefreshingSession = true;
-      notifyListeners();
-
-      try {
-        final user = await AuthService.instance.refreshSession();
-        if (user == null) {
-          await logout();
-          return false;
-        }
-        _applyBackendUser(
-          email: user.email,
-          role: user.arabicRole,
-          userId: user.userId,
-          facilityId: user.facilityId,
-          name: user.name,
-          linkedResidentId: user.linkedResidentId,
-          facilityName: user.facilityName,
-          clearExistingData: false,
-        );
-        _sessionExpiry = DateTime.now().add(const Duration(hours: 1));
-        await _storage.write(
-            key: 'sessionExpiry', value: _sessionExpiry!.toIso8601String());
-        backendSyncError = null;
-        isRefreshingSession = false;
-        notifyListeners();
-        return true;
-      } catch (e) {
-        backendSyncError = e.toString();
-        isRefreshingSession = false;
-        await logout();
-        return false;
-      }
-    }
-    return true;
-  }
-
-  void toggleDarkMode() {
-    isDarkMode = !isDarkMode;
-    unawaited(_syncUserPreferences());
-    notifyListeners();
-  }
-
-  // تحديث فلتر التاريخ للوحة تحكم المدير وإعادة بناء المؤشرات المحملة من AWS.
-  void updateAdminDateFilter(String filter) {
-    selectedAdminDateFilter = filter;
-    // ملاحظة: هنا يمكن إضافة استدعاء للـ API لتحديث قائمة الإحصائيات (adminStats)
-    // بناءً على التاريخ المختار (اليوم مقابل الشهر الماضي مثلاً)
-    notifyListeners(); // إشعار كافة واجهات المدير بضرورة إعادة البناء بالبيانات الجديدة
-  }
-
-  // Offline Mode State
   List<PendingAssessment> pendingAssessments = [];
   bool isSyncing = false;
 
@@ -519,7 +137,7 @@ class AppRiverpod extends ChangeNotifier {
       final residentId = _residentIdForName(assessment.residentName);
       if (residentId == null) {
         backendSyncError =
-            'لا يوجد residentId من AWS للتقييم الخاص بـ ${assessment.residentName}';
+            'لا يوجد residentId من السيرفر للتقييم الخاص بـ ${assessment.residentName}';
         remaining.add(assessment);
         continue;
       }
@@ -621,7 +239,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(note.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لملاحظة ${note.residentName}';
+          'لا يوجد residentId من السيرفر لملاحظة ${note.residentName}';
       notifyListeners();
       return;
     }
@@ -655,7 +273,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(newInfo.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS للملف الطبي الخاص بـ ${newInfo.residentName}';
+          'لا يوجد residentId من السيرفر للملف الطبي الخاص بـ ${newInfo.residentName}';
       notifyListeners();
       return;
     }
@@ -678,7 +296,7 @@ class AppRiverpod extends ChangeNotifier {
   }
 
   // عملية تسجيل الدخول وحفظ البيانات آمنياً مع ضبط موعد انتهاء الجلسة (US-SmartLogin)
-  // تسجيل الدخول عبر الـ Backend الحقيقي (AWS Cognito)
+  // تسجيل الدخول عبر الـ Backend الحقيقي (السيرفر)
   // يستخدمه LoginScreen بعد نجاح AuthService.login()
   String? backendUserId;
   String? backendFacilityId;
@@ -720,472 +338,13 @@ class AppRiverpod extends ChangeNotifier {
     uploadError = error;
     notifyListeners();
   }
+
   Future<void>? _backendSyncFuture;
   Map<String, String> mealPlanIdsByResidentName = {};
 
   Map<String, String> emergencyContacts = {};
   FacilityBillingSettings? billingSettings;
   FacilityProfileSettings? facilityProfileSettings;
-
-  String? get billingPaymentInstructions {
-    final settings = billingSettings;
-    if (settings == null || settings.isEmpty) return null;
-    return settings.displayText;
-  }
-
-  Future<void> loadEmergencyContacts() async {
-    try {
-      final settings =
-          await FacilitySettingsService.instance.emergencyContacts();
-      emergencyContacts = settings.toPhoneMap();
-      notifyListeners();
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadBillingSettings() async {
-    try {
-      billingSettings =
-          await FacilitySettingsService.instance.billingSettings();
-      notifyListeners();
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadFacilityProfileSettings() async {
-    try {
-      final profile = await FacilitySettingsService.instance.facilityProfile();
-      facilityProfileSettings = profile;
-      if (profile.facilityName != null) {
-        facilityName = profile.facilityName!;
-      }
-      if (currentAccount != null) {
-        currentAccount = currentAccount!.copyWith(
-          facilityName: profile.facilityName,
-          facilityAddress: profile.address,
-          facilityPhone: profile.phone,
-          facilityEmail: profile.email,
-          licenseNumber: profile.licenseNumber,
-          facilityYearOfEst: profile.facilityYearOfEst,
-          facilityCapacity: profile.facilityCapacity,
-          facilityLocationUrl: profile.facilityLocationUrl,
-        );
-      }
-      notifyListeners();
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> updateFacilityProfileSettings({
-    required AppAccount account,
-    required String facilityName,
-    required String facilityAddress,
-    String? facilityPhone,
-    String? facilityEmail,
-    String? licenseNumber,
-    String? facilityYearOfEst,
-    String? facilityCapacity,
-    String? facilityLocationUrl,
-  }) async {
-    try {
-      final profile =
-          await FacilitySettingsService.instance.updateFacilityProfile(
-        facilityName: facilityName,
-        address: facilityAddress,
-        phone: facilityPhone,
-        email: facilityEmail,
-        licenseNumber: licenseNumber,
-        facilityYearOfEst: facilityYearOfEst,
-        facilityCapacity: facilityCapacity,
-        facilityLocationUrl: facilityLocationUrl,
-      );
-      facilityProfileSettings = profile;
-      final updated = account.copyWith(
-        facilityName: profile.facilityName ?? facilityName,
-        facilityAddress: profile.address ?? facilityAddress,
-        facilityPhone: profile.phone ?? facilityPhone,
-        facilityEmail: profile.email ?? facilityEmail,
-        licenseNumber: profile.licenseNumber ?? licenseNumber,
-        facilityYearOfEst: profile.facilityYearOfEst ?? facilityYearOfEst,
-        facilityCapacity: profile.facilityCapacity ?? facilityCapacity,
-        facilityLocationUrl: profile.facilityLocationUrl ?? facilityLocationUrl,
-      );
-      updateCurrentAccount(updated);
-      this.facilityName = updated.facilityName ?? this.facilityName;
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-      rethrow;
-    } finally {
-      notifyListeners();
-    }
-  }
-
-  void _applyBackendUser({
-    required String email,
-    required String role,
-    required String userId,
-    required String facilityId,
-    String? name,
-    String? linkedResidentId,
-    String? facilityName,
-    bool clearExistingData = true,
-  }) {
-    isAuthenticated = true;
-    currentRole = role;
-    backendUserId = userId;
-    backendFacilityId = facilityId;
-    if (_looksLikeBackendId(linkedResidentId)) {
-      backendResidentId = linkedResidentId;
-    }
-    if (clearExistingData) {
-      _clearBackendCollections();
-    }
-
-    final idx = accounts.indexWhere((a) => a.email == email);
-    if (idx != -1) {
-      currentAccount = accounts[idx].copyWith(
-        name: name?.isNotEmpty == true ? name : null,
-        role: role,
-        facilityName: facilityName,
-        linkedResidentId:
-            _looksLikeBackendId(linkedResidentId) ? linkedResidentId : null,
-      );
-      accounts[idx] = currentAccount!;
-    } else {
-      currentAccount = AppAccount(
-        email: email,
-        name: name?.isNotEmpty == true ? name! : email.split('@').first,
-        role: role,
-        password: '',
-        facilityName: facilityName,
-        linkedResidentId:
-            _looksLikeBackendId(linkedResidentId) ? linkedResidentId : null,
-      );
-      accounts.add(currentAccount!);
-    }
-
-    managerName = currentAccount!.name;
-    if (currentAccount!.facilityName != null) {
-      facilityName = currentAccount!.facilityName!;
-    }
-
-    currentUser = User(
-      name: currentAccount!.name,
-      points: clearExistingData ? 0 : currentUser.points,
-      streakDays: clearExistingData ? 0 : currentUser.streakDays,
-      completedActivities:
-          clearExistingData ? 0 : currentUser.completedActivities,
-    );
-    _startRealtime();
-  }
-
-  void _startRealtime() {
-    RealtimeService.instance.connect();
-    _realtimeSub ??= RealtimeService.instance
-        .liveEventsFor({'resident_audit', 'residents'}).listen((event) {
-      final residentId = event['residentId']?.toString() ?? '';
-      if (residentId.isEmpty) {
-        residentAuditTrails = {};
-      } else {
-        residentAuditTrails =
-            Map<String, List<Map<String, dynamic>>>.from(residentAuditTrails)
-              ..remove(residentId);
-      }
-      notifyListeners();
-    });
-  }
-
-  Future<void> markBackendAuthenticated({
-    required String email,
-    required String role,
-    required String userId,
-    required String facilityId,
-    String? name,
-    String? linkedResidentId,
-    String? facilityName,
-  }) async {
-    _applyBackendUser(
-      email: email,
-      role: role,
-      userId: userId,
-      facilityId: facilityId,
-      name: name,
-      linkedResidentId: linkedResidentId,
-      facilityName: facilityName,
-    );
-    _sessionExpiry = DateTime.now().add(const Duration(hours: 1));
-
-    await _storage.write(key: 'isAuthenticated', value: 'true');
-    await _storage.write(key: 'currentRole', value: role);
-    await _storage.write(key: 'userEmail', value: email);
-    await _storage.write(
-        key: 'sessionExpiry', value: _sessionExpiry!.toIso8601String());
-
-    notifyListeners();
-    // حمّل الأوسمة أولاً ثم ابدأ sync لتجنب إعادة إطلاق أوسمة مكتسبة مسبقاً
-    unawaited(_loadEarnedBadges().then((_) => syncBackendData()));
-    unawaited(PushNotificationService.instance.init());
-  }
-
-  Future<void> syncBackendData() {
-    if (_backendSyncFuture != null) return _backendSyncFuture!;
-    _backendSyncFuture = _syncBackendDataInternal().whenComplete(() {
-      _backendSyncFuture = null;
-    });
-    return _backendSyncFuture!;
-  }
-
-  Future<void> _syncBackendDataInternal() async {
-    final token = await AuthService.instance.restoreSession();
-    if (token == null) {
-      if (isAuthenticated) {
-        backendSyncError = 'لا توجد جلسة AWS نشطة';
-        notifyListeners();
-      }
-      return;
-    }
-
-    isBackendSyncing = true;
-    backendSyncError = null;
-    notifyListeners();
-
-    try {
-      final snapshot = await BackendSyncService.instance.load(
-        preferredResidentId:
-            _looksLikeBackendId(backendResidentId) ? backendResidentId : null,
-        requireResidentScope: currentRole == 'أسرة',
-        role: currentRole,
-      );
-      _applyBackendSnapshot(snapshot);
-      lastBackendSyncAt = DateTime.now();
-    } catch (e) {
-      backendSyncError = e.toString();
-    } finally {
-      isBackendSyncing = false;
-      notifyListeners();
-    }
-
-    if (_looksLikeBackendId(backendResidentId)) {
-      unawaited(refreshAiInsightFromBackend());
-    }
-
-    unawaited(refreshUserProgress());
-    unawaited(refreshUserPreferences());
-
-    if (currentRole == 'مسن' || currentRole == 'أسرة') {
-      unawaited(refreshActiveVideoCalls());
-    }
-    if (currentRole == 'مسن') {
-      unawaited(checkMedicationAdherence());
-    }
-    if (currentRole == 'ممرض' ||
-        currentRole == 'إدارة' ||
-        currentRole == 'أخصائي اجتماعي') {
-      unawaited(refreshActiveEmergencies());
-    }
-    if (currentRole == 'أخصائي اجتماعي') {
-      unawaited(loadGdsQuestions());
-    }
-    if (currentRole == 'إدارة') {
-      unawaited(loadEmergencyContacts());
-      unawaited(loadBillingSettings());
-      unawaited(loadFacilityProfileSettings());
-    }
-  }
-
-  void _applyBackendSnapshot(BackendSyncSnapshot snapshot) {
-    backendResidentId = currentRole == 'أسرة'
-        ? snapshot.primaryResidentId
-        : snapshot.primaryResidentId ?? backendResidentId;
-    if (snapshot.primaryResidentName != null &&
-        currentRole == 'مسن' &&
-        snapshot.primaryResidentName!.isNotEmpty) {
-      currentUser.name = snapshot.primaryResidentName!;
-      if (currentAccount != null) {
-        currentAccount = currentAccount!.copyWith(
-          name: snapshot.primaryResidentName,
-          linkedResidentId: snapshot.primaryResidentId,
-        );
-      }
-    }
-    if (currentRole == 'أسرة' &&
-        currentAccount != null &&
-        snapshot.primaryResidentId != null) {
-      currentAccount = currentAccount!.copyWith(
-        linkedResidentId: snapshot.primaryResidentId,
-      );
-    }
-
-    if (snapshot.residentFiles != null) {
-      // Deduplicate by id — backend may return duplicate rows
-      final seen = <String>{};
-      residentFiles = snapshot.residentFiles!
-          .where((r) => r.id.isNotEmpty && seen.add(r.id))
-          .toList();
-    }
-    if (snapshot.medications != null) {
-      medications = snapshot.medications!;
-    }
-    if (snapshot.activities != null) {
-      activities = snapshot.activities!;
-    }
-    if (snapshot.activitySessions != null) {
-      activitySessions = snapshot.activitySessions!;
-    }
-    if (snapshot.complaints != null) {
-      socialComplaints = snapshot.complaints!;
-    }
-    if (snapshot.familyVisits != null) {
-      familyVisits = snapshot.familyVisits!;
-    }
-    if (snapshot.familyBills != null) {
-      familyBills = snapshot.familyBills!;
-    }
-    if (snapshot.memoryMoments != null) {
-      memoryMoments = snapshot.memoryMoments!;
-    }
-    if (snapshot.memories != null) {
-      memoriesList = snapshot.memories!;
-    }
-    if (snapshot.voiceMessages != null) {
-      voiceMessagesList = snapshot.voiceMessages!;
-    }
-    if (snapshot.careTasks != null) {
-      careTasks = snapshot.careTasks!;
-    }
-    if (snapshot.inventoryItems != null) {
-      inventoryItems = snapshot.inventoryItems!;
-    }
-    if (snapshot.doctorVisits != null) {
-      doctorVisits = snapshot.doctorVisits!;
-    }
-    if (snapshot.mealPlans != null) {
-      mealPlans = snapshot.mealPlans!;
-    }
-    if (snapshot.mealPlanIdsByResidentName != null) {
-      mealPlanIdsByResidentName = snapshot.mealPlanIdsByResidentName!;
-    }
-    if (snapshot.medicalSessions != null) {
-      medicalSessions = snapshot.medicalSessions!;
-    }
-    if (snapshot.medicalPrescriptions != null) {
-      medicalPrescriptions = snapshot.medicalPrescriptions!;
-    }
-    if (snapshot.volunteerOpportunities != null) {
-      volunteerOpportunities = snapshot.volunteerOpportunities!;
-    }
-    if (snapshot.volunteerBookings != null) {
-      volunteerBookings = snapshot.volunteerBookings!;
-    }
-    if (snapshot.volunteerCertificates != null) {
-      volunteerCertificates = snapshot.volunteerCertificates!;
-    }
-    if (snapshot.volunteerRatings != null) {
-      volunteerRatings = snapshot.volunteerRatings!;
-    }
-    if (snapshot.volunteerReviews != null) {
-      volunteerReviews = snapshot.volunteerReviews!;
-    }
-    if (snapshot.volunteerProfile != null) {
-      volunteerProfile = snapshot.volunteerProfile!;
-    }
-    if (snapshot.notifications != null) {
-      notifications = snapshot.notifications!;
-    }
-    if (snapshot.nursingNotes != null) {
-      nursingNotes = snapshot.nursingNotes!;
-    }
-    if (snapshot.handoffs != null) {
-      handoffs = snapshot.handoffs!;
-    }
-    if (snapshot.socialNeeds != null) {
-      socialNeeds = snapshot.socialNeeds!;
-    }
-    if (snapshot.socialAssessmentTools != null) {
-      socialAssessmentTools = snapshot.socialAssessmentTools!;
-    }
-    if (snapshot.socialResidentScores != null) {
-      final seenScores = <String>{};
-      socialResidentScores = snapshot.socialResidentScores!
-          .where((s) => s.id.isNotEmpty && seenScores.add(s.id))
-          .toList();
-    }
-    if (snapshot.staffPerformance != null) {
-      staffPerformanceList = snapshot.staffPerformance!;
-    }
-    if (snapshot.sentReports != null) {
-      sentReports = snapshot.sentReports!;
-    }
-    if (snapshot.careReportPreview != null) {
-      careReports = [snapshot.careReportPreview!];
-    }
-    if (snapshot.familyHealthMetrics != null) {
-      familyHealthMetrics = snapshot.familyHealthMetrics!;
-    }
-    if (snapshot.familyMembers != null) {
-      familyMembersList = snapshot.familyMembers!;
-    }
-    if (snapshot.assessmentHistory != null &&
-        snapshot.assessmentHistory!.isNotEmpty) {
-      assessmentHistory = snapshot.assessmentHistory!;
-    }
-
-    if (currentRole == 'مسن' && companionChatHistory.isEmpty) {
-      final name = currentAccount?.name.isNotEmpty == true
-          ? currentAccount!.name
-          : (snapshot.primaryResidentName ?? 'صديقنا');
-      companionChatHistory.add(CompanionMessage(
-        id: 'welcome_${DateTime.now().millisecondsSinceEpoch}',
-        text: 'مرحباً بك يا $name! أنا رفيقك الذكي، كيف تشعر اليوم؟ ✨',
-        isFromAI: true,
-        timestamp: DateTime.now(),
-      ));
-    }
-
-    if (residentFiles.isNotEmpty) {
-      residentMedicalInfos = residentFiles.map((r) {
-        final meds = medications
-            .where((m) => m.residentName == r.name)
-            .map((m) => '${m.name} ${m.dosage}'.trim())
-            .toList();
-        return ResidentMedicalInfo(
-          residentName: r.name,
-          medications: meds,
-          allergies: r.allergies ?? const [],
-          chronicDiseases: r.chronicDiseases ?? const [],
-        );
-      }).toList();
-    }
-  }
-
-  void _applyUserProgress(BackendUserProgress progress) {
-    currentUser = User(
-      name: currentUser.name,
-      points: progress.points,
-      streakDays: progress.streakDays,
-      completedActivities: progress.completedActivities,
-    );
-    _checkAndUnlockBadges();
-  }
-
-  Future<void> refreshUserProgress() async {
-    if (AuthService.instance.currentUser == null) return;
-    try {
-      final progress = await UserProgressService.instance.getMe();
-      _applyUserProgress(progress);
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
 
   List<BackendVideoCall> callHistory = [];
   bool isLoadingCallHistory = false;
@@ -1208,476 +367,6 @@ class AppRiverpod extends ChangeNotifier {
 
   Map<String, List<Map<String, dynamic>>> residentAuditTrails = {};
   final Set<String> loadingAuditTrailResidentIds = {};
-
-  Future<void> loadAuditTrail(String residentId, {bool force = false}) async {
-    if (residentId.isEmpty ||
-        (!force && residentAuditTrails.containsKey(residentId)) ||
-        loadingAuditTrailResidentIds.contains(residentId)) {
-      return;
-    }
-    loadingAuditTrailResidentIds.add(residentId);
-    try {
-      final res =
-          await ApiClient.instance.get('/residents/$residentId/audit-trail');
-      if (res is List) {
-        residentAuditTrails =
-            Map<String, List<Map<String, dynamic>>>.from(residentAuditTrails)
-              ..[residentId] = res
-                  .whereType<Map>()
-                  .map((e) => Map<String, dynamic>.from(e))
-                  .toList();
-      } else {
-        residentAuditTrails =
-            Map<String, List<Map<String, dynamic>>>.from(residentAuditTrails)
-              ..[residentId] = [];
-      }
-    } catch (_) {
-      residentAuditTrails =
-          Map<String, List<Map<String, dynamic>>>.from(residentAuditTrails)
-            ..[residentId] = [];
-    } finally {
-      loadingAuditTrailResidentIds.remove(residentId);
-      notifyListeners();
-    }
-  }
-
-  Future<void> refreshActiveVideoCalls() async {
-    if (AuthService.instance.currentUser == null) return;
-    try {
-      final calls = await VideoCallService.instance.active();
-      if (calls.isEmpty) {
-        activeVideoCallId = null;
-        activeVideoCallJoinUrl = null;
-        isIncomingCall = false;
-        isVideoCallActive = false;
-        backendSyncError = null;
-        notifyListeners();
-        return;
-      }
-      final call = calls.first;
-      activeVideoCallId = call.id;
-      activeVideoCallJoinUrl = call.joinUrl;
-      activeCallerName = call.calleeName?.isNotEmpty == true
-          ? call.calleeName!
-          : 'مكالمة فيديو';
-      activeCallerInitials =
-          activeCallerName.isNotEmpty ? activeCallerName.substring(0, 1) : '؟';
-      final isOutgoing = call.callerId == backendUserId;
-      isIncomingCall = !isOutgoing && call.status == 'ringing';
-      isVideoCallActive = call.status == 'accepted' || isOutgoing;
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  Future<void> refreshUserPreferences() async {
-    if (AuthService.instance.currentUser == null) return;
-    try {
-      final prefs = await UserPreferencesService.instance.getMe();
-      _applyUserPreferences(prefs.preferences);
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  void _applyUserPreferences(Map<String, dynamic> prefs) {
-    final fontScale = prefs['fontScaleFactor'];
-    if (fontScale is num) {
-      fontScaleFactor = fontScale.toDouble().clamp(0.8, 1.6);
-    }
-    final highContrast = prefs['isHighContrast'];
-    if (highContrast is bool) isHighContrast = highContrast;
-    final darkMode = prefs['isDarkMode'];
-    if (darkMode is bool) isDarkMode = darkMode;
-    final aiInsights = prefs['isAIInsightsEnabled'];
-    if (aiInsights is bool) isAIInsightsEnabled = aiInsights;
-    final aiCompanion = prefs['isAICompanionEnabled'];
-    if (aiCompanion is bool) isAICompanionEnabled = aiCompanion;
-  }
-
-  Map<String, dynamic> _userPreferencesPayload() => {
-        'fontScaleFactor': fontScaleFactor,
-        'isHighContrast': isHighContrast,
-        'isDarkMode': isDarkMode,
-        'isAIInsightsEnabled': isAIInsightsEnabled,
-        'isAICompanionEnabled': isAICompanionEnabled,
-      };
-
-  Future<void> _syncUserPreferences() async {
-    if (AuthService.instance.currentUser == null) return;
-    try {
-      await UserPreferencesService.instance.update(_userPreferencesPayload());
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  bool _looksLikeBackendId(String? id) {
-    if (id == null || id.isEmpty) return false;
-    return RegExp(r'^[0-9a-fA-F-]{30,}$').hasMatch(id);
-  }
-
-  String _registrationFacilityId() {
-    final sessionFacilityId = backendFacilityId?.trim() ?? '';
-    if (sessionFacilityId.isNotEmpty) return sessionFacilityId;
-    return ApiConfig.defaultFacilityId.trim();
-  }
-
-  String _selfRegistrationRole(String role) {
-    return switch (role) {
-      'أسرة' || 'فرد أسرة' => 'Family',
-      'متطوع' => 'Volunteer',
-      _ => role,
-    };
-  }
-
-  String _facilityIdForAdminRegistration({
-    required String email,
-    String? licenseNumber,
-  }) {
-    final source = (licenseNumber?.trim().isNotEmpty == true
-            ? licenseNumber!.trim()
-            : email.split('@').first)
-        .toLowerCase();
-    final normalized = source
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-    if (normalized.isNotEmpty) return normalized;
-    return 'facility-${DateTime.now().millisecondsSinceEpoch}';
-  }
-
-  Map<String, double> _pendingAssessmentScores(PendingAssessment assessment) {
-    final scores = <String, double>{};
-    for (final entry in assessment.scales.entries) {
-      scores['scale_${entry.key}'] = entry.value.toDouble();
-    }
-    for (final entry in assessment.selections.entries) {
-      scores['selection_${entry.key}'] = entry.value.toDouble();
-    }
-    return scores;
-  }
-
-  String? _residentIdForName(String residentName) {
-    final cleanName = residentName.trim();
-    for (final resident in residentFiles) {
-      if (resident.name.trim() == cleanName &&
-          _looksLikeBackendId(resident.id)) {
-        return resident.id;
-      }
-    }
-    return _looksLikeBackendId(backendResidentId) ? backendResidentId : null;
-  }
-
-  Future<void> _syncMedicationDose(
-    Medication medication,
-    String status, {
-    String? notes,
-  }) async {
-    if (AuthService.instance.currentUser == null) return;
-
-    try {
-      final parts = medication.id.split('|');
-      if (parts.length >= 4 && parts[0] == 'schedule') {
-        await MedicationsService.instance.logDose(
-          scheduleId: parts[1],
-          residentId: parts[2],
-          scheduledTime: medication.scheduledTime ?? DateTime.now(),
-          status: status,
-          notes: notes,
-        );
-      } else if (parts.length >= 2 && parts[0] == 'dose') {
-        await MedicationsService.instance.updateDose(
-          doseId: parts[1],
-          status: status,
-          notes: notes,
-        );
-      } else {
-        return;
-      }
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  Future<void> _syncVitals({
-    required String residentName,
-    required String bp,
-    required String sugar,
-    required String temp,
-  }) async {
-    if (AuthService.instance.currentUser == null) return;
-    final residentId = _residentIdForName(residentName);
-    if (residentId == null) return;
-
-    final bpParts = _bloodPressureParts(bp);
-    try {
-      await HealthService.instance.recordVitals(
-        residentId: residentId,
-        bloodPressureSystolic: bpParts[0],
-        bloodPressureDiastolic: bpParts[1],
-        bloodGlucose: _firstInt(sugar),
-        temperature: _firstDouble(temp),
-        notes: 'تم التسجيل من تطبيق طبطبة',
-      );
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  Future<void> _syncComplaintStatus(
-    String id,
-    String status, {
-    String? resolutionNotes,
-  }) async {
-    if (AuthService.instance.currentUser == null ||
-        id.startsWith('comp_') ||
-        id.isEmpty) {
-      return;
-    }
-
-    try {
-      await ComplaintsService.instance.updateStatus(
-        id: id,
-        status: status,
-        resolutionNotes: resolutionNotes,
-      );
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  String _normaliseDigits(String value) {
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    var result = value;
-    for (var i = 0; i < arabic.length; i++) {
-      result = result.replaceAll(arabic[i], '$i');
-    }
-    return result;
-  }
-
-  int? _firstInt(String value) {
-    final match = RegExp(r'\d+').firstMatch(_normaliseDigits(value));
-    return match == null ? null : int.tryParse(match.group(0)!);
-  }
-
-  double? _firstDouble(String value) {
-    final match = RegExp(r'\d+(\.\d+)?').firstMatch(_normaliseDigits(value));
-    return match == null ? null : double.tryParse(match.group(0)!);
-  }
-
-  List<int?> _bloodPressureParts(String value) {
-    final matches = RegExp(r'\d+').allMatches(_normaliseDigits(value)).toList();
-    return [
-      matches.isNotEmpty ? int.tryParse(matches[0].group(0)!) : null,
-      matches.length > 1 ? int.tryParse(matches[1].group(0)!) : null,
-    ];
-  }
-
-  String _backendComplaintCategory(String category) {
-    final normalized = category.toLowerCase();
-    if (normalized.contains('food') || category.contains('طعام')) {
-      return 'food';
-    }
-    if (normalized.contains('maintenance') || category.contains('صيانة')) {
-      return 'facility';
-    }
-    if (normalized.contains('communication') || category.contains('تواصل')) {
-      return 'communication';
-    }
-    if (normalized.contains('service') || category.contains('خدمة')) {
-      return 'care_quality';
-    }
-    return 'general';
-  }
-
-  Future<bool> _runBackendMutation(Future<void> Function() mutation) async {
-    if (AuthService.instance.currentUser == null) {
-      backendSyncError = 'لا توجد جلسة AWS نشطة';
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      await mutation();
-      backendSyncError = null;
-      return true;
-    } on ApiException catch (e) {
-      backendSyncError = e.message;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> login(String idRaw, String passRaw) async {
-    final identifier = idRaw.trim();
-    final password = passRaw.trim();
-
-    try {
-      final user = await AuthService.instance.login(identifier, password);
-      await markBackendAuthenticated(
-        email: user.email,
-        role: user.arabicRole,
-        userId: user.userId,
-        facilityId: user.facilityId,
-        name: user.name,
-        linkedResidentId: user.linkedResidentId,
-        facilityName: user.facilityName,
-      );
-      return true;
-    } on ApiException catch (e) {
-      backendSyncError = e.message;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<void> logout() async {
-    isAuthenticated = false;
-    currentRole = '';
-    currentAccount = null;
-    _sessionExpiry = null;
-    backendUserId = null;
-    backendFacilityId = null;
-    backendResidentId = null;
-    backendSyncError = null;
-    lastBackendSyncAt = null;
-    isBackendSyncing = false;
-    activeVideoCallId = null;
-    activeVideoCallJoinUrl = null;
-    isVideoCallActive = false;
-    isIncomingCall = false;
-    earnedBadgeIds = {};
-    newlyUnlockedBadge = null;
-    _clearTransientBackendState();
-    await _realtimeSub?.cancel();
-    _realtimeSub = null;
-    RealtimeService.instance.disconnect();
-    await AuthService.instance.logout();
-    unawaited(PushNotificationService.instance.removeToken());
-
-    await _storage.delete(key: 'isAuthenticated');
-    await _storage.delete(key: 'currentRole');
-    await _storage.delete(key: 'userEmail');
-    await _storage.delete(key: 'sessionExpiry');
-
-    notifyListeners();
-  }
-
-  void _clearTransientBackendState() {
-    backendSyncError = null;
-    isBackendSyncing = false;
-    mealPlanIdsByResidentName.clear();
-    activeEmergencies.clear();
-    activeVideoCallId = null;
-    activeVideoCallJoinUrl = null;
-  }
-
-  void _clearBackendCollections() {
-    residentFiles = [];
-    residentMedicalInfos = [];
-    medications = [];
-    activities = [];
-    activitySessions = [];
-    socialComplaints = [];
-    familyVisits = [];
-    familyBills = [];
-    memoryMoments = [];
-    memoriesList = [];
-    voiceMessagesList = [];
-    careTasks = [];
-    inventoryItems = [];
-    doctorVisits = [];
-    mealPlans = [];
-    mealPlanIdsByResidentName.clear();
-    medicalSessions = [];
-    medicalPrescriptions = [];
-    volunteerOpportunities = [];
-    volunteerBookings = [];
-    volunteerCertificates = [];
-    volunteerRatings = [];
-    volunteerReviews = [];
-    notifications = [];
-    nursingNotes = [];
-    handoffs = [];
-    socialNeeds = [];
-    socialAssessmentTools = [];
-    socialResidentScores = [];
-    staffPerformanceList = [];
-    sentReports = [];
-    careReports = [];
-    familyHealthMetrics = [];
-    familyMembersList = [];
-    assessmentHistory = [];
-  }
-
-  Future<void> completeOnboarding() async {
-    hasSeenOnboarding = true;
-    await _storage.write(key: 'hasSeenOnboarding', value: 'true');
-    notifyListeners();
-  }
-
-  Future<void> resetOnboarding() async {
-    hasSeenOnboarding = false;
-    await _storage.delete(key: 'hasSeenOnboarding');
-    notifyListeners();
-  }
-
-  void updateFontScale(double value) {
-    fontScaleFactor = value;
-    unawaited(_syncUserPreferences());
-    notifyListeners();
-  }
-
-  void toggleHighContrast() {
-    isHighContrast = !isHighContrast;
-    unawaited(_syncUserPreferences());
-    notifyListeners();
-  }
-
-  Future<void> setBiometricEnabled(bool value) async {
-    isBiometricEnabled = value;
-    await _storage.write(key: 'isBiometricEnabled', value: value.toString());
-    if (!value) {
-      await _storage.delete(key: 'bio_email');
-      await _storage.delete(key: 'bio_pass');
-    }
-    notifyListeners();
-  }
-
-  Future<void> saveBiometricCredentials(String email, String password) async {
-    await _storage.write(key: 'bio_email', value: email);
-    await _storage.write(key: 'bio_pass', value: password);
-  }
-
-  /// يُسجّل الدخول باستخدام الـ credentials المحفوظة للبيومتري
-  Future<bool> loginWithBiometric() async {
-    final email = await _storage.read(key: 'bio_email');
-    final pass = await _storage.read(key: 'bio_pass');
-    if (email == null || pass == null || email.isEmpty || pass.isEmpty) {
-      return false;
-    }
-    return login(email, pass);
-  }
 
   // --- ELDERLY / RESIDENT STATE (RE-ADDED) ---
   User currentUser = User(
@@ -1725,27 +414,12 @@ class AppRiverpod extends ChangeNotifier {
   // الحقول والدوال الجديدة لربط الأنشطة المشتركة بين المسن وعائلته
   final Map<String, bool> familyActivityParticipations = {};
   final Map<String, String> familyActivityNotes = {};
-
-  void toggleFamilyParticipation(String activityId) {
-    final current = familyActivityParticipations[activityId] ?? false;
-    familyActivityParticipations[activityId] = !current;
-    notifyListeners();
-  }
-
-  void updateFamilyActivityNote(String activityId, String note) {
-    familyActivityNotes[activityId] = note;
-    notifyListeners();
-  }
-
-  bool isFamilyParticipating(String activityId) {
-    return familyActivityParticipations[activityId] ?? false;
-  }
-
-  String getFamilyActivityNote(String activityId) {
-    return familyActivityNotes[activityId] ?? '';
-  }
-
   List<FamilyMember> familyMembersList = [];
+  final Map<String, Set<String>> _favoriteFamilyMemberIdsByResident = {};
+  final Map<String, int> _familyCardLimitByResident = {};
+  final Set<String> _loadedFamilyCardPreferenceKeys = {};
+  static const int _defaultFamilyCardLimit = 3;
+  static const int _maxFamilyCardLimit = 6;
 
   List<VoiceMessage> voiceMessagesList = [];
 
@@ -1761,66 +435,7 @@ class AppRiverpod extends ChangeNotifier {
   bool isAIInsightsEnabled = true;
   bool isLoadingAiInsight = false;
   String aiInsightMode = 'backend';
-
-  Future<void> refreshAiInsightFromBackend({String? residentId}) async {
-    final resolvedResidentId = residentId ?? backendResidentId;
-    if (resolvedResidentId == null || resolvedResidentId.isEmpty) {
-      aiInsightMode = 'error';
-      backendSyncError =
-          'لا يوجد residentId من AWS لجلب توصية الذكاء الاصطناعي';
-      notifyListeners();
-      return;
-    }
-    isLoadingAiInsight = true;
-    notifyListeners();
-    try {
-      final rec =
-          await AiService.instance.getRecommendations(resolvedResidentId);
-
-      // Resolve human-readable name and room from the residents list.
-      final residentFile = residentFiles
-          .where((r) => r.id == resolvedResidentId)
-          .firstOrNull;
-      final safeName = residentFile?.name.isNotEmpty == true
-          ? residentFile!.name
-          : (currentUser.name.isNotEmpty ? currentUser.name : 'مقيم');
-      final roomNumber = residentFile?.room;
-
-      // Strip any UUID patterns the backend may have included in text fields.
-      final safeSummary = stripUuids(rec.summary);
-      final safeRationale = stripUuids(rec.rationale);
-
-      if (aiInsights.isNotEmpty) {
-        aiInsights[0] = AIInsight(
-          id: aiInsights[0].id,
-          residentName: aiInsights[0].residentName,
-          roomNumber: aiInsights[0].roomNumber ?? roomNumber,
-          summary: safeSummary,
-          rationale: safeRationale,
-          generationDate: DateTime.tryParse(rec.generatedAt) ?? DateTime.now(),
-          confidenceScore: 0.85,
-        );
-      } else {
-        aiInsights.add(AIInsight(
-          id: 'ai_${DateTime.now().millisecondsSinceEpoch}',
-          residentName: safeName,
-          roomNumber: roomNumber,
-          summary: safeSummary,
-          rationale: safeRationale,
-          generationDate: DateTime.tryParse(rec.generatedAt) ?? DateTime.now(),
-        ));
-      }
-      aiInsightMode = 'bedrock';
-      backendSyncError = null;
-    } catch (e) {
-      aiInsightMode = 'error';
-      backendSyncError = e.toString();
-    } finally {
-      isLoadingAiInsight = false;
-      notifyListeners();
-    }
-  }
-
+  String? aiInsightError;
   List<AIInsight> aiInsights = [];
 
   // خريطة لتخزين ملاحظات الذكاء الاصطناعي لكل مقيم (residentId → notes)
@@ -1850,68 +465,9 @@ class AppRiverpod extends ChangeNotifier {
   List<MemoryItem> memoriesList = [];
 
   // --- Albums Management ---
+  static const String defaultPhotoAlbumName = 'صوري';
   List<String> customAlbums = [];
   Map<String, String> albumCovers = {}; // albumName -> assetPath or url
-
-  List<String> get allAlbums {
-    return customAlbums;
-  }
-
-  void createAlbum(String name) {
-    if (!customAlbums.contains(name)) {
-      customAlbums.add(name);
-      notifyListeners();
-    }
-  }
-
-  void renameAlbum(String oldName, String newName) {
-    if (newName.trim().isEmpty || customAlbums.contains(newName)) return;
-    int index = customAlbums.indexOf(oldName);
-    if (index != -1) {
-      customAlbums[index] = newName;
-      for (var item in memoriesList) {
-        if (item.category == oldName) {
-          item.category = newName;
-        }
-      }
-      if (albumCovers.containsKey(oldName)) {
-        albumCovers[newName] = albumCovers.remove(oldName)!;
-      }
-      notifyListeners();
-    }
-  }
-
-  void deleteAlbum(String name) {
-    customAlbums.remove(name);
-    memoriesList.removeWhere((item) => item.category == name);
-    albumCovers.remove(name);
-    notifyListeners();
-  }
-
-  void addPhotoToAlbum(String albumName, String photoPath,
-      {String type = 'image'}) {
-    final newItem = MemoryItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      category: albumName,
-      title: 'صورة جديدة',
-      date:
-          '${DateTime.now().day} / ${DateTime.now().month} / ${DateTime.now().year}',
-      type: type,
-      assetPath: photoPath,
-    );
-    memoriesList.insert(0, newItem);
-    notifyListeners();
-  }
-
-  void setAlbumCover(String albumName, String imagePath) {
-    albumCovers[albumName] = imagePath;
-    notifyListeners();
-  }
-
-  void deleteMemoryItem(String id) {
-    memoriesList.removeWhere((item) => item.id == id);
-    notifyListeners();
-  }
 
   // --- VOLUNTEER STATE ---
   int volunteerHours = 0;
@@ -1928,6 +484,8 @@ class AppRiverpod extends ChangeNotifier {
 
   List<VolunteerBooking> volunteerBookings = [];
 
+  List<VolunteerApplication> volunteerApplications = [];
+
   List<VolunteerCertificate> volunteerCertificates = [];
 
   List<VolunteerRating> volunteerRatings = [];
@@ -1937,8 +495,263 @@ class AppRiverpod extends ChangeNotifier {
   // --- DYNAMIC QUESTION BANK ---
   Map<String, List<Map<String, dynamic>>> questionBank = {};
 
+  static const int maxAssessmentQuestionsPerCategory = 15;
+
   List<Map<String, dynamic>> getQuestionsForTool(String toolId) {
-    return questionBank[toolId] ?? const [];
+    final questions = _limitedAssessmentQuestions(questionBank[toolId]);
+    if (questions.isNotEmpty) return questions;
+    return _fallbackQuestionsForAssessmentKey(toolId);
+  }
+
+  List<Map<String, dynamic>> getQuestionsForAssessmentTool(
+    SocialSpecialistAssessmentTool tool,
+  ) {
+    final questions = _limitedAssessmentQuestions(questionBank[tool.id]);
+    if (questions.isNotEmpty) return questions;
+    return _fallbackQuestionsForAssessmentTool(tool);
+  }
+
+  List<Map<String, dynamic>> _limitedAssessmentQuestions(
+    List<Map<String, dynamic>>? questions,
+  ) {
+    if (questions == null || questions.isEmpty) return const [];
+    return questions
+        .where((q) => (q['text'] ?? q['question'] ?? '').toString().isNotEmpty)
+        .take(maxAssessmentQuestionsPerCategory)
+        .toList();
+  }
+
+  void _seedFallbackQuestionBank() {
+    for (final entry in _fallbackAssessmentQuestionBank().entries) {
+      questionBank.putIfAbsent(entry.key, () => entry.value);
+    }
+  }
+
+  List<SocialSpecialistAssessmentTool> _fallbackAssessmentTools() {
+    return [
+      SocialSpecialistAssessmentTool(
+        id: 'global_psych_gds15',
+        name: 'تقييم نفسي مختصر',
+        subtitle: 'مبني على GDS-15 لكبار السن - 15 سؤال',
+        score: '0/15',
+        status: 'جديد',
+        icon: '🧠',
+      ),
+      SocialSpecialistAssessmentTool(
+        id: 'global_social_lsns_ucla',
+        name: 'تقييم اجتماعي',
+        subtitle: 'عزلة ودعم اجتماعي LSNS-6 + UCLA-3 - 9 أسئلة',
+        score: '0/9',
+        status: 'جديد',
+        icon: '🤝',
+      ),
+      SocialSpecialistAssessmentTool(
+        id: 'global_functional_katz_lawton',
+        name: 'تقييم وظيفي وبدني',
+        subtitle: 'Katz ADL + Lawton IADL - 14 سؤال',
+        score: '0/14',
+        status: 'جديد',
+        icon: '🏃',
+      ),
+      SocialSpecialistAssessmentTool(
+        id: 'global_health_mna_braden',
+        name: 'تقييم صحي وتغذوي',
+        subtitle: 'MNA-SF + Braden domains - 12 سؤال',
+        score: '0/12',
+        status: 'جديد',
+        icon: '❤️',
+      ),
+    ];
+  }
+
+  List<Map<String, dynamic>> _fallbackQuestionsForAssessmentTool(
+    SocialSpecialistAssessmentTool tool,
+  ) {
+    final key = _assessmentFallbackKey(
+      '${tool.id} ${tool.name} ${tool.subtitle} ${tool.icon}',
+    );
+    return _fallbackQuestionsForAssessmentKey(key);
+  }
+
+  List<Map<String, dynamic>> _fallbackQuestionsForAssessmentKey(String value) {
+    final key = _assessmentFallbackKey(value);
+    return _fallbackAssessmentQuestionBank()[key] ??
+        _fallbackAssessmentQuestionBank()['psych']!;
+  }
+
+  String _assessmentFallbackKey(String value) {
+    final text = value.toLowerCase();
+    if (text.contains('social') ||
+        text.contains('family') ||
+        text.contains('relation') ||
+        text.contains('اجتما') ||
+        text.contains('علاق') ||
+        text.contains('أسرة') ||
+        text.contains('عزلة') ||
+        text.contains('🤝')) {
+      return 'social';
+    }
+    if (text.contains('phys') ||
+        text.contains('mobil') ||
+        text.contains('adl') ||
+        text.contains('function') ||
+        text.contains('بدن') ||
+        text.contains('حرك') ||
+        text.contains('وظيف') ||
+        text.contains('نشاط') ||
+        text.contains('🏃')) {
+      return 'functional';
+    }
+    if (text.contains('health') ||
+        text.contains('medical') ||
+        text.contains('nutrition') ||
+        text.contains('mna') ||
+        text.contains('braden') ||
+        text.contains('صحي') ||
+        text.contains('طبي') ||
+        text.contains('تغذ') ||
+        text.contains('رعاية') ||
+        text.contains('❤️')) {
+      return 'health';
+    }
+    return 'psych';
+  }
+
+  Map<String, List<Map<String, dynamic>>> _fallbackAssessmentQuestionBank() {
+    const yesNo = ['نعم', 'لا'];
+    const frequency = ['نادراً أو أبداً', 'أحياناً', 'غالباً'];
+    const supportFrequency = [
+      'أقل من مرة شهرياً',
+      'شهرياً',
+      'أسبوعياً',
+      'يومياً'
+    ];
+    const independence = ['مستقل', 'يحتاج مساعدة جزئية', 'يعتمد على الآخرين'];
+    const nutrition = ['طبيعي/مستقر', 'تغير متوسط', 'تدهور واضح'];
+
+    Map<String, dynamic> q(
+      String id,
+      String text, {
+      List<String>? options,
+    }) {
+      return {
+        'id': id,
+        'text': text,
+        'type': 'choice',
+        'options': options ?? yesNo,
+      };
+    }
+
+    return {
+      'psych': [
+        q('gds15_01', 'GDS-15: هل أنت راضٍ بشكل عام عن حياتك؟'),
+        q('gds15_02', 'GDS-15: هل توقفت عن كثير من اهتماماتك أو أنشطتك؟'),
+        q('gds15_03', 'GDS-15: هل تشعر أن حياتك فارغة؟'),
+        q('gds15_04', 'GDS-15: هل تشعر بالملل كثيراً؟'),
+        q('gds15_05', 'GDS-15: هل تكون في مزاج جيد معظم الوقت؟'),
+        q('gds15_06', 'GDS-15: هل تخشى أن يحدث لك شيء سيئ؟'),
+        q('gds15_07', 'GDS-15: هل تشعر بالسعادة معظم الوقت؟'),
+        q('gds15_08', 'GDS-15: هل تشعر غالباً بالعجز أو قلة الحيلة؟'),
+        q('gds15_09',
+            'GDS-15: هل تفضل البقاء في الغرفة بدل الخروج أو المشاركة؟'),
+        q('gds15_10', 'GDS-15: هل تشعر أن ذاكرتك أسوأ من أغلب من هم في سنك؟'),
+        q('gds15_11', 'GDS-15: هل ترى أن الحياة الآن جيدة وممتعة؟'),
+        q('gds15_12', 'GDS-15: هل تشعر بأنك بلا قيمة كما أنت الآن؟'),
+        q('gds15_13', 'GDS-15: هل تشعر بوجود طاقة كافية خلال اليوم؟'),
+        q('gds15_14', 'GDS-15: هل تشعر أن وضعك الحالي بلا أمل؟'),
+        q('gds15_15', 'GDS-15: هل ترى أن أغلب الناس أفضل حالاً منك؟'),
+      ],
+      'social': [
+        q('lsns_01', 'LSNS-6: كم مرة تتواصل مع أحد أفراد الأسرة أو الأقارب؟',
+            options: supportFrequency),
+        q('lsns_02',
+            'LSNS-6: كم عدد الأقارب الذين يمكن طلب المساعدة منهم عند الحاجة؟',
+            options: ['لا يوجد', 'واحد أو اثنان', 'ثلاثة فأكثر']),
+        q('lsns_03',
+            'LSNS-6: كم عدد الأقارب الذين يمكن الحديث معهم عن أمور خاصة؟',
+            options: ['لا يوجد', 'واحد أو اثنان', 'ثلاثة فأكثر']),
+        q('lsns_04',
+            'LSNS-6: كم مرة تتواصل مع صديق أو زميل داخل أو خارج الدار؟',
+            options: supportFrequency),
+        q('lsns_05', 'LSNS-6: كم عدد الأصدقاء الذين يمكن طلب المساعدة منهم؟',
+            options: ['لا يوجد', 'واحد أو اثنان', 'ثلاثة فأكثر']),
+        q('lsns_06', 'LSNS-6: كم عدد الأصدقاء الذين يمكن الحديث معهم بثقة؟',
+            options: ['لا يوجد', 'واحد أو اثنان', 'ثلاثة فأكثر']),
+        q('ucla3_01', 'UCLA-3: كم مرة تشعر بنقص الصحبة أو الرفقة؟',
+            options: frequency),
+        q('ucla3_02', 'UCLA-3: كم مرة تشعر بأنك مستبعد أو غير مندمج؟',
+            options: frequency),
+        q('ucla3_03', 'UCLA-3: كم مرة تشعر بالعزلة عن الآخرين؟',
+            options: frequency),
+      ],
+      'functional': [
+        q('katz_01', 'Katz ADL: الاستحمام والعناية بالنظافة الشخصية.',
+            options: independence),
+        q('katz_02', 'Katz ADL: ارتداء الملابس وخلعها.', options: independence),
+        q('katz_03', 'Katz ADL: استخدام الحمام بأمان.', options: independence),
+        q('katz_04', 'Katz ADL: الانتقال من السرير إلى الكرسي أو العكس.',
+            options: independence),
+        q('katz_05',
+            'Katz ADL: التحكم في الإخراج أو التعامل مع الاحتياج للمساعدة.',
+            options: independence),
+        q('katz_06', 'Katz ADL: تناول الطعام دون مساعدة.',
+            options: independence),
+        q('lawton_01', 'Lawton IADL: استخدام الهاتف أو وسيلة تواصل مناسبة.',
+            options: independence),
+        q('lawton_02', 'Lawton IADL: إدارة الأدوية أو تذكر مواعيدها.',
+            options: independence),
+        q('lawton_03',
+            'Lawton IADL: إدارة المصروفات أو المتعلقات الشخصية البسيطة.',
+            options: independence),
+        q('lawton_04', 'Lawton IADL: اختيار الملابس أو المستلزمات اليومية.',
+            options: independence),
+        q('lawton_05', 'Lawton IADL: التنقل داخل الدار أو الوصول للأنشطة.',
+            options: independence),
+        q('lawton_06', 'Lawton IADL: المشاركة في ترتيب المساحة الشخصية.',
+            options: independence),
+        q('lawton_07', 'Lawton IADL: القدرة على طلب المساعدة عند الحاجة.',
+            options: independence),
+        q('lawton_08', 'Lawton IADL: متابعة التعليمات اليومية البسيطة.',
+            options: independence),
+      ],
+      'health': [
+        q('mna_sf_01',
+            'MNA-SF: هل قلّ تناول الطعام مؤخراً بسبب فقدان شهية أو صعوبة بلع/مضغ؟',
+            options: nutrition),
+        q('mna_sf_02', 'MNA-SF: هل حدث فقدان وزن ملحوظ خلال آخر ثلاثة أشهر؟',
+            options: nutrition),
+        q('mna_sf_03', 'MNA-SF: مستوى الحركة الحالي داخل الدار.', options: [
+          'حر الحركة',
+          'حركة محدودة',
+          'ملازم للسرير/الكرسي غالباً'
+        ]),
+        q('mna_sf_04', 'MNA-SF: هل تعرض لضغط نفسي أو مرض حاد مؤخراً؟',
+            options: yesNo),
+        q('mna_sf_05',
+            'MNA-SF: هل توجد مشكلات معرفية أو مزاجية تؤثر على الأكل؟',
+            options: ['لا توجد', 'خفيفة', 'متوسطة أو شديدة']),
+        q('mna_sf_06',
+            'MNA-SF: مؤشر الكتلة/المظهر التغذوي العام حسب التقييم المتاح.',
+            options: [
+              'ضمن الطبيعي',
+              'احتمال نقص تغذية',
+              'نقص واضح يحتاج تدخل'
+            ]),
+        q('braden_01',
+            'Braden: قدرة المقيم على الإحساس بالضغط أو الألم الموضعي.',
+            options: ['جيدة', 'محدودة قليلاً', 'محدودة بوضوح']),
+        q('braden_02', 'Braden: تعرض الجلد للرطوبة خلال اليوم.',
+            options: ['نادراً', 'أحياناً', 'متكرر']),
+        q('braden_03', 'Braden: مستوى النشاط والحركة اليومية.',
+            options: ['يمشي/يتحرك جيداً', 'حركة محدودة', 'ملازم غالباً']),
+        q('braden_04', 'Braden: القدرة على تغيير الوضعية دون مساعدة.',
+            options: ['مستقل', 'يحتاج تذكير/مساعدة', 'يعتمد على المساعدة']),
+        q('braden_05', 'Braden: كفاية التغذية والسوائل خلال اليوم.',
+            options: ['كافية', 'غير منتظمة', 'ضعيفة']),
+        q('braden_06', 'Braden: احتكاك الجلد أو الانزلاق أثناء الحركة/النقل.',
+            options: ['لا يوجد غالباً', 'أحياناً', 'متكرر']),
+      ],
+    };
   }
 
   String selectedSpecialistFilter = 'الكل';
@@ -1954,8 +767,26 @@ class AppRiverpod extends ChangeNotifier {
   List<SocialSpecialistResidentScore> socialResidentScores = [];
 
   List<SocialSpecialistResidentScore> get filteredResidentScores {
-    return socialResidentScores.where((r) {
-      final matchQuery = r.name.contains(residentSearchQuery) ||
+    // Sort by most recent assessment first so dedup keeps the latest
+    final sorted =
+        List<SocialSpecialistResidentScore>.from(socialResidentScores)
+          ..sort((a, b) => b.lastAssessment.compareTo(a.lastAssessment));
+
+    // Deduplicate by resident name, filter invalid/test entries
+    final seenNames = <String>{};
+    final deduped = sorted.where((r) {
+      final nameClean = r.name.trim().toLowerCase();
+      if (nameClean.isEmpty || r.name == 'مقيم') return false;
+      if (r.name.contains('?')) return false;
+      if (nameClean.startsWith('test') || nameClean.contains('test ')) {
+        return false;
+      }
+      return seenNames.add(nameClean);
+    }).toList();
+
+    return deduped.where((r) {
+      final matchQuery = residentSearchQuery.isEmpty ||
+          r.name.contains(residentSearchQuery) ||
           r.room.contains(residentSearchQuery);
       final matchStatus = selectedHealthStatus == null ||
           r.healthStatus == selectedHealthStatus;
@@ -2029,7 +860,7 @@ class AppRiverpod extends ChangeNotifier {
           id: 'k2',
           label: 'مشاركة الأنشطة',
           value: '${_toArabicDigits(activityRate)}٪',
-          trend: activityRate > 0 ? 'من بيانات AWS' : 'لا توجد بيانات',
+          trend: activityRate > 0 ? 'من بيانات السيرفر' : 'لا توجد بيانات',
           isPositive: activityRate >= 60),
       SocialSpecialistKPI(
           id: 'k3',
@@ -2084,8 +915,8 @@ class AppRiverpod extends ChangeNotifier {
       }
     }
     if (allCriteria.isEmpty) return '—';
-    final avgs = allCriteria.map(
-        (k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
+    final avgs = allCriteria
+        .map((k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
     final best = avgs.entries.reduce((a, b) => a.value >= b.value ? a : b);
     return '${best.key} ⭐ ${best.value.toStringAsFixed(1)}';
   }
@@ -2099,8 +930,8 @@ class AppRiverpod extends ChangeNotifier {
       }
     }
     if (allCriteria.isEmpty) return '—';
-    final avgs = allCriteria.map(
-        (k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
+    final avgs = allCriteria
+        .map((k, v) => MapEntry(k, v.reduce((a, b) => a + b) / v.length));
     final worst = avgs.entries.reduce((a, b) => a.value <= b.value ? a : b);
     return '${worst.key} ${worst.value.toStringAsFixed(1)}';
   }
@@ -2114,436 +945,12 @@ class AppRiverpod extends ChangeNotifier {
     }
   }
 
-  int get remainingSecondsToNextMed {
-    final next = nextMedication;
-    if (next == null || next.scheduledTime == null) return 0;
-    final diff = next.scheduledTime!.difference(DateTime.now()).inSeconds;
-    return diff > 0 ? diff : 0;
-  }
-
-  List<FamilyMember> get familyMembers => familyMembersList;
-
-  Future<void> fetchFavoriteContacts() async {
-    if (await FlutterContacts.requestPermission()) {
-      // جلب جهات الاتصال مع الصور وأرقام الهواتف
-      final contacts = await FlutterContacts.getContacts(withProperties: true);
-
-      // جلب جهات الاتصال المفضلة (Starred) فقط
-      final favorites = contacts.where((c) => c.isStarred).toList();
-
-      // إذا لم يكن هناك مفضلين، نأخذ أول ٣ جهات اتصال كأمثلة
-      final toShow =
-          favorites.isNotEmpty ? favorites : contacts.take(3).toList();
-
-      for (var contact in toShow) {
-        if (contact.phones.isNotEmpty) {
-          final phone = contact.phones.first.number;
-          final name = contact.displayName;
-          if (!familyMembersList.any((m) => m.phoneNumber == phone)) {
-            String memberId = contact.id;
-            if (_looksLikeBackendId(backendResidentId)) {
-              final backendId = await BackendMutationService.instance
-                  .createFamilyMemberFromPhone(
-                residentId: backendResidentId!,
-                name: name,
-                phone: phone,
-              );
-              if (backendId != null && backendId.isNotEmpty) {
-                memberId = backendId;
-              }
-            }
-            familyMembersList.add(FamilyMember(
-              id: memberId,
-              name: name,
-              relation: 'قريب',
-              avatarPath: '',
-              initials: name.isNotEmpty ? name.substring(0, 1) : '؟',
-              phoneNumber: phone,
-              isAvailable: true,
-            ));
-          }
-        }
-      }
-      notifyListeners();
-    }
-  }
-
-  void toggleFamilyPin(String id) {
-    final idx = familyMembersList.indexWhere((m) => m.id == id);
-    if (idx != -1) {
-      familyMembersList[idx].isPinned = !familyMembersList[idx].isPinned;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> pickAndAddContact() async {
-    try {
-      if (!await FlutterContacts.requestPermission()) return false;
-
-      final contact = await FlutterContacts.openExternalPick();
-      if (contact == null) return true;
-
-      final fullContact = await FlutterContacts.getContact(contact.id);
-      if (fullContact != null && fullContact.phones.isNotEmpty) {
-        final phone = fullContact.phones.first.number;
-        final name = fullContact.displayName;
-        if (!familyMembersList.any((m) => m.phoneNumber == phone)) {
-          String memberId = fullContact.id;
-          if (_looksLikeBackendId(backendResidentId)) {
-            final backendId = await BackendMutationService.instance
-                .createFamilyMemberFromPhone(
-              residentId: backendResidentId!,
-              name: name,
-              phone: phone,
-            );
-            if (backendId != null && backendId.isNotEmpty) memberId = backendId;
-          }
-          familyMembersList.add(FamilyMember(
-            id: memberId,
-            name: name,
-            relation: 'قريب',
-            avatarPath: '',
-            initials: name.isNotEmpty ? name.substring(0, 1) : '؟',
-            phoneNumber: phone,
-            isAvailable: true,
-            isPinned: true,
-          ));
-          notifyListeners();
-        }
-      }
-      return true;
-    } catch (e) {
-      debugPrint("EXCEPTION: Error in pickAndAddContact: $e");
-      return false;
-    }
-  }
-
-  Future<void> callPhoneNumber(String phone) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phone,
-    );
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
-      debugPrint('Could not launch dialer for $phone');
-    }
-  }
-
-  Future<void> launchZoom(String? link) async {
-    if (link == null || link.isEmpty) return;
-
-    final Uri url = Uri.parse(link);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      debugPrint('Could not launch Zoom link: $link');
-    }
-  }
-
-  List<VoiceMessage> get voiceMessages => voiceMessagesList;
-  List<MemoryItem> get memories => memoriesList;
-
-  VolunteerImpact get volunteerImpact => VolunteerImpact(
-        residentsServed: totalResidentsCount,
-        positiveRatings: volunteerRatings.where((r) => r.score >= 4).length,
-        totalHours: volunteerHours,
-      );
+  final Set<String> _familyRemindedMedicationKeys = {};
 
   // --- DETAILED ASSESSMENT STATE ---
   List<AssessmentQuestion> gdsQuestions = [];
 
   List<AssessmentHistoricalEntry> assessmentHistory = [];
-  Future<void> loadGdsQuestions() async {
-    try {
-      final raw = await SocialService.instance.getGdsQuestions();
-      final loaded = raw
-          .map((e) => AssessmentQuestion(
-                id: (e['id'] ?? '').toString(),
-                text: (e['text'] ?? '').toString(),
-                type: (e['type'] ?? 'choice').toString(),
-                options:
-                    (e['options'] as List?)?.map((o) => o.toString()).toList(),
-              ))
-          .where((q) => q.id.isNotEmpty && q.text.isNotEmpty)
-          .toList();
-      if (loaded.isNotEmpty) gdsQuestions = loaded;
-      notifyListeners();
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadQuestionsForTool(String toolId) async {
-    try {
-      final raw = await SocialService.instance.getToolQuestions(toolId);
-      questionBank = Map<String, List<Map<String, dynamic>>>.from(questionBank)
-        ..[toolId] = raw;
-      notifyListeners();
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-    }
-  }
-
-  void setRole(String role) {
-    currentRole = role;
-    notifyListeners();
-  }
-
-  void setIndex(int index) {
-    selectedIndex = index;
-    notifyListeners();
-  }
-
-  List<Activity> getActivitiesForDay(int index) {
-    final daysMapping = ['أمس', 'اليوم', 'غداً', 'الأسبوع'];
-    String tag = daysMapping[index];
-    if (tag == 'الأسبوع') return activities;
-    return activities.where((a) => a.dayTag == tag).toList();
-  }
-
-  void completeActivity(String id) {
-    final idx = activities.indexWhere((a) => a.id == id);
-    if (idx != -1) {
-      activities[idx].status = 'done';
-      notifyListeners();
-    }
-  }
-
-  Future<void> addActivity(Activity activity) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createActivity(activity);
-    });
-    if (!synced) return;
-    activities.insert(0, activity);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> updateActivity(Activity activity) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.updateActivity(activity);
-    });
-    if (!synced) return;
-    final index = activities.indexWhere((a) => a.id == activity.id);
-    if (index != -1) {
-      activities[index] = activity;
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  Future<void> updateStaff(StaffPerformance staff) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.updateManagedUser(staff);
-    });
-    if (!synced) return;
-    final index = staffPerformanceList.indexWhere((s) => s.id == staff.id);
-    if (index != -1) {
-      staffPerformanceList[index] = staff;
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteStaff(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.disableManagedUser(id);
-    });
-    if (!synced) return;
-    staffPerformanceList.removeWhere((s) => s.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> pickAndSetResidentImage(String residentId) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      updateResidentImage(residentId, image.path);
-    }
-  }
-
-  void updateResidentImage(String residentId, String path) {
-    final index = residentFiles.indexWhere((r) => r.id == residentId);
-    if (index != -1) {
-      residentFiles[index] = residentFiles[index].copyWith(imageUrl: path);
-      notifyListeners();
-    }
-  }
-
-  Future<void> pickAndSetStaffImage(String staffId) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      updateStaffImage(staffId, image.path);
-    }
-  }
-
-  void updateStaffImage(String staffId, String path) {
-    final index = staffPerformanceList.indexWhere((s) => s.id == staffId);
-    if (index != -1) {
-      staffPerformanceList[index] =
-          staffPerformanceList[index].copyWith(imageUrl: path);
-      notifyListeners();
-    }
-  }
-
-  void elderlyConfirmMedication(String id) {
-    final idx = medications.indexWhere((m) => m.id == id);
-    if (idx != -1 &&
-        !medications[idx].isTaken &&
-        !medications[idx].isElderlyConfirmed) {
-      medications[idx].isElderlyConfirmed = true;
-      medications[idx].isSkipped = false;
-
-      // إرسال تنبيه للممرض لتأكيد الدواء
-      triggerNotification(
-        title: 'تأكيد دواء 💊',
-        body:
-            'المقيم أكد تناوله لدواء (${medications[idx].name}). يرجى التأكيد.',
-        type: 'medical',
-        targetRole: 'ممرض',
-      );
-      if (backendSyncError != null) return;
-      medications[idx].isElderlyConfirmed = true;
-      medications[idx].isSkipped = false;
-
-      notifyListeners();
-    }
-  }
-
-  Future<void> nurseConfirmMedication(String id) async {
-    final idx = medications.indexWhere((m) => m.id == id);
-    if (idx != -1 && !medications[idx].isTaken) {
-      final med = medications[idx];
-      await _syncMedicationDose(med, 'given');
-      if (backendSyncError != null) return;
-      medications[idx].isTaken = true;
-      medications[idx].isElderlyConfirmed = true;
-      medications[idx].isSkipped = false;
-      addPoints(10);
-
-      triggerNotification(
-        title: 'إنجاز صحي جديد! 🏆',
-        body:
-            'والدك أتم أخذ دوائه (${medications[idx].name}) في الموعد وكسب 10 نقاط!',
-        type: 'medical',
-        targetRole: 'عائلة',
-      );
-
-      notifyListeners();
-    }
-  }
-
-  Future<void> skipMedication(String id, String reason) async {
-    final idx = medications.indexWhere((m) => m.id == id);
-    if (idx != -1) {
-      final med = medications[idx];
-      await _syncMedicationDose(med, 'skipped', notes: reason);
-      if (backendSyncError != null) return;
-      medications[idx].isSkipped = true;
-      medications[idx].isTaken = false;
-      medications[idx].skipReason = reason;
-      notifyListeners();
-    }
-  }
-
-  List<Medication> getMedicationsForDay(int index) {
-    final daysMapping = ['أمس', 'اليوم', 'غداً', 'الأسبوع'];
-    String tag = daysMapping[index];
-    if (tag == 'الأسبوع') return medications;
-    return medications.where((m) => m.dayTag == tag).toList();
-  }
-
-  void addPoints(int p, {int completedActivitiesDelta = 1}) {
-    final nextStreak = currentUser.streakDays == 0 ? 1 : currentUser.streakDays;
-    currentUser = User(
-      name: currentUser.name,
-      points: currentUser.points + p,
-      streakDays: nextStreak,
-      completedActivities:
-          currentUser.completedActivities + completedActivitiesDelta,
-    );
-    _checkAndUnlockBadges();
-    notifyListeners();
-
-    if (AuthService.instance.currentUser == null) return;
-    unawaited(_syncUserPoints(
-      p,
-      completedActivitiesDelta: completedActivitiesDelta,
-      streakDays: nextStreak,
-    ));
-  }
-
-  void _checkAndUnlockBadges() {
-    for (final badge in BadgeDefinition.all) {
-      if (!earnedBadgeIds.contains(badge.id) && badge.isUnlocked(currentUser)) {
-        earnedBadgeIds.add(badge.id);
-        newlyUnlockedBadge = badge;
-        unawaited(_saveEarnedBadges());
-      }
-    }
-  }
-
-  void clearBadgeNotification() {
-    newlyUnlockedBadge = null;
-    notifyListeners();
-  }
-
-  Future<void> _loadEarnedBadges() async {
-    try {
-      final uid = backendUserId ?? '';
-      final raw = await _storage.read(key: 'earnedBadges_$uid');
-      if (raw != null) {
-        final list = jsonDecode(raw) as List;
-        earnedBadgeIds = list.cast<String>().toSet();
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _saveEarnedBadges() async {
-    try {
-      final uid = backendUserId ?? '';
-      await _storage.write(
-        key: 'earnedBadges_$uid',
-        value: jsonEncode(earnedBadgeIds.toList()),
-      );
-    } catch (_) {}
-  }
-
-  Future<void> _syncUserPoints(
-    int points, {
-    required int completedActivitiesDelta,
-    int? streakDays,
-  }) async {
-    try {
-      final progress = await UserProgressService.instance.addPoints(
-        points: points,
-        completedActivitiesDelta: completedActivitiesDelta,
-        streakDays: streakDays,
-      );
-      _applyUserProgress(progress);
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  void toggleAIInsights(bool value) {
-    isAIInsightsEnabled = value;
-    unawaited(_syncUserPreferences());
-    notifyListeners();
-  }
-
-  void toggleAICompanion(bool value) {
-    isAICompanionEnabled = value;
-    unawaited(_syncUserPreferences());
-    notifyListeners();
-  }
 
   bool isAiThinking = false;
   String lastAiMode = 'bedrock';
@@ -2551,9 +958,8 @@ class AppRiverpod extends ChangeNotifier {
   // Checks for missed medications and triggers alerts for the resident and
   // the nursing team. Called automatically after each sync for resident role.
   Future<void> checkMedicationAdherence() async {
-    final missed = medications
-        .where((m) => m.isMissed && m.dayTag == 'اليوم')
-        .toList();
+    final missed =
+        medications.where((m) => m.isMissed && m.dayTag == 'اليوم').toList();
     if (missed.isEmpty) return;
 
     final names = missed.map((m) => m.name).join('، ');
@@ -2576,9 +982,7 @@ class AppRiverpod extends ChangeNotifier {
     );
 
     // Add proactive AI message to companion chat if it's empty or old
-    final lastAiMsg = companionChatHistory
-        .where((m) => m.isFromAI)
-        .lastOrNull;
+    final lastAiMsg = companionChatHistory.where((m) => m.isFromAI).lastOrNull;
     final isRecent = lastAiMsg != null &&
         DateTime.now().difference(lastAiMsg.timestamp).inMinutes < 30;
     if (!isRecent) {
@@ -2703,118 +1107,8 @@ class AppRiverpod extends ChangeNotifier {
       return null;
     }
   }
-
-  Future<void> refreshActiveEmergencies() async {
-    if (AuthService.instance.currentUser == null) return;
-    try {
-      activeEmergencies = await EmergencyService.instance.active();
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  Future<void> triggerSOS({
-    String? message,
-    String? type,
-    String? location,
-  }) async {
-    final authUser = AuthService.instance.currentUser;
-    final triggeredBy =
-        (backendUserId?.isNotEmpty == true ? backendUserId : authUser?.userId)
-                ?.trim() ??
-            '';
-
-    if (triggeredBy.isEmpty) {
-      isEmergencyActive = false;
-      isEmergencySyncing = false;
-      backendSyncError = 'لا توجد جلسة AWS نشطة لإرسال نداء الطوارئ';
-      notifyListeners();
-      return;
-    }
-
-    isEmergencyActive = true;
-    isEmergencySyncing = true;
-    notifyListeners();
-
-    try {
-      final sos = await EmergencyService.instance.triggerSos(
-        triggeredBy: triggeredBy,
-        residentId:
-            _looksLikeBackendId(backendResidentId) ? backendResidentId : null,
-        notes: message ??
-            (type == null
-                ? 'تم تفعيل نداء طوارئ من التطبيق'
-                : 'تم تفعيل نداء طوارئ من التطبيق: $type'),
-        location: location ?? currentAccount?.room,
-      );
-      currentEmergencyId = sos.id;
-      activeEmergencies.removeWhere((e) => e.id == sos.id);
-      activeEmergencies.insert(0, sos);
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-      if (currentEmergencyId == null) {
-        isEmergencyActive = false;
-      }
-    } finally {
-      isEmergencySyncing = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> cancelSOS() async {
-    final id = currentEmergencyId;
-    if (id != null) {
-      await resolveEmergency(id);
-    }
-    isEmergencyActive = false;
-    currentEmergencyId = null;
-    notifyListeners();
-  }
-
-  Future<void> resolveEmergency(String id) async {
-    await _runBackendMutation(() {
-      return EmergencyService.instance.resolve(id).then((_) {});
-    });
-  }
-
-  void handleDeepLink(String route) {
-    if (currentRole == 'مسن') {
-      switch (route) {
-        case 'medication':
-          setElderlyTabIndex(1);
-          break;
-        case 'family_update':
-          setElderlyTabIndex(3);
-          break;
-        case 'calls':
-          setElderlyTabIndex(2);
-          break;
-        case 'activities':
-          setElderlyTabIndex(4);
-          break;
-        default:
-          setElderlyTabIndex(0);
-      }
-    }
-
-    notifyListeners();
-  }
-
-  void simulateNotification(String type) {
-    handleDeepLink(type);
-  }
-
-  void setMood(String mood) {
-    currentMood = mood;
-    addPoints(5);
-    notifyListeners();
-  }
-
-  final FlutterTts _tts = FlutterTts();
   bool _ttsInitialized = false;
+  final FlutterTts _tts = FlutterTts();
   final AudioPlayer _companionPlayer = AudioPlayer();
   StreamSubscription<void>? _companionPlayerCompleteSub;
 
@@ -2880,44 +1174,63 @@ class AppRiverpod extends ChangeNotifier {
     try {
       await _tts.stop();
       await _companionPlayer.stop();
-      _companionPlayerCompleteSub ??=
-          _companionPlayer.onPlayerComplete.listen((_) {
-        isReadingAudio = false;
-        notifyListeners();
-      });
+      _companionPlayerCompleteSub?.cancel();
+      _companionPlayerCompleteSub = null;
 
+      // Try Gemini TTS (10s), then device TTS as instant fallback.
+      // We AWAIT true completion so the caller knows audio is done.
+      bool usedCloudTts = false;
       try {
-        // Ray-style voice: use OpenAI TTS directly when the backend has a key,
-        // otherwise the backend falls back to Polly and then device TTS.
         final speech = await AiService.instance.synthesizeSpeech(
           text: cleanText,
-          provider: 'openai',
-          openAiVoice: 'cedar',
-          voiceInstructions:
-              'تكلم بالعربية المصرية بصوت مساعد شخصي هادئ وواثق ودافئ، قريب من أسلوب Ray/JARVIS. اجعل النبرة طبيعية، سريعة قليلًا، بدون أداء آلي، وبوقفات قصيرة.',
+          provider: 'google-cloud-gemini-tts',
+          model: 'gemini-2.5-pro-tts',
+          voiceName: 'Kore',
+          languageCode: 'ar-EG',
+          audioEncoding: 'MP3',
+          prompt:
+              'تحدث بالعربية المصرية بلهجة طبيعية ودافئة ومطمئنة. النبرة هادئة مناسبة لكبار السن، سرعة متوسطة.',
+          timeout: const Duration(seconds: 10),
         );
+        if (speech.audioBase64.trim().isEmpty) {
+          throw const FormatException('Empty Gemini audio');
+        }
+
         final bytes = base64Decode(speech.audioBase64);
+        final completer = Completer<void>();
+        _companionPlayerCompleteSub =
+            _companionPlayer.onPlayerComplete.listen((_) {
+          if (!completer.isCompleted) completer.complete();
+        });
         await _companionPlayer
             .play(BytesSource(bytes, mimeType: speech.contentType));
-      } catch (backendErr) {
-        // fallback: device TTS لو الباك اند فشل
-        debugPrint('Backend TTS failed → device TTS fallback: $backendErr');
-        _companionPlayerCompleteSub?.cancel();
-        _companionPlayerCompleteSub = null;
+        await completer.future;
+        usedCloudTts = true;
+      } catch (cloudErr) {
+        debugPrint('Cloud TTS failed -> device TTS: $cloudErr');
+      }
+
+      if (!usedCloudTts) {
+        // Device TTS — instant start, await actual completion
         await _initTts();
+        final completer = Completer<void>();
         _tts.setCompletionHandler(() {
-          isReadingAudio = false;
-          notifyListeners();
+          if (!completer.isCompleted) completer.complete();
+        });
+        _tts.setErrorHandler((msg) {
+          if (!completer.isCompleted) completer.complete();
         });
         final result = await _tts.speak(cleanText);
-        if (result == 0) {
-          isReadingAudio = false;
-          notifyListeners();
+        if (result == 1) {
+          await completer.future;
         }
       }
     } catch (e) {
+      debugPrint('startCompanionSpeech error: $e');
+    } finally {
       isReadingAudio = false;
-      debugPrint('startCompanionSpeech outer error: $e');
+      _companionPlayerCompleteSub?.cancel();
+      _companionPlayerCompleteSub = null;
       notifyListeners();
     }
   }
@@ -3040,6 +1353,8 @@ class AppRiverpod extends ChangeNotifier {
     if (category == 'الكل') {
       results.addAll(memoriesList);
       results.addAll(memoryMoments);
+    } else if (cleanCategory == defaultPhotoAlbumName) {
+      results.addAll(_allPhotoMemories());
     } else if (cleanCategory == 'أسرة') {
       results.addAll(memoriesList.where((m) => m.category == 'أسرة'));
     } else if (category == '🎬 فيديو' || cleanCategory == 'فيديو') {
@@ -3051,7 +1366,45 @@ class AppRiverpod extends ChangeNotifier {
     } else if (cleanCategory == 'مناسبات') {
       results.addAll(memoriesList.where((m) => m.category == 'مناسبات'));
     } else {
-      results.addAll(memoriesList.where((m) => m.category == cleanCategory));
+      results.addAll(memoriesList
+          .where((m) => m.category == category || m.category == cleanCategory));
+    }
+    return results;
+  }
+
+  List<dynamic> _allPhotoMemories() {
+    final results = <dynamic>[];
+    final seen = <String>{};
+    for (final item in memoriesList.where(
+        (m) => m.type == 'image' && _memoryItemImageCandidates(m).isNotEmpty)) {
+      final key = _memoryItemImageCandidates(item).first;
+      if (seen.add(key)) results.add(item);
+    }
+    for (final moment in memoryMoments.where(_hasDisplayableMemoryMoment)) {
+      final key = _memoryMomentImageCandidates(moment).first;
+      if (seen.add(key)) results.add(moment);
+    }
+    return results;
+  }
+
+  List<String> _memoryItemImageCandidates(MemoryItem item) {
+    final seen = <String>{};
+    return [item.assetPath, item.content]
+        .map((value) => value?.trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .where(_hasDisplayableMemoryImage)
+        .where((value) => seen.add(value))
+        .toList();
+  }
+
+  List<MemoryItem> _dedupeMemoryItems(List<MemoryItem> items) {
+    final results = <MemoryItem>[];
+    final seen = <String>{};
+    for (final item in items) {
+      final candidates = _memoryItemImageCandidates(item);
+      final key = candidates.isNotEmpty ? candidates.first : item.id;
+      if (key.isEmpty || !seen.add(key)) continue;
+      results.add(item);
     }
     return results;
   }
@@ -3136,7 +1489,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة دواء لـ $residentName';
+          'لا يوجد residentId من السيرفر لإضافة دواء لـ $residentName';
       notifyListeners();
       return;
     }
@@ -3165,7 +1518,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(session.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لتسجيل جلسة ${session.residentName}';
+          'لا يوجد residentId من السيرفر لتسجيل جلسة ${session.residentName}';
       notifyListeners();
       return;
     }
@@ -3185,7 +1538,7 @@ class AppRiverpod extends ChangeNotifier {
     final residentId = _residentIdForName(p.residentName);
     if (residentId == null) {
       backendSyncError =
-          'لا يوجد residentId من AWS لإضافة روشتة لـ ${p.residentName}';
+          'لا يوجد residentId من السيرفر لإضافة روشتة لـ ${p.residentName}';
       notifyListeners();
       return;
     }
@@ -3237,8 +1590,8 @@ class AppRiverpod extends ChangeNotifier {
           label: 'نسبة الإشغال',
           value: '${occupancy.toInt()}٪',
           trend: lastBackendSyncAt == null
-              ? 'بانتظار مزامنة AWS'
-              : 'آخر تحديث من AWS',
+              ? 'بانتظار مزامنة السيرفر'
+              : 'آخر تحديث من السيرفر',
           isPositive: occupancy <= 100,
           history: [occupancy / 100]),
       CenterOperationalStat(
@@ -3249,8 +1602,8 @@ class AppRiverpod extends ChangeNotifier {
                   : 'إيرادات الشهر'),
           value: '$revenueStr ج.م',
           trend: lastBackendSyncAt == null
-              ? 'بانتظار مزامنة AWS'
-              : 'من فواتير AWS المدفوعة',
+              ? 'بانتظار مزامنة السيرفر'
+              : 'من فواتير السيرفر المدفوعة',
           isPositive: revenueValue > 0,
           history: [revenueValue / 1000]),
       CenterOperationalStat(
@@ -3263,680 +1616,19 @@ class AppRiverpod extends ChangeNotifier {
           label: 'رضا الأهالي',
           value: '${satisfactionValue.toStringAsFixed(1)} / ٥',
           trend: volunteerRatings.isEmpty
-              ? 'لا توجد تقييمات من AWS'
-              : 'آخر تقييمات AWS',
+              ? 'لا توجد تقييمات من السيرفر'
+              : 'آخر تقييمات السيرفر',
           isPositive: satisfactionValue >= 3.5,
           history: [satisfactionValue]),
     ];
   }
 
   List<StaffPerformance> staffPerformanceList = [];
-
-  int get totalStaffCount => staffPerformanceList.length;
-  int get activeStaffCount =>
-      staffPerformanceList.where((s) => s.status == 'online').length;
-  double get averageStaffCompletion {
-    if (staffPerformanceList.isEmpty) return 0.0;
-    final total = staffPerformanceList
-        .map((s) => s.completionRate)
-        .reduce((a, b) => a + b);
-    return total / staffPerformanceList.length;
-  }
-
-  void addStaff(StaffPerformance staff) {
-    staffPerformanceList.insert(0, staff);
-
-    triggerNotification(
-      title: 'موظف جديد بالمنشأة 📋',
-      body: 'تم تسجيل ${staff.name} ضمن الطاقم (${staff.role}).',
-      type: 'admin',
-      targetRole: 'مدير',
-    );
-
-    notifyListeners();
-  }
-
-  Future<void> joinOpportunity(String opportunityId) async {
-    final idx = volunteerOpportunities.indexWhere((o) => o.id == opportunityId);
-    if (idx != -1) {
-      final opp = volunteerOpportunities[idx];
-
-      final bookingId = 'book_$opportunityId';
-      if (!volunteerBookings.any((b) => b.id == bookingId)) {
-        final synced = await _runBackendMutation(() {
-          return BackendMutationService.instance
-              .createVolunteerBooking(opportunityId);
-        });
-        if (!synced) return;
-        volunteerBookings.insert(
-          0,
-          VolunteerBooking(
-            id: bookingId,
-            title: opp.title,
-            timeInfo: '${opp.dateInfo} · ${opp.hours} ساعة',
-            day: DateTime.now().day + 1,
-            month: 'أبريل',
-            status: 'confirmed',
-            location: opp.org,
-            points: opp.points,
-          ),
-        );
-
-        volunteerOpportunities[idx] = VolunteerOpportunity(
-          id: opp.id,
-          title: opp.title,
-          org: opp.org,
-          dateInfo: opp.dateInfo,
-          icon: opp.icon,
-          tags: opp.tags,
-          hours: opp.hours,
-          points: opp.points,
-          isNew: opp.isNew,
-          description: opp.description,
-          totalSlots: opp.totalSlots,
-          filledSlots: opp.filledSlots + 1,
-        );
-
-        triggerNotification(
-          title: 'تم الانضمام بنجاح! 🎉',
-          body: 'أنت الآن مسجل في "${opp.title}". موعدنا قادماً!',
-          type: 'volunteer',
-          targetRole: 'متطوع',
-        );
-
-        notifyListeners();
-        unawaited(syncBackendData());
-      }
-    }
-  }
-
-  Future<void> cancelBooking(String bookingId) async {
-    final idx = volunteerBookings.indexWhere((b) => b.id == bookingId);
-    if (idx != -1) {
-      final synced = await _runBackendMutation(() {
-        return BackendMutationService.instance
-            .cancelVolunteerBooking(bookingId);
-      });
-      if (!synced) return;
-      final booking = volunteerBookings[idx];
-      volunteerBookings[idx] = VolunteerBooking(
-        id: booking.id,
-        title: booking.title,
-        timeInfo: booking.timeInfo,
-        day: booking.day,
-        month: booking.month,
-        status: 'cancelled',
-        location: booking.location,
-        points: booking.points,
-        isUrgent: booking.isUrgent,
-        startTime: booking.startTime,
-        isRatingRequired: booking.isRatingRequired,
-      );
-      notifyListeners();
-      unawaited(syncBackendData());
-    }
-  }
-
-  Future<void> confirmAttendance(String bookingId) async {
-    final idx = volunteerBookings.indexWhere((b) => b.id == bookingId);
-    if (idx != -1) {
-      final synced = await _runBackendMutation(() {
-        return BackendMutationService.instance
-            .confirmVolunteerAttendance(bookingId);
-      });
-      if (!synced) return;
-      final b = volunteerBookings[idx];
-      volunteerBookings[idx] = VolunteerBooking(
-        id: b.id,
-        title: b.title,
-        timeInfo: b.timeInfo,
-        day: b.day,
-        month: b.month,
-        status: 'done',
-        location: b.location,
-        points: b.points,
-        isUrgent: false,
-        startTime: b.startTime,
-        isRatingRequired: true,
-      );
-      addPoints(b.points);
-
-      triggerNotification(
-        title: 'تم تأكيد الحضور! ✅',
-        body:
-            'شكراً لمساهمتك في "${b.title}". تم إضافة ${b.points} نقطة لحسابك.',
-        type: 'volunteer',
-        targetRole: 'متطوع',
-      );
-
-      notifyListeners();
-      unawaited(syncBackendData());
-    }
-  }
-
-  void submitBookingRating(String bookingId) {
-    final idx = volunteerBookings.indexWhere((b) => b.id == bookingId);
-    if (idx != -1) {
-      final b = volunteerBookings[idx];
-      volunteerBookings[idx] = VolunteerBooking(
-        id: b.id,
-        title: b.title,
-        timeInfo: b.timeInfo,
-        day: b.day,
-        month: b.month,
-        status: b.status,
-        location: b.location,
-        points: b.points,
-        isUrgent: b.isUrgent,
-        startTime: b.startTime,
-        isRatingRequired: false,
-      );
-      notifyListeners();
-    }
-  }
-
-  void saveMedicalVitals({
-    required String residentName,
-    required String bp,
-    required String sugar,
-    required String temp,
-  }) async {
-    await _syncVitals(
-      residentName: residentName,
-      bp: bp,
-      sugar: sugar,
-      temp: temp,
-    );
-    if (backendSyncError != null) return;
-
-    final newSession = MedicalSession(
-      id: 's${DateTime.now().millisecondsSinceEpoch}',
-      type: 'vitals',
-      specialistName: currentAccount?.name ?? 'فريق التمريض',
-      time: 'الآن',
-      date: 'اليوم',
-      notes:
-          'تم فحص المؤشرات الحيوية: الضغط ($bp)، السكر ($sugar مجم/دل)، الحرارة ($temp°)',
-      residentName: residentName,
-    );
-
-    medicalSessions.insert(0, newSession);
-
-    triggerNotification(
-      title: 'تم حفظ القراءات 🏥',
-      body: 'تم تسجيل العلامات الحيوية لـ $residentName بنجاح.',
-      type: 'medical',
-    );
-
-    notifyListeners();
-  }
-
-  Future<void> addFamilyVisit(FamilyVisit visit) async {
-    final residentId = _looksLikeBackendId(backendResidentId)
-        ? backendResidentId
-        : residentFiles.isNotEmpty
-            ? residentFiles.first.id
-            : null;
-    if (residentId == null || !_looksLikeBackendId(residentId)) {
-      backendSyncError = 'لا يوجد residentId من AWS لحجز الزيارة';
-      notifyListeners();
-      return;
-    }
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.bookVisit(
-        residentId: residentId,
-        visit: visit,
-      );
-    });
-    if (!synced) return;
-    familyVisits.insert(0, visit);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> approveVisit(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.approveVisit(id);
-    });
-    if (!synced) return;
-    final idx = familyVisits.indexWhere((v) => v.id == id);
-    if (idx != -1) {
-      familyVisits[idx] = familyVisits[idx].copyWith(status: 'upcoming');
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  Future<void> rejectVisit(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.rejectVisit(id);
-    });
-    if (!synced) return;
-    final idx = familyVisits.indexWhere((v) => v.id == id);
-    if (idx != -1) {
-      familyVisits[idx] = familyVisits[idx].copyWith(status: 'cancelled');
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  void sendFamilyMessage(String message, String residentName) {
-    // LINK: Family to Specialist
-    triggerNotification(
-      title: 'رسالة من الأهل 📩',
-      body: 'بخصوص $residentName: $message',
-      type: 'complaint',
-      targetRole: 'أخصائي',
-    );
-    notifyListeners();
-  }
-
-  Future<void> clearUnpaidBills() async {
-    final unpaidBills = familyBills.where((b) => !b.isPaid).toList();
-    for (final bill in unpaidBills) {
-      final synced = await _runBackendMutation(() {
-        return BackendMutationService.instance.payBill(bill.id);
-      });
-      if (!synced) return;
-    }
-    unawaited(syncBackendData());
-    notifyListeners();
-  }
-
-  Future<void> addSocialNeed(SocialSpecialistNeed need) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createSocialNeed(need);
-    });
-    if (!synced) return;
-    socialNeeds.insert(0, need);
-
-    triggerNotification(
-      title: 'احتياج جديد مسجل 🛡️',
-      body: 'تم تسجيل احتياج ${need.type} للغرفة ${need.roomNumber}.',
-      type: 'specialist',
-      targetRole: 'أخصائي',
-    );
-
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> updateResident(SpecialistResidentFile resident) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.updateResident(resident);
-    });
-    if (!synced) return;
-    final index = residentFiles.indexWhere((r) => r.id == resident.id);
-    if (index != -1) {
-      residentFiles[index] = resident;
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addResident(SpecialistResidentFile resident) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createResident(resident);
-    });
-    if (!synced) return;
-    residentFiles.insert(0, resident);
-
-    triggerNotification(
-      title: 'إضافة مقيم جديد 👥',
-      body: 'تم تسجيل ${resident.name} في الغرفة ${resident.room}.',
-      type: 'admin',
-      targetRole: 'مدير',
-    );
-
-    triggerNotification(
-      title: 'مقيم جديد تحت الرعاية 🛡️',
-      body: 'المقيم ${resident.name} انضم للمسكن في الغرفة ${resident.room}.',
-      type: 'social',
-      targetRole: 'أخصائي',
-    );
-
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  double get medicationComplianceRate {
-    if (medications.isEmpty) return 1.0;
-    final taken = medications.where((m) => m.isTaken).length;
-    return taken / medications.length;
-  }
-
-  int get unresolvedComplaintsCount =>
-      socialComplaints.where((c) => c.status != 'done').length;
-
-  Future<void> closeComplaint(String id, String resolutionNote) async {
-    final idx = socialComplaints.indexWhere((c) => c.id == id);
-    if (idx != -1) {
-      final c = socialComplaints[idx];
-      await _syncComplaintStatus(
-        id,
-        'closed',
-        resolutionNotes: resolutionNote,
-      );
-      if (backendSyncError != null) return;
-
-      // Update status and add to timeline
-      final updatedTimeline = List<ComplaintStep>.from(c.timeline);
-      updatedTimeline.add(ComplaintStep(
-        text: 'تم الحل: $resolutionNote',
-        time: 'الآن',
-        status: 'done',
-      ));
-
-      socialComplaints[idx] = SocialSpecialistComplaint(
-        id: c.id,
-        title: c.title,
-        residentName: c.residentName,
-        room: c.room,
-        date: c.date,
-        priority: c.priority,
-        status: 'done',
-        category: c.category,
-        icon: c.icon,
-        timeline: updatedTimeline,
-      );
-
-      triggerNotification(
-        title: 'تم حل شكواكم بنجاح ✅',
-        body:
-            'بخصوص "${c.title}" لسرير ${c.residentName}. التفاصيل: $resolutionNote',
-        type: 'social',
-        targetRole: 'أهل',
-      );
-
-      notifyListeners();
-    }
-  }
-
   int totalCapacity = 50; // السعة الإجمالية للدار
-
-  double get occupancyRate {
-    if (totalCapacity == 0) return 0.0;
-    return residentFiles.length / totalCapacity;
-  }
-
-  String generatePerformanceSummary() {
-    final compliance = (medicationComplianceRate * 100).toInt();
-    final occupancy = (occupancyRate * 100).toInt();
-    return '''
-ملخص أداء ${facilityName.isEmpty ? 'المنشأة' : facilityName}
-التاريخ: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}
-
-1. الإشغال: $occupancy%
-2. الالتزام الدوائي: $compliance%
-3. الشكاوى المفتوحة: $unresolvedComplaintsCount شكاوى
-4. الطاقم النشط: $activeStaffCount من أصل $totalStaffCount موظف
-
-التوصيات: 
-- الحفاظ على مستوى الاستجابة السريع للشكاوى.
-- تعزيز فترات الراحة للطاقم الطبي لضمان استمرارية الجودة.
-''';
-  }
-
-  Future<String> exportReport(String format) async {
-    if (format == 'pdf') {
-      final pdf = pw.Document();
-      final now = DateTime.now();
-      final timeStr = "${now.hour}:${now.minute.toString().padLeft(2, '0')}";
-      final dateStr = "${now.day}/${now.month}/${now.year}";
-
-      final fontData = await rootBundle.load("assets/fonts/Cairo-Regular.ttf");
-      final ttf = pw.Font.ttf(fontData);
-      final boldFontData = await rootBundle.load("assets/fonts/Cairo-Bold.ttf");
-      final ttfBold = pw.Font.ttf(boldFontData);
-
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          theme: pw.ThemeData.withFont(base: ttf, bold: ttfBold),
-          textDirection: pw.TextDirection.rtl,
-          build: (pw.Context context) {
-            return [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(facilityName,
-                            style: pw.TextStyle(
-                                fontSize: 22,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.blue900)),
-                        pw.Text('تقرير الأداء الإداري والتشغيلي',
-                            style: const pw.TextStyle(
-                                fontSize: 12, color: PdfColors.grey700)),
-                      ],
-                    ),
-                    pw.PdfLogo(),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 25),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(10),
-                decoration: const pw.BoxDecoration(color: PdfColors.grey100),
-                child: pw.Column(
-                  children: [
-                    _pdfInfoRow('اسم الدار:', facilityName),
-                    _pdfInfoRow('اسم المدير المسئول:', managerName),
-                    _pdfInfoRow('تاريخ التقرير:', dateStr),
-                    _pdfInfoRow('وقت الاستخراج:', timeStr),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 30),
-              pw.Text('ملخص مؤشرات الأداء:',
-                  style: pw.TextStyle(
-                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Divider(thickness: 1.5, color: PdfColors.blue100),
-              pw.SizedBox(height: 15),
-              pw.TableHelper.fromTextArray(
-                context: context,
-                headerStyle: pw.TextStyle(
-                    color: PdfColors.white, fontWeight: pw.FontWeight.bold),
-                headerDecoration:
-                    const pw.BoxDecoration(color: PdfColors.blue800),
-                cellAlignment: pw.Alignment.centerRight,
-                data: <List<String>>[
-                  <String>['المؤشر الإحصائي', 'القيمة'],
-                  <String>[
-                    'نسبة إشغال الأسرة',
-                    '${(occupancyRate * 100).toInt()}%'
-                  ],
-                  <String>[
-                    'معدل الالتزام الدوائي',
-                    '${(medicationComplianceRate * 100).toInt()}%'
-                  ],
-                  <String>[
-                    'عدد الشكاوى قيد المعالجة',
-                    unresolvedComplaintsCount.toString()
-                  ],
-                  <String>['عدد الموظفين المتواجدين', '$activeStaffCount موظف'],
-                ],
-              ),
-              pw.SizedBox(height: 40),
-              pw.Text('التوصيات والإجراءات المطلوبة:',
-                  style: pw.TextStyle(
-                      fontSize: 15, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
-              _pdfBullet(ttf, 'ضرورة متابعة تحديث بيانات المقيمين الجدد.'),
-              _pdfBullet(ttf, 'التأكد من جاهزية مخزون الأدوية للأسبوع القادم.'),
-              _pdfBullet(ttf,
-                  'مراجعة ملاحظات الأخصائي الاجتماعي بخصوص الحالات الحرجة.'),
-              pw.Spacer(),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.start,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.center,
-                    children: [
-                      pw.Text('يعتمد من مدير المنشأة',
-                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.SizedBox(height: 10),
-                      pw.Text(managerName),
-                      pw.SizedBox(height: 30),
-                      pw.Container(
-                        width: 150,
-                        decoration: const pw.BoxDecoration(
-                          border: pw.Border(
-                              bottom: pw.BorderSide(
-                                  width: 1, style: pw.BorderStyle.dashed)),
-                        ),
-                      ),
-                      pw.SizedBox(height: 5),
-                      pw.Text('التوقيع والختم الرسمي',
-                          style: const pw.TextStyle(
-                              fontSize: 10, color: PdfColors.grey)),
-                    ],
-                  ),
-                ],
-              ),
-            ];
-          },
-        ),
-      );
-
-      await Printing.sharePdf(
-          bytes: await pdf.save(), filename: 'Taptaba_Report.pdf');
-    } else if (format == 'csv' || format == 'excel') {
-      final csvBuffer = StringBuffer();
-      csvBuffer.write('\uFEFF');
-      csvBuffer.writeln('تقرير أداء المنشأة: $facilityName');
-      csvBuffer.writeln('المدير المسئول: $managerName');
-      csvBuffer.writeln(
-          'التاريخ: ${DateTime.now().toLocal().toString().split(' ')[0]}');
-      csvBuffer.writeln('');
-      csvBuffer.writeln('المؤشر الإحصائي,القيمة');
-      csvBuffer.writeln('نسبة الإشغال,${(occupancyRate * 100).toInt()}%');
-      csvBuffer.writeln(
-          'الالتزام الدوائي,${(medicationComplianceRate * 100).toInt()}%');
-      csvBuffer.writeln('الشكاوى المفتوحة,$unresolvedComplaintsCount');
-      csvBuffer.writeln('الطاقم النشط,$activeStaffCount');
-
-      final encodedCsv = Uri.encodeComponent(csvBuffer.toString());
-      final url = 'data:text/csv;charset=utf-8,$encodedCsv';
-
-      try {
-        final uri = Uri.parse(url);
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-      } catch (_) {}
-    }
-
-    final dateStrFile =
-        "${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}";
-    final fileName = "Taptaba_Report_$dateStrFile.$format";
-    return fileName;
-  }
-
-  pw.Widget _pdfInfoRow(String label, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2),
-      child: pw.Row(
-        children: [
-          pw.Text(label,
-              style:
-                  pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
-          pw.SizedBox(width: 5),
-          pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
-        ],
-      ),
-    );
-  }
 
   // --- MEMORY WALL ---
 
   List<MemoryMoment> memoryMoments = [];
-
-  Future<void> addMemoryMoment(MemoryMoment moment) async {
-    setUploadState(uploading: true, progress: 0.1);
-    final residentId = _looksLikeBackendId(moment.residentId)
-        ? moment.residentId
-        : _residentIdForName(moment.residentName);
-    if (residentId == null) {
-      setUploadState(
-        uploading: false,
-        error: 'لا يوجد residentId من AWS لإضافة ذكرى لـ ${moment.residentName}',
-      );
-      backendSyncError = uploadError;
-      notifyListeners();
-      return;
-    }
-    setUploadState(uploading: true, progress: 0.6);
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createMemory(
-        residentId: residentId,
-        moment: moment,
-      );
-    });
-    if (!synced) {
-      setUploadState(uploading: false, error: backendSyncError);
-      return;
-    }
-    setUploadState(uploading: false, progress: 1.0);
-    memoryMoments.insert(0, moment);
-
-    triggerNotification(
-      title: 'لحظة سعادة جديدة 📸',
-      body:
-          'والدكم ${moment.residentName} يستمتع بوقته الآن في "${moment.activityTitle}".',
-      type: 'social',
-      targetRole: 'أهل',
-    );
-
-    final newItem = MemoryItem(
-      id: 'mem_custom_${DateTime.now().millisecondsSinceEpoch}',
-      category: 'أسرة',
-      title: moment.activityTitle,
-      date: 'اليوم',
-      type: 'image',
-      assetPath: moment.imageUrl,
-    );
-    memoriesList.insert(0, newItem);
-
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  void deleteMemoryMoment(String id) {
-    memoryMoments.removeWhere((m) => m.id == id);
-    notifyListeners();
-  }
-
-  void addAppreciation(String momentId) {
-    final idx = memoryMoments.indexWhere((m) => m.id == momentId);
-    if (idx != -1) {
-      final m = memoryMoments[idx];
-      memoryMoments[idx] = MemoryMoment(
-        id: m.id,
-        residentId: m.residentId,
-        residentName: m.residentName,
-        imageUrl: m.imageUrl,
-        activityTitle: m.activityTitle,
-        date: m.date,
-        appreciations: m.appreciations + 1,
-      );
-
-      triggerNotification(
-        title: 'عائلة ${m.residentName} سعيدة! ❤️',
-        body:
-            'تم استلام "شكراً" من عائلة المقيم بخصوص صورة "${m.activityTitle}".',
-        type: 'social',
-        targetRole: 'أخصائي',
-      );
-
-      notifyListeners();
-    }
-  }
 
   int currentElderlyTabIndex = 0;
   void setElderlyTabIndex(int index) {
@@ -3949,225 +1641,6 @@ class AppRiverpod extends ChangeNotifier {
 
   bool hasGalleryPermission = false;
 
-  Future<void> requestGalleryPermission() async {
-    final PermissionState ps = await PhotoManager.requestPermissionExtend();
-    hasGalleryPermission = ps.isAuth;
-    if (hasGalleryPermission) {
-      List<AssetPathEntity> albums =
-          await PhotoManager.getAssetPathList(type: RequestType.image);
-      if (albums.isNotEmpty) {
-        List<AssetEntity> photos =
-            await albums[0].getAssetListPaged(page: 0, size: 50);
-        deviceGalleryImages = photos;
-      }
-    }
-    notifyListeners();
-  }
-
-  void setGalleryPermission(bool val) {
-    hasGalleryPermission = val;
-    notifyListeners();
-  }
-
-  Future<void> updateVolunteerProfile(VolunteerProfile newProfile) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.updateVolunteerProfile(newProfile);
-    });
-    if (!synced) return;
-    volunteerProfile = newProfile;
-    notifyListeners();
-  }
-
-  void addVolunteerSkill(String skill) {
-    if (!volunteerProfile.skills.contains(skill)) {
-      final updatedSkills = List<String>.from(volunteerProfile.skills)
-        ..add(skill);
-      volunteerProfile = volunteerProfile.copyWith(skills: updatedSkills);
-      notifyListeners();
-    }
-  }
-
-  void removeVolunteerSkill(String skill) {
-    final updatedSkills = List<String>.from(volunteerProfile.skills)
-      ..remove(skill);
-    volunteerProfile = volunteerProfile.copyWith(skills: updatedSkills);
-    notifyListeners();
-  }
-
-  Future<void> uploadVolunteerDocument(String type, String fileName) async {
-    if (type == 'cv') {
-      volunteerProfile = volunteerProfile.copyWith(cvFileName: fileName);
-    } else if (type == 'recommendation') {
-      volunteerProfile =
-          volunteerProfile.copyWith(recommendationFileName: fileName);
-    }
-    await updateVolunteerProfile(volunteerProfile);
-
-    triggerNotification(
-      title: 'تم رفع الملف بنجاح 📁',
-      body: 'تم تسجيل ملف "$fileName" كـ $type في ملفك الشخصي.',
-      type: 'admin',
-      targetRole: 'متطوع',
-    );
-
-    notifyListeners();
-  }
-
-  Future<void> startVideoCall(
-    String name,
-    String initials, {
-    String? calleeId,
-    String? residentId,
-    String? joinUrl,
-  }) async {
-    activeCallerName = name;
-    activeCallerInitials = initials;
-    isVideoCallActive = true;
-    isIncomingCall = false;
-    notifyListeners();
-
-    if (AuthService.instance.currentUser == null) {
-      if ((joinUrl ?? '').isNotEmpty) await launchZoom(joinUrl);
-      return;
-    }
-    try {
-      final call = await VideoCallService.instance.start(
-        residentId: residentId,
-        calleeId: calleeId,
-        calleeName: name,
-        provider: 'zoom',
-        joinUrl: joinUrl,
-      );
-      activeVideoCallId = call.id;
-      activeVideoCallJoinUrl = call.joinUrl;
-      backendSyncError = null;
-      if ((call.joinUrl ?? '').isNotEmpty) {
-        await launchZoom(call.joinUrl);
-      }
-    } catch (e) {
-      backendSyncError = e.toString();
-    }
-    notifyListeners();
-  }
-
-  void acceptCall() {
-    isVideoCallActive = true;
-    isIncomingCall = false;
-    notifyListeners();
-  }
-
-  void rejectCall() {
-    isIncomingCall = false;
-    notifyListeners();
-  }
-
-  void endVideoCall() {
-    isVideoCallActive = false;
-    notifyListeners();
-  }
-
-  Future<void> sendVoiceMessageFromResident(
-    String title, {
-    String? audioPath,
-    int durationSeconds = 0,
-  }) async {
-    final residentId = _looksLikeBackendId(backendResidentId)
-        ? backendResidentId
-        : residentFiles.isNotEmpty
-            ? residentFiles.first.id
-            : null;
-    if (residentId == null) {
-      backendSyncError = 'لا يوجد residentId من AWS لإرسال الرسالة الصوتية';
-      notifyListeners();
-      return;
-    }
-    try {
-      await VoiceMessageService.instance.create(
-        residentId: residentId,
-        title: title,
-        senderType: 'resident',
-        filePath: audioPath,
-        durationSeconds: durationSeconds,
-      );
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-      return;
-    }
-    final newMsg = VoiceMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: 'resident', // Special ID for the resident themselves
-      title: title,
-      timeDescription: 'الآن',
-    );
-    voiceMessagesList.insert(0, newMsg);
-
-    // Add points for communicating!
-    addPoints(15);
-
-    triggerNotification(
-      title: 'تم إرسال الرسالة! 🎙️',
-      body: 'رسالتك الصوتية في طريقها لعائلتك الآن.',
-      type: 'social',
-      targetRole: 'مسن',
-    );
-
-    notifyListeners();
-  }
-
-  Future<void> sendVoiceMessageFromFamily(
-    String title, {
-    String? audioPath,
-    int durationSeconds = 0,
-  }) async {
-    final residentId = _looksLikeBackendId(backendResidentId)
-        ? backendResidentId
-        : residentFiles.isNotEmpty
-            ? residentFiles.first.id
-            : null;
-    if (residentId == null || !_looksLikeBackendId(residentId)) {
-      backendSyncError = 'لا يوجد residentId من AWS لإرسال الرسالة الصوتية';
-      notifyListeners();
-      return;
-    }
-    try {
-      await VoiceMessageService.instance.create(
-        residentId: residentId,
-        title: title,
-        senderType: 'family',
-        filePath: audioPath,
-        durationSeconds: durationSeconds,
-      );
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-      return;
-    }
-
-    voiceMessagesList.insert(
-      0,
-      VoiceMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        senderId: 'family',
-        title: title,
-        timeDescription: 'الآن',
-        durationSeconds: durationSeconds,
-      ),
-    );
-
-    triggerNotification(
-      title: 'رسالة صوتية من العائلة',
-      body: title,
-      type: 'family',
-      targetRole: 'مسن',
-    );
-
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
   // --- NURSING OPERATIONS STATE ---
   List<CareTask> careTasks = [];
 
@@ -4178,661 +1651,6 @@ class AppRiverpod extends ChangeNotifier {
   List<MealPlan> mealPlans = [];
 
   List<ActivitySession> activitySessions = [];
-
-  // Nursing Operations Methods
-  Future<void> toggleCareTask(String id) async {
-    final idx = careTasks.indexWhere((t) => t.id == id);
-    if (idx != -1) {
-      final shouldComplete = !careTasks[idx].isCompleted;
-      final synced = await _runBackendMutation(() {
-        return shouldComplete
-            ? BackendMutationService.instance.completeCareTask(id)
-            : BackendMutationService.instance.reopenCareTask(id);
-      });
-      if (!synced) return;
-      careTasks[idx].isCompleted = shouldComplete;
-      notifyListeners();
-      unawaited(syncBackendData());
-    }
-  }
-
-  Future<void> addCareTask(CareTask task) async {
-    final residentId = _residentIdForName(task.residentName);
-    if (residentId == null) {
-      backendSyncError =
-          'لا يوجد residentId من AWS لإضافة مهمة لـ ${task.residentName}';
-      notifyListeners();
-      return;
-    }
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createCareTask(
-        residentId: residentId,
-        task: task,
-      );
-    });
-    if (!synced) return;
-    careTasks.add(task);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteCareTask(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deleteCareTask(id);
-    });
-    if (!synced) return;
-    careTasks.removeWhere((t) => t.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addInventoryItem(InventoryItem item) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createInventoryItem(item);
-    });
-    if (!synced) return;
-    inventoryItems.add(item);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteInventoryItem(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deleteInventoryItem(id);
-    });
-    if (!synced) return;
-    inventoryItems.removeWhere((i) => i.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addDoctorVisit(DoctorVisit visit) async {
-    final residentId = _residentIdForName(visit.residentName);
-    if (residentId == null) {
-      backendSyncError =
-          'لا يوجد residentId من AWS لإضافة زيارة طبيب لـ ${visit.residentName}';
-      notifyListeners();
-      return;
-    }
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createDoctorVisit(
-        residentId: residentId,
-        visit: visit,
-      );
-    });
-    if (!synced) return;
-    doctorVisits.add(visit);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteDoctorVisit(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deleteDoctorVisit(id);
-    });
-    if (!synced) return;
-    doctorVisits.removeWhere((v) => v.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addMealPlan(MealPlan plan) async {
-    final residentId = _residentIdForName(plan.residentName);
-    if (residentId == null) {
-      backendSyncError =
-          'لا يوجد residentId من AWS لإضافة خطة وجبات لـ ${plan.residentName}';
-      notifyListeners();
-      return;
-    }
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createMealPlan(
-        residentId: residentId,
-        plan: plan,
-      );
-    });
-    if (!synced) return;
-    mealPlans.add(plan);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteMealPlan(String residentName) async {
-    final id = mealPlanIdsByResidentName[residentName];
-    if (id == null || id.isEmpty) {
-      backendSyncError = 'لا يوجد mealPlanId من AWS لحذف خطة $residentName';
-      notifyListeners();
-      return;
-    }
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deleteMealPlan(id);
-    });
-    if (!synced) return;
-    mealPlans.removeWhere((p) => p.residentName == residentName);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addActivitySession(ActivitySession session) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createActivitySession(session);
-    });
-    if (!synced) return;
-    activitySessions.add(session);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteActivitySession(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deleteActivity(id);
-    });
-    if (!synced) return;
-    activitySessions.removeWhere((s) => s.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deleteMedicalSession(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deleteMedicalSession(id);
-    });
-    if (!synced) return;
-    medicalSessions.removeWhere((s) => s.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> deletePrescription(String id) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.deletePrescription(id);
-    });
-    if (!synced) return;
-    medicalPrescriptions.removeWhere((p) => p.id == id);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addSentReport(SentReport report) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.sendNursingReport(
-        reportType: report.title,
-        recipients: [
-          if (currentAccount?.email.isNotEmpty == true) currentAccount!.email,
-        ],
-      );
-    });
-    if (!synced) return;
-    sentReports.insert(0, report);
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  void addReview(Review review) {
-    reviews.insert(0, review);
-    notifyListeners();
-  }
-
-  Future<void> addHandoff(ShiftHandoff handoff) {
-    return submitHandoff(handoff);
-  }
-
-  Future<void> updateInventoryStock(String id, int change) async {
-    final idx = inventoryItems.indexWhere((i) => i.id == id);
-    if (idx != -1) {
-      final newStock = inventoryItems[idx].currentStock + change;
-      final synced = await _runBackendMutation(() {
-        return BackendMutationService.instance.updateInventoryStock(
-          id: id,
-          currentStock: newStock,
-        );
-      });
-      if (!synced) return;
-      final newItem = InventoryItem(
-        id: inventoryItems[idx].id,
-        name: inventoryItems[idx].name,
-        category: inventoryItems[idx].category,
-        currentStock: newStock,
-        minRequired: inventoryItems[idx].minRequired,
-        unit: inventoryItems[idx].unit,
-      );
-      inventoryItems[idx] = newItem;
-      notifyListeners();
-      unawaited(syncBackendData());
-    }
-  }
-
-  Future<void> updateMealPlan(MealPlan plan) async {
-    final idx =
-        mealPlans.indexWhere((p) => p.residentName == plan.residentName);
-    final id = mealPlanIdsByResidentName[plan.residentName];
-    if (id == null || id.isEmpty) {
-      await addMealPlan(plan);
-      return;
-    }
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.updateMealPlan(
-        id: id,
-        plan: plan,
-      );
-    });
-    if (!synced) return;
-    if (idx != -1) {
-      mealPlans[idx] = plan;
-    } else {
-      mealPlans.add(plan);
-    }
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  // بدء عملية التدخل الاجتماعي وتغيير حالة الشكوى
-  Future<void> startIntervention(String id) async {
-    final idx = socialComplaints.indexWhere((c) => c.id == id);
-    if (idx != -1) {
-      await _syncComplaintStatus(id, 'in_progress');
-      if (backendSyncError != null) return;
-      final updatedTimeline =
-          List<ComplaintStep>.from(socialComplaints[idx].timeline);
-      updatedTimeline.add(ComplaintStep(
-        text: 'بدء التدخل والمتابعة',
-        time: 'الآن',
-        status: 'progress',
-      ));
-
-      socialComplaints[idx] = SocialSpecialistComplaint(
-        id: socialComplaints[idx].id,
-        title: socialComplaints[idx].title,
-        residentName: socialComplaints[idx].residentName,
-        room: socialComplaints[idx].room,
-        date: socialComplaints[idx].date,
-        priority: socialComplaints[idx].priority,
-        status: 'progress',
-        category: socialComplaints[idx].category,
-        icon: socialComplaints[idx].icon,
-        timeline: updatedTimeline,
-      );
-
-      notifyListeners();
-    }
-  }
-
-  // حفظ تقييم اجتماعي جديد وتحديث درجات المقيم
-  Future<void> saveSocialAssessment({
-    required String residentId,
-    required Map<String, double> newScores,
-    required bool needsIntervention,
-    String? notes,
-  }) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createSocialAssessment(
-        residentId: residentId,
-        scores: newScores,
-        needsIntervention: needsIntervention,
-        notes: notes,
-      );
-    });
-    if (!synced) return;
-
-    final idx = socialResidentScores.indexWhere((r) => r.id == residentId);
-    if (idx != -1) {
-      final r = socialResidentScores[idx];
-
-      final updatedScores = Map<String, double>.from(r.scores);
-      newScores.forEach((key, value) {
-        updatedScores[key] = value;
-      });
-
-      socialResidentScores[idx] = SocialSpecialistResidentScore(
-        id: r.id,
-        name: r.name,
-        room: r.room,
-        date: 'الآن',
-        isUrgent: needsIntervention,
-        scores: updatedScores,
-        initials: r.initials,
-        healthStatus: r.healthStatus,
-        lastAssessment: DateTime.now(),
-      );
-
-      // Add a social notification if urgent
-      if (needsIntervention) {
-        notifications.insert(
-            0,
-            TaptabaNotification(
-              id: 'soc_${DateTime.now().millisecondsSinceEpoch}',
-              title: 'تنبيه تدخل اجتماعي: ${r.name}',
-              body: 'المقيم بحاجة لمتابعة عاجلة بناءً على التقييم الأخير.',
-              time: 'الآن',
-              type: 'social',
-              targetRole: 'specialist',
-              residentId: residentId,
-              isRead: false,
-            ));
-      }
-
-      notifyListeners();
-      unawaited(syncBackendData());
-    }
-  }
-
-  // خريطة الاحتياجات: تجميع بيانات المقيمين مع حساب لون الحالة بصرياً
-  List<Map<String, dynamic>> get needMapData {
-    return filteredResidentScores.map((r) {
-      // Calculate overall social health
-      double avgScore = 0;
-      if (r.scores.isNotEmpty) {
-        avgScore = r.scores.values.reduce((a, b) => a + b) / r.scores.length;
-      }
-
-      Color statusColor;
-      if (r.isUrgent || avgScore < 0.4) {
-        statusColor = const Color(0xFFef4444); // High Need
-      } else if (avgScore < 0.7) {
-        statusColor = const Color(0xFFf59e0b); // Medium Need
-      } else {
-        statusColor = const Color(0xFF10b981); // Stable
-      }
-
-      return {
-        'id': r.id,
-        'name': r.name,
-        'room': r.room,
-        'color': statusColor,
-        'score': avgScore,
-        'initials': r.initials,
-      };
-    }).toList();
-  }
-
-  // وضع علامة "تم الحل" على التنبيهات الإدارية
-  void resolveNotification(String id) {
-    final idx = notifications.indexWhere((n) => n.id == id);
-    if (idx != -1) {
-      notifications[idx].isRead = true;
-      notifyListeners();
-    }
-  }
-
-  // --- MEMORIES METHODS ---
-  Future<void> fetchGalleryImages() async {
-    try {
-      final PermissionState ps = await PhotoManager.requestPermissionExtend();
-      if (ps.isAuth || ps.hasAccess) {
-        final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
-          type: RequestType.image,
-        );
-        if (paths.isNotEmpty) {
-          final List<AssetEntity> entities =
-              await paths[0].getAssetListRange(start: 0, end: 50);
-          deviceGalleryImages = entities;
-          notifyListeners();
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching gallery: $e');
-    }
-  }
-
-  Future<void> pickMemoryImage() async {
-    try {
-      // استخدام ImagePicker مباشرة فهو يتعامل مع الصلاحيات بشكل أفضل في النسخ الحديثة
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        final newItem = MemoryItem(
-          id: 'mem_custom_${DateTime.now().millisecondsSinceEpoch}',
-          category: 'الاستوديو',
-          title: 'ذكرى من الاستوديو',
-          date: 'اليوم',
-          type: 'image',
-          assetPath: image.path,
-        );
-
-        memoriesList.insert(0, newItem);
-        notifyListeners();
-
-        triggerNotification(
-          title: 'تمت إضافة ذكرى جديدة! 📸',
-          body: 'ستجدها الآن في صندوق ذكرياتك الجميل.',
-          type: 'social',
-          targetRole: 'مسن',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error picking image: $e');
-    }
-  }
-
-  // --- INTEGRATION & CROSS-ROLE REQUESTS ---
-
-  Future<void> submitComplaint(
-      String message, String type, String fromRole) async {
-    final residentId =
-        _looksLikeBackendId(backendResidentId) ? backendResidentId : null;
-    try {
-      await ComplaintsService.instance.create(
-        category: _backendComplaintCategory(type),
-        subject: type,
-        description: message,
-        priority: 'high',
-        residentId: residentId,
-      );
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-      return;
-    }
-
-    final complaint = SocialSpecialistComplaint(
-      id: 'comp_${DateTime.now().millisecondsSinceEpoch}',
-      residentName: fromRole == 'مسن' ? currentUser.name : 'أحد أفراد الأسرة',
-      room: currentAccount?.room ?? '',
-      date: 'اليوم',
-      title: type,
-      category: 'عام',
-      icon: '🚨',
-      status: 'open',
-      priority: 'high',
-      timeline: [ComplaintStep(text: message, time: 'الآن', status: 'pending')],
-    );
-    socialComplaints.insert(0, complaint);
-
-    triggerNotification(
-      title: 'تم إرسال طلبك بنجاح ✅',
-      body: 'قام فريقنا باستلام طلبك بخصوص "$type" وسيتم التعامل معه فوراً.',
-      type: 'system',
-      targetRole: fromRole,
-    );
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> requestConsultation(String type) async {
-    final residentId =
-        _looksLikeBackendId(backendResidentId) ? backendResidentId : null;
-    try {
-      await ComplaintsService.instance.create(
-        category: 'general',
-        subject: 'طلب استشارة $type',
-        description: 'طلب استشارة مرسل من التطبيق',
-        priority: 'medium',
-        residentId: residentId,
-      );
-      backendSyncError = null;
-    } catch (e) {
-      backendSyncError = e.toString();
-      notifyListeners();
-      return;
-    }
-
-    triggerNotification(
-      title: 'طلب استشارة مرسل 💬',
-      body:
-          'تم تحويل طلب الاستشارة الـ $type إلى الفريق المختص، سيتم التواصل معك قريباً.',
-      type: 'medical',
-      targetRole: 'أسرة',
-    );
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> addVolunteerOpportunity(VolunteerOpportunity opp) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createVolunteerOpportunity(opp);
-    });
-    if (!synced) return;
-    volunteerOpportunities.insert(0, opp);
-
-    triggerNotification(
-      title: 'تم نشر الفرصة بنجاح 🌟',
-      body: 'أصبحت فرصة "${opp.title}" متاحة الآن للمتطوعين.',
-      type: 'system',
-      targetRole: 'إدارة',
-    );
-
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  Future<void> updateVolunteerOpportunity(VolunteerOpportunity opp) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.updateVolunteerOpportunity(opp);
-    });
-    if (!synced) return;
-    final index = volunteerOpportunities.indexWhere((o) => o.id == opp.id);
-    if (index != -1) {
-      volunteerOpportunities[index] = opp;
-      notifyListeners();
-    }
-    unawaited(syncBackendData());
-  }
-
-  Future<void> rateVolunteerSession(String volunteerId, int ratingScore,
-      {String comment = ''}) async {
-    final synced = await _runBackendMutation(() {
-      return BackendMutationService.instance.createVolunteerReview(
-        toName: volunteerId,
-        session: comment.isEmpty ? 'جلسة تطوع' : comment,
-        score: ratingScore.toDouble(),
-      );
-    });
-    if (!synced) return;
-
-    if (ratingScore == 3) {
-      addPoints(15);
-    } else if (ratingScore == 2) {
-      addPoints(5);
-    }
-
-    final review = Review(
-      id: 'rev_${DateTime.now().millisecondsSinceEpoch}',
-      fromRole: 'elderly',
-      fromName: currentUser.name,
-      toRole: 'volunteer',
-      rating: ratingScore.toDouble(),
-      comment: comment,
-      date: DateTime.now().toString(),
-    );
-    reviews.insert(0, review);
-
-    triggerNotification(
-      title: 'شكراً لتقييمك! 💖',
-      body: 'رأيك يهمنا جداً في تحسين جودة الرعاية المقدمة لك.',
-      type: 'system',
-      targetRole: 'مسن',
-    );
-
-    notifyListeners();
-    unawaited(syncBackendData());
-  }
-
-  void sendEncouragementMessage(String messageType, {String? text}) {
-    String title =
-        messageType == 'voice' ? 'رسالة صوتية جديدة 🎤' : 'رسالة من العائلة ✉️';
-    String body = messageType == 'voice'
-        ? 'عائلتك أرسلت لك رسالة صوتية تشجيعية لسماعها!'
-        : (text ?? 'عائلتك أرسلت لك رسالة تشجيعية!');
-
-    triggerNotification(
-      title: title,
-      body: body,
-      type: 'family',
-      targetRole: 'مسن',
-    );
-
-    // إضافة الذكرى لشاشة الذكريات
-    final newItem = MemoryItem(
-      id: 'mem_custom_${DateTime.now().millisecondsSinceEpoch}',
-      category: 'أسرة',
-      title: title,
-      date: 'اليوم',
-      type: messageType == 'voice' ? 'voice' : 'text',
-      assetPath: '',
-      content: body,
-    );
-
-    memoriesList.insert(0, newItem);
-
-    if (messageType == 'voice') {
-      voiceMessagesList.insert(
-        0,
-        VoiceMessage(
-          id: 'v_custom_${DateTime.now().millisecondsSinceEpoch}',
-          senderId: 'family',
-          title: 'رسالة صوتية من العائلة ❤️',
-          timeDescription: 'اليوم',
-          isUnread: true,
-        ),
-      );
-    }
-    notifyListeners();
-  }
-
-  void sendMedicationReminder(String medName) {
-    String title = 'تذكير بموعد الدواء 💊';
-    String body =
-        'عائلتك تذكرك بموعد أخذ $medName. نتمنى لك دوام الصحة والعافية!';
-
-    triggerNotification(
-      title: title,
-      body: body,
-      type: 'medical',
-      targetRole: 'مسن',
-    );
-
-    // إضافة الذكرى لشاشة الذكريات
-    final newItem = MemoryItem(
-      id: 'mem_med_${DateTime.now().millisecondsSinceEpoch}',
-      category: 'صحة',
-      title: title,
-      date: 'اليوم',
-      type: 'text',
-      assetPath: '',
-      content: body,
-    );
-
-    memoriesList.insert(0, newItem);
-    notifyListeners();
-  }
-
-  Future<void> toggleMedicationTaken(String id) async {
-    final index = medications.indexWhere((m) => m.id == id);
-    if (index != -1) {
-      bool newState = !medications[index].isTaken;
-      await _syncMedicationDose(
-          medications[index], newState ? 'given' : 'missed');
-      if (backendSyncError != null) return;
-      medications[index].isTaken = newState;
-      medications[index].isElderlyConfirmed = newState;
-      notifyListeners();
-      unawaited(syncBackendData());
-    }
-  }
 
   // --- Specialist Recommendations ---
   List<SpecialistRecommendation> specialistRecommendations = [];
@@ -4928,21 +1746,46 @@ class AppRiverpod extends ChangeNotifier {
   // AI Shift Handoff
   Future<String> generateShiftSummary(String residentName) async {
     final notes = getNotesForResident(residentName);
-    final tasks = careTasks.where((t) => t.residentName == residentName).toList();
+    final tasks =
+        careTasks.where((t) => t.residentName == residentName).toList();
     return await AiService.instance.summarizeShiftHandoff(notes, tasks);
   }
 
   // Smart Diet Planner
-  Future<MealPlan> generateAndSaveMealPlan(String residentName) async {
-    final info = getMedicalInfo(residentName);
+  Future<MealPlan> generateAndSaveMealPlan(String residentLookup) async {
+    final resident = findResidentForNutrition(residentLookup);
+    if (resident == null) {
+      backendSyncError =
+          'لم يتم العثور على مقيم بهذا الاسم أو رقم الغرفة أو الكود';
+      notifyListeners();
+      throw ApiException(404, backendSyncError!);
+    }
+
+    final info = getNutritionMedicalInfo(resident);
     final plan = await AiService.instance.generateSmartDiet(info);
-    final idx = mealPlans.indexWhere((m) => m.residentName == residentName);
+
+    final idx = mealPlans.indexWhere((m) => m.residentName == resident.name);
     if (idx != -1) {
       mealPlans[idx] = plan;
     } else {
       mealPlans.add(plan);
     }
     notifyListeners();
+
+    final existingId = mealPlanIdsByResidentName[resident.name];
+    final synced = await _runBackendMutation(() {
+      if (existingId != null && existingId.isNotEmpty) {
+        return BackendMutationService.instance.updateMealPlan(
+          id: existingId,
+          plan: plan,
+        );
+      }
+      return BackendMutationService.instance.createMealPlan(
+        residentId: resident.id,
+        plan: plan,
+      );
+    });
+    if (synced) unawaited(syncBackendData());
     return plan;
   }
 
@@ -4950,11 +1793,13 @@ class AppRiverpod extends ChangeNotifier {
   List<AIInsight> predictiveAlerts = [];
   Future<void> fetchPredictiveAlerts() async {
     if (backendResidentId != null) {
-      predictiveAlerts = await AiService.instance.getPredictiveHealthAlerts(backendResidentId!);
+      predictiveAlerts = await AiService.instance
+          .getPredictiveHealthAlerts(backendResidentId!);
       notifyListeners();
     } else {
       if (residentFiles.isNotEmpty) {
-        predictiveAlerts = await AiService.instance.getPredictiveHealthAlerts(residentFiles.first.id);
+        predictiveAlerts = await AiService.instance
+            .getPredictiveHealthAlerts(residentFiles.first.id);
         notifyListeners();
       }
     }

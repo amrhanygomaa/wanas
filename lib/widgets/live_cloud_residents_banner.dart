@@ -5,7 +5,7 @@ import '../services/residents_service.dart';
 import '../services/api_client.dart';
 import '../services/realtime_service.dart';
 
-// بانر يعرض المقيمين المباشرين من قاعدة بيانات AWS RDS
+// بانر يعرض المقيمين المباشرين من قاعدة بيانات السيرفر
 // يُستخدم في شاشات الممرض/الأخصائي/الإدارة لإثبات الـ live integration.
 class LiveCloudResidentsBanner extends StatefulWidget {
   const LiveCloudResidentsBanner({super.key});
@@ -76,7 +76,7 @@ class _LiveCloudResidentsBannerState extends State<LiveCloudResidentsBanner> {
             return const _StatusRow(
               icon: Icons.cloud_sync_rounded,
               color: Color(0xFFFF9900),
-              title: 'جاري التحميل من AWS RDS...',
+              title: 'جاري التحميل من السيرفر...',
               subtitle: 'PostgreSQL في us-east-1',
               isLoading: true,
             );
@@ -121,7 +121,7 @@ class _LiveCloudResidentsBannerState extends State<LiveCloudResidentsBanner> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'AWS RDS · PostgreSQL · ${residents.length} مقيم',
+                      'السيرفر · PostgreSQL · ${residents.length} مقيم',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF1E293B),

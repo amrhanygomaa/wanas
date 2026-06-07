@@ -8,18 +8,38 @@ class AboutWanasScreen extends ConsumerWidget {
   static List<Color> _roleGradient(String role) {
     switch (role) {
       case 'ممرض':
-        return [const Color(0xFF0369A1), const Color(0xFF0EA5E9), const Color(0xFF38BDF8)];
+        return [
+          const Color(0xFF0369A1),
+          const Color(0xFF0EA5E9),
+          const Color(0xFF38BDF8)
+        ];
       case 'متطوع':
-        return [const Color(0xFF064e3b), const Color(0xFF059669), const Color(0xFF10b981)];
+        return [
+          const Color(0xFF064e3b),
+          const Color(0xFF059669),
+          const Color(0xFF10b981)
+        ];
       case 'عائلة':
       case 'أخصائي':
-        return [const Color(0xFFc2410c), const Color(0xFFea580c), const Color(0xFFf97316)];
+        return [
+          const Color(0xFFc2410c),
+          const Color(0xFFea580c),
+          const Color(0xFFf97316)
+        ];
       case 'مدير':
       case 'إدارة':
-        return [const Color(0xFF0f172a), const Color(0xFF1e293b), const Color(0xFF334155)];
+        return [
+          const Color(0xFF0f172a),
+          const Color(0xFF1e293b),
+          const Color(0xFF334155)
+        ];
       case 'مسن':
       default:
-        return [const Color(0xFF1a0533), const Color(0xFF3730a3), const Color(0xFF6C63FF)];
+        return [
+          const Color(0xFF1a0533),
+          const Color(0xFF3730a3),
+          const Color(0xFF6C63FF)
+        ];
     }
   }
 
@@ -48,7 +68,7 @@ class AboutWanasScreen extends ConsumerWidget {
               centerTitle: true,
               titlePadding: const EdgeInsets.only(bottom: 16),
               title: const Text(
-                'عن ونس',
+                'عن wanas',
                 style: TextStyle(
                   fontFamily: 'Cairo',
                   fontWeight: FontWeight.bold,
@@ -63,8 +83,8 @@ class AboutWanasScreen extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(28)),
+                  borderRadius:
+                      const BorderRadius.vertical(bottom: Radius.circular(28)),
                 ),
                 child: Stack(
                   children: [
@@ -151,7 +171,7 @@ class AboutWanasScreen extends ConsumerWidget {
               delegate: SliverChildListDelegate([
                 // App name + version
                 Text(
-                  'تطبيق ونس للرعاية الذكية',
+                  'تطبيق wanas للرعاية الذكية',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
@@ -177,7 +197,8 @@ class AboutWanasScreen extends ConsumerWidget {
                   iconColor: const Color(0xFFef4444),
                   accentColor: headerStart,
                   title: 'رسالتنا',
-                  body: 'توفير رعاية ذكية ومتكاملة لكبار السن من خلال التكنولوجيا والذكاء الاصطناعي، وتعزيز التواصل بينهم وبين عائلاتهم ومقدمي الرعاية.',
+                  body:
+                      'توفير رعاية ذكية ومتكاملة لكبار السن من خلال التكنولوجيا والذكاء الاصطناعي، وتعزيز التواصل بينهم وبين عائلاتهم ومقدمي الرعاية.',
                 ),
                 const SizedBox(height: 14),
 
@@ -186,7 +207,8 @@ class AboutWanasScreen extends ConsumerWidget {
                   iconColor: const Color(0xFFf59e0b),
                   accentColor: headerStart,
                   title: 'رؤيتنا',
-                  body: 'عالم يشعر فيه كل مقيم بالأمان والاهتمام والتواصل مع عائلته، حيث تُستخدم التقنية لإثراء حياة كبار السن لا لتعقيدها.',
+                  body:
+                      'عالم يشعر فيه كل مقيم بالأمان والاهتمام والتواصل مع عائلته، حيث تُستخدم التقنية لإثراء حياة كبار السن لا لتعقيدها.',
                 ),
                 const SizedBox(height: 14),
 
@@ -204,17 +226,10 @@ class AboutWanasScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
 
-                _SectionCard(
-                  icon: Icons.support_agent_rounded,
-                  iconColor: const Color(0xFF059669),
-                  accentColor: headerStart,
-                  title: 'تواصل معنا',
-                  body: 'البريد الإلكتروني: support@wanas.sa\nالهاتف: 920‑000‑0000\nالموقع: www.wanas.sa',
-                ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 14),
 
                 const Text(
-                  '© 2024 ونس — جميع الحقوق محفوظة',
+                  '© 2026 wanas — جميع الحقوق محفوظة',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       fontSize: 12,

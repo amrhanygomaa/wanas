@@ -14,7 +14,10 @@ bool isUuid(String text) {
 
 /// Strips UUID patterns from [text], collapsing any double-spaces left behind.
 String stripUuids(String text) {
-  return text.replaceAll(_uuidPattern, '').replaceAll(RegExp(r'  +'), ' ').trim();
+  return text
+      .replaceAll(_uuidPattern, '')
+      .replaceAll(RegExp(r'  +'), ' ')
+      .trim();
 }
 
 // نموذج يمثل بيانات المستخدم (المسن) ونظام النقاط التحفيزي
@@ -46,7 +49,8 @@ class Medication {
   final String dayTag; // تصنيف اليوم: 'أمس', 'اليوم', 'غداً'
   final String? residentName; // اسم المقيم (يستخدم في واجهة الممرض)
   final DateTime? scheduledTime; // الوقت المحدد للجرعة بدقة
-  final String? mealRelation; // 'before_breakfast', 'after_breakfast', 'after_lunch', 'after_dinner', 'empty_stomach'
+  final String?
+      mealRelation; // 'before_breakfast', 'after_breakfast', 'after_lunch', 'after_dinner', 'empty_stomach'
 
   Medication({
     required this.id,
@@ -64,14 +68,52 @@ class Medication {
     this.mealRelation,
   });
 
+  Medication copyWith({
+    String? id,
+    String? name,
+    String? dosage,
+    String? timeDescription,
+    String? timeOfDay,
+    bool? isTaken,
+    bool? isElderlyConfirmed,
+    bool? isSkipped,
+    String? skipReason,
+    String? dayTag,
+    String? residentName,
+    DateTime? scheduledTime,
+    String? mealRelation,
+  }) {
+    return Medication(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      dosage: dosage ?? this.dosage,
+      timeDescription: timeDescription ?? this.timeDescription,
+      timeOfDay: timeOfDay ?? this.timeOfDay,
+      isTaken: isTaken ?? this.isTaken,
+      isElderlyConfirmed: isElderlyConfirmed ?? this.isElderlyConfirmed,
+      isSkipped: isSkipped ?? this.isSkipped,
+      skipReason: skipReason ?? this.skipReason,
+      dayTag: dayTag ?? this.dayTag,
+      residentName: residentName ?? this.residentName,
+      scheduledTime: scheduledTime ?? this.scheduledTime,
+      mealRelation: mealRelation ?? this.mealRelation,
+    );
+  }
+
   String get mealRelationArabic {
     switch (mealRelation) {
-      case 'before_breakfast': return 'قبل الإفطار';
-      case 'after_breakfast': return 'بعد الإفطار';
-      case 'after_lunch': return 'بعد الغذاء';
-      case 'after_dinner': return 'بعد العشاء';
-      case 'empty_stomach': return 'على معدة فارغة';
-      default: return '';
+      case 'before_breakfast':
+        return 'قبل الإفطار';
+      case 'after_breakfast':
+        return 'بعد الإفطار';
+      case 'after_lunch':
+        return 'بعد الغذاء';
+      case 'after_dinner':
+        return 'بعد العشاء';
+      case 'empty_stomach':
+        return 'على معدة فارغة';
+      default:
+        return '';
     }
   }
 
@@ -85,11 +127,14 @@ class Medication {
 // نموذج يمثل فرد من أفراد العائلة وسهولة الوصول إليه
 class FamilyMember {
   String id;
+  String? residentId;
   String name; // اسم قريب المسن
   String relation; // صلة القرابة (ابن، حفيدة، إلخ)
   String avatarPath; // مسار الصورة الشخصية
   String initials; // الحروف الأولى من الاسم (للعرض البديل)
   String phoneNumber; // رقم الهاتف لإجراء مكالمات حقيقية
+  String? email; // البريد المستخدم لدعوة فرد العائلة
+  String inviteStatus; // pending, confirmed, failed, skipped
   String? zoomLink; // رابط زووم للمكالمات المرئية
   bool isAvailable; // هل القريب متاح حالياً للمكالمة؟
   bool isPinned; // هل تم اختياره ليظهر في الشاشة الرئيسية؟
@@ -97,11 +142,14 @@ class FamilyMember {
 
   FamilyMember({
     required this.id,
+    this.residentId,
     required this.name,
     required this.relation,
     required this.avatarPath,
     required this.initials,
     required this.phoneNumber,
+    this.email,
+    this.inviteStatus = 'pending',
     this.zoomLink,
     this.isAvailable = false,
     this.isPinned = true,
@@ -119,6 +167,10 @@ class VoiceMessage {
   bool isUnread;
   String? audioUrl;
   int? durationSeconds;
+  String? recipientId;
+  String? recipientName;
+  String deliveryStatus; // pending, sent, failed
+  String moderationStatus; // pending, approved, rejected
 
   VoiceMessage({
     required this.id,
@@ -129,6 +181,10 @@ class VoiceMessage {
     this.isUnread = true,
     this.audioUrl,
     this.durationSeconds,
+    this.recipientId,
+    this.recipientName,
+    this.deliveryStatus = 'sent',
+    this.moderationStatus = 'pending',
   });
 }
 
@@ -207,6 +263,9 @@ class VolunteerOpportunity {
   final int totalSlots;
   final int filledSlots;
   final int points;
+  final String targetAudience;
+  final String targetResident;
+  final List<String> requiredSkills;
 
   VolunteerOpportunity({
     required this.id,
@@ -221,10 +280,33 @@ class VolunteerOpportunity {
     this.totalSlots = 1,
     this.filledSlots = 0,
     this.points = 10,
+    this.targetAudience = '',
+    this.targetResident = '',
+    this.requiredSkills = const [],
   });
 
   String get status => filledSlots < totalSlots ? 'متاحة' : 'مكتملة';
   String get date => dateInfo;
+  List<String> get displaySkills =>
+      requiredSkills.isNotEmpty ? requiredSkills : tags;
+}
+
+class VolunteerApplication {
+  final String id;
+  final String opportunityId;
+  final String opportunityTitle;
+  final String volunteerName;
+  final String status; // 'pending', 'confirmed', 'cancelled', 'done'
+  final String createdAt;
+
+  VolunteerApplication({
+    required this.id,
+    required this.opportunityId,
+    required this.opportunityTitle,
+    required this.volunteerName,
+    required this.status,
+    required this.createdAt,
+  });
 }
 
 class VolunteerImpact {
@@ -650,12 +732,18 @@ class SpecialistResidentFile {
   final String? phone;
   final int? age;
   final String? familyEmail;
+  final String? nationalId;
+  final String? gender;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
+  final String? emergencyRelation;
 
   // الحقول الجديدة للأرشيف الشامل
   final String? bloodType;
   final List<String>? chronicDiseases;
   final List<String>? allergies;
   final String? insuranceInfo;
+  final String? primaryDoctorName;
   final String? mobilityStatus;
   final List<String>? assistiveDevices;
   final String? cognitiveStatus;
@@ -667,6 +755,8 @@ class SpecialistResidentFile {
   final String? socialStatus;
   final List<String>? uploadedDocuments;
   final String? imageUrl;
+  final String? nickname; // اسم الدلع / الاسم المُفضَّل
+  final bool? isOnline;
 
   SpecialistResidentFile({
     required this.id,
@@ -681,10 +771,16 @@ class SpecialistResidentFile {
     this.phone,
     this.age,
     this.familyEmail,
+    this.nationalId,
+    this.gender,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
+    this.emergencyRelation,
     this.bloodType,
     this.chronicDiseases,
     this.allergies,
     this.insuranceInfo,
+    this.primaryDoctorName,
     this.mobilityStatus,
     this.assistiveDevices,
     this.cognitiveStatus,
@@ -696,6 +792,8 @@ class SpecialistResidentFile {
     this.socialStatus,
     this.uploadedDocuments,
     this.imageUrl,
+    this.nickname,
+    this.isOnline,
   });
 
   SpecialistResidentFile copyWith({
@@ -711,10 +809,16 @@ class SpecialistResidentFile {
     String? phone,
     int? age,
     String? familyEmail,
+    String? nationalId,
+    String? gender,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    String? emergencyRelation,
     String? bloodType,
     List<String>? chronicDiseases,
     List<String>? allergies,
     String? insuranceInfo,
+    String? primaryDoctorName,
     String? mobilityStatus,
     List<String>? assistiveDevices,
     String? cognitiveStatus,
@@ -726,6 +830,8 @@ class SpecialistResidentFile {
     String? socialStatus,
     List<String>? uploadedDocuments,
     String? imageUrl,
+    String? nickname,
+    bool? isOnline,
   }) {
     return SpecialistResidentFile(
       id: id ?? this.id,
@@ -740,10 +846,17 @@ class SpecialistResidentFile {
       phone: phone ?? this.phone,
       age: age ?? this.age,
       familyEmail: familyEmail ?? this.familyEmail,
+      nationalId: nationalId ?? this.nationalId,
+      gender: gender ?? this.gender,
+      emergencyContactName: emergencyContactName ?? this.emergencyContactName,
+      emergencyContactPhone:
+          emergencyContactPhone ?? this.emergencyContactPhone,
+      emergencyRelation: emergencyRelation ?? this.emergencyRelation,
       bloodType: bloodType ?? this.bloodType,
       chronicDiseases: chronicDiseases ?? this.chronicDiseases,
       allergies: allergies ?? this.allergies,
       insuranceInfo: insuranceInfo ?? this.insuranceInfo,
+      primaryDoctorName: primaryDoctorName ?? this.primaryDoctorName,
       mobilityStatus: mobilityStatus ?? this.mobilityStatus,
       assistiveDevices: assistiveDevices ?? this.assistiveDevices,
       cognitiveStatus: cognitiveStatus ?? this.cognitiveStatus,
@@ -755,6 +868,8 @@ class SpecialistResidentFile {
       socialStatus: socialStatus ?? this.socialStatus,
       uploadedDocuments: uploadedDocuments ?? this.uploadedDocuments,
       imageUrl: imageUrl ?? this.imageUrl,
+      nickname: nickname ?? this.nickname,
+      isOnline: isOnline ?? this.isOnline,
     );
   }
 }
@@ -799,6 +914,8 @@ class MedicalPrescription {
 
 class StaffPerformance {
   final String id;
+  final String? managedUserId;
+  final String? authUserId;
   final String name;
   final String role; // 'Specialist', 'Nurse'
   final double completionRate;
@@ -808,6 +925,8 @@ class StaffPerformance {
 
   StaffPerformance({
     required this.id,
+    this.managedUserId,
+    this.authUserId,
     required this.name,
     required this.role,
     required this.completionRate,
@@ -818,6 +937,8 @@ class StaffPerformance {
 
   StaffPerformance copyWith({
     String? id,
+    String? managedUserId,
+    String? authUserId,
     String? name,
     String? role,
     double? completionRate,
@@ -827,6 +948,8 @@ class StaffPerformance {
   }) {
     return StaffPerformance(
       id: id ?? this.id,
+      managedUserId: managedUserId ?? this.managedUserId,
+      authUserId: authUserId ?? this.authUserId,
       name: name ?? this.name,
       role: role ?? this.role,
       completionRate: completionRate ?? this.completionRate,
@@ -882,6 +1005,7 @@ class MemoryMoment {
   final String residentId;
   final String residentName;
   final String imageUrl;
+  final String? fallbackPath;
   final String activityTitle;
   final String date;
   final int appreciations;
@@ -891,6 +1015,7 @@ class MemoryMoment {
     required this.residentId,
     required this.residentName,
     required this.imageUrl,
+    this.fallbackPath,
     required this.activityTitle,
     required this.date,
     this.appreciations = 0,
@@ -1082,6 +1207,7 @@ class ActivitySession {
 
 class AIInsight {
   final String id;
+  final String? residentId;
   final String residentName;
   final String? roomNumber;
   final String summary;
@@ -1092,6 +1218,7 @@ class AIInsight {
 
   AIInsight({
     required this.id,
+    this.residentId,
     required this.residentName,
     this.roomNumber,
     required this.summary,
@@ -1106,7 +1233,9 @@ class AIInsight {
     final safeName = isUuid(residentName) ? '' : residentName.trim();
     if (safeName.isEmpty) return 'مشكلة عامة في النظام / الدار';
     final room = roomNumber?.trim();
-    if (room != null && room.isNotEmpty) return 'المقيم: $safeName — الغرفة $room';
+    if (room != null && room.isNotEmpty) {
+      return 'المقيم: $safeName — الغرفة $room';
+    }
     return safeName;
   }
 }
@@ -1166,7 +1295,7 @@ class CognitiveGameResult {
   final DateTime date;
   final int score;
   final String feedback;
-  
+
   CognitiveGameResult({
     required this.id,
     required this.residentId,

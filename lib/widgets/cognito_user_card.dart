@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
 // بطاقة تعرض بيانات Cognito الحقيقية للمستخدم الحالي
-// تثبت أن الـ Auth مربوط بـ AWS فعلاً (مش mock).
+// تثبت أن الـ Auth مربوط بـ السيرفر فعلاً (مش mock).
 class CognitoUserCard extends StatelessWidget {
   const CognitoUserCard({super.key});
 
@@ -69,7 +69,7 @@ class CognitoUserCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
-                  'AWS Cognito',
+                  'السيرفر',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,

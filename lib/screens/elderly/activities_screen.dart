@@ -953,8 +953,7 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
             const SizedBox(height: 8),
             Text('تم إنجاز $activityName بنجاح',
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 16, color: Color(0xFF64748B))),
+                style: const TextStyle(fontSize: 16, color: Color(0xFF64748B))),
             const SizedBox(height: 28),
             _buildEvaluationCard(
               icon: Icons.volunteer_activism_rounded,
@@ -1082,20 +1081,18 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                   : const Color(0xFFF1F5F9),
               shape: BoxShape.circle,
               border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFF22C55E)
-                      : Colors.transparent,
+                  color:
+                      isSelected ? const Color(0xFF22C55E) : Colors.transparent,
                   width: 3),
             ),
-            child: Text(emoji,
-                style: TextStyle(fontSize: isSelected ? 48 : 36)),
+            child:
+                Text(emoji, style: TextStyle(fontSize: isSelected ? 48 : 36)),
           ),
           const SizedBox(height: 12),
           Text(label,
               style: TextStyle(
                   fontSize: 18,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color: isSelected
                       ? const Color(0xFF166534)
                       : const Color(0xFF64748B))),
@@ -1177,8 +1174,7 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                   onPressed: selectedRating == 0
                       ? null
                       : () {
-                          provider.rateVolunteerSession(
-                              'v_123', selectedRating,
+                          provider.rateVolunteerSession('v_123', selectedRating,
                               comment: commentController.text);
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -1277,9 +1273,7 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
       ),
       child: Text(label,
           style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold)),
+              color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -1358,8 +1352,7 @@ class _ActivitiesScreenState extends ConsumerState<ActivitiesScreen>
                     },
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF22C55E)),
-              child: const Text('إرسال',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text('إرسال', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

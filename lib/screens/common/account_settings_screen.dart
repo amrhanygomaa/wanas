@@ -21,7 +21,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1e293b),
         foregroundColor: Colors.white,
-        title: const Text('إعدادات الحساب',
+        title: const Text('إعدادات التطبيق',
             style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
@@ -501,5 +501,4 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
       ),
     );
   }
-
 }
